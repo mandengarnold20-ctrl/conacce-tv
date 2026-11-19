@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:chewie/chewie.dart';
@@ -36,17 +37,59 @@ class HlsVideoPlayer extends StatefulWidget {
   State<HlsVideoPlayer> createState() => _HlsVideoPlayerState();
 }
 
-class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
+class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObserver {
   VideoPlayerController? _video;
   ChewieController? _chewie;
   Object? _error;
 
+  // Direct en continu : la vidéo ne s'arrête que si l'on appuie soi-même sur pause.
+  Timer? _watchdog;
+  Duration _lastPosition = Duration.zero;
+  int _stalledTicks = 0;
+  bool _wasPlayingBeforeHidden = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Tant que la vidéo est à l'écran, on autorise la rotation du téléphone.
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _init();
+    if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 5), (_) => _keepAlive());
+  }
+
+  /// Relance le direct s'il s'est figé, interrompu ou arrêté tout seul (réseau, fin de segment).
+  /// Une pause faite à la main (lecture arrêtée, sans erreur) est respectée.
+  void _keepAlive() {
+    if (!mounted) return;
+    if (_error != null) return _retry();
+    final v = _video?.value;
+    if (v == null || !v.isInitialized) return;
+    if (v.hasError) return _retry();
+    if (v.isCompleted) return _retry();
+    if (v.isPlaying) {
+      _stalledTicks = v.position == _lastPosition ? _stalledTicks + 1 : 0;
+      _lastPosition = v.position;
+      if (_stalledTicks >= 3) {
+        _stalledTicks = 0;
+        _retry();
+      }
+    } else {
+      _stalledTicks = 0;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final video = _video;
+    if (!widget.isLive || video == null || !video.value.isInitialized) return;
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
+      _wasPlayingBeforeHidden = video.value.isPlaying;
+    } else if (state == AppLifecycleState.resumed && _wasPlayingBeforeHidden) {
+      // Retour dans l'appli : le direct reprend tout seul.
+      _wasPlayingBeforeHidden = false;
+      video.play();
+    }
   }
 
   @override
@@ -114,6 +157,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   @override
   void dispose() {
+    _watchdog?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();
     // L'appli reprend l'affichage vertical.
     SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
