@@ -1,0 +1,264 @@
+import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/analytics.dart';
+import '../core/theme/app_colors.dart';
+import '../core/theme/app_theme.dart';
+import '../data/models.dart';
+import '../data/providers.dart';
+
+/// Sous la TV : la phrase d'accueil, puis les messages du jour.
+/// Dès le premier message, la phrase monte et disparaît ; elle revient le lendemain
+/// quand les messages de la veille sont passés en archive.
+class LiveChat extends ConsumerWidget {
+  const LiveChat({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final comments = ref.watch(liveCommentsProvider).valueOrNull ?? const <LiveComment>[];
+    final hasComments = comments.isNotEmpty;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // La phrase monte et s'efface dès le premier message du jour.
+      ClipRect(
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 1100),
+          curve: Curves.easeInOutCubic,
+          alignment: Alignment.bottomCenter,
+          heightFactor: hasComments ? 0 : 1,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 900),
+            opacity: hasComments ? 0 : 1,
+            child: const Padding(padding: EdgeInsets.fromLTRB(20, 28, 20, 8), child: WelcomeSlogan()),
+          ),
+        ),
+      ),
+      const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 6), child: _Composer()),
+      for (final c in comments) Padding(padding: const EdgeInsets.fromLTRB(20, 6, 20, 0), child: _Bubble(comment: c)),
+    ]);
+  }
+}
+
+/// « Vous regardez Conacce TV, désormais partout avec vous à travers le monde ! »
+/// avec un trait jaune-orange du logo qui se dessine sous « partout avec vous » chaque minute.
+class WelcomeSlogan extends StatefulWidget {
+  const WelcomeSlogan({super.key});
+
+  @override
+  State<WelcomeSlogan> createState() => _WelcomeSloganState();
+}
+
+class _WelcomeSloganState extends State<WelcomeSlogan> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.forward();
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) _c.forward(from: 0);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context).width < 420 ? 26.0 : 32.0;
+    final style = AppTheme.title(size: size, weight: FontWeight.w800).copyWith(height: 1.35);
+    return Text.rich(
+      TextSpan(style: style, children: [
+        const TextSpan(text: 'Vous regardez Conacce TV, désormais '),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, child) => CustomPaint(
+              foregroundPainter: _Swoosh(Curves.easeInOutCubic.transform(_c.value)),
+              child: child,
+            ),
+            child: Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('partout avec vous', style: style)),
+          ),
+        ),
+        const TextSpan(text: ' à travers le monde !'),
+      ]),
+    );
+  }
+}
+
+/// Trait courbe dessiné à la main, au dégradé du soleil du logo.
+class _Swoosh extends CustomPainter {
+  _Swoosh(this.progress);
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final w = size.width, y = size.height - 2;
+    final path = Path()
+      ..moveTo(w * .01, y - 1)
+      ..quadraticBezierTo(w * .35, y + 4, w * .62, y)
+      ..quadraticBezierTo(w * .85, y - 3, w * .99, y + 1);
+    final metric = path.computeMetrics().first;
+    final part = metric.extractPath(0, metric.length * progress);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..shader = ui.Gradient.linear(Offset(0, y), Offset(w, y), const [
+        AppColors.sunYellow,
+        AppColors.sunGold,
+        AppColors.sunMid,
+        AppColors.sunDeep,
+      ], const [0, .35, .7, 1]);
+    canvas.drawPath(part, paint);
+  }
+
+  @override
+  bool shouldRepaint(_Swoosh old) => old.progress != progress;
+}
+
+/// Zone pour écrire un message (le prénom est mémorisé sur l'appareil).
+class _Composer extends StatefulWidget {
+  const _Composer();
+
+  @override
+  State<_Composer> createState() => _ComposerState();
+}
+
+class _ComposerState extends State<_Composer> {
+  final _name = TextEditingController();
+  final _body = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      final saved = p.getString('comment_name');
+      if (saved != null && mounted) _name.text = saved;
+    });
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _body.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final name = _name.text.trim();
+    final body = _body.text.trim();
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (name.isEmpty) {
+      messenger?.showSnackBar(const SnackBar(content: Text('Indiquez votre prénom.')));
+      return;
+    }
+    if (body.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await sendLiveComment(name: name, body: body, visitorId: await Analytics.visitorId());
+      (await SharedPreferences.getInstance()).setString('comment_name', name);
+      _body.clear();
+      if (mounted) FocusScope.of(context).unfocus();
+    } catch (e) {
+      final wait = e.toString().contains('Patientez');
+      messenger?.showSnackBar(SnackBar(content: Text(wait ? 'Patientez quelques secondes avant un nouveau message.' : 'Message non envoyé. Vérifiez votre connexion.')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  InputDecoration _deco(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0x330B1463),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22FFFFFF))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22FFFFFF))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.sunGold)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      TextField(
+        controller: _name,
+        maxLength: 40,
+        textCapitalization: TextCapitalization.words,
+        style: const TextStyle(fontSize: 14),
+        decoration: _deco('Votre prénom').copyWith(counterText: ''),
+      ),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _body,
+            maxLength: 500,
+            minLines: 1,
+            maxLines: 4,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) => _send(),
+            style: const TextStyle(fontSize: 14),
+            decoration: _deco('Écrivez un message, un amen, un témoignage…').copyWith(counterText: ''),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _sending ? null : _send,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(gradient: AppColors.sunGradient, shape: BoxShape.circle),
+            child: _sending
+                ? const Padding(padding: EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.navy))
+                : const Icon(Icons.send_rounded, color: AppColors.navy, size: 20),
+          ),
+        ),
+      ]),
+    ]);
+  }
+}
+
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.comment});
+
+  final LiveComment comment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        gradient: AppColors.cardGradient,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x14FFFFFF)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text(comment.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 12, color: AppColors.sunYellow)),
+          ),
+          Text(DateFormat('HH:mm').format(comment.createdAt), style: const TextStyle(color: AppColors.muted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 3),
+        Text(comment.body, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.35)),
+      ]),
+    );
+  }
+}

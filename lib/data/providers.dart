@@ -72,3 +72,25 @@ final settingsProvider = FutureProvider<AppSettings>((ref) async {
   final row = await _db.from('app_settings').select().eq('id', 1).maybeSingle();
   return row == null ? const AppSettings() : AppSettings.fromMap(row);
 });
+
+/// Jour en cours à l'heure de Douala / Lagos (UTC+1) : les messages changent chaque jour.
+String todayLagos() {
+  final d = DateTime.now().toUtc().add(const Duration(hours: 1));
+  return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+/// Messages du jour sous la TV, en temps réel (le plus récent en premier).
+final liveCommentsProvider = StreamProvider.autoDispose<List<LiveComment>>((ref) {
+  return _db
+      .from('live_comments')
+      .stream(primaryKey: ['id'])
+      .eq('day', todayLagos())
+      .order('created_at', ascending: false)
+      .limit(200)
+      .map((rows) => rows.map(LiveComment.fromMap).toList());
+});
+
+/// Envoie un message sous la TV.
+Future<void> sendLiveComment({required String name, required String body, required String visitorId}) async {
+  await _db.from('live_comments').insert({'name': name.trim(), 'body': body.trim(), 'visitor_id': visitorId});
+}

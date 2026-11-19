@@ -13,6 +13,7 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
+import 'live_chat.dart';
 
 /// Conacce TV en direct : vidéo, bandeau orateur / message, audio seul, partage, soutien.
 class LiveScreen extends ConsumerStatefulWidget {
@@ -67,7 +68,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     )
                   else
                     HlsVideoPlayer(url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView),
-                  const Positioned(left: 12, top: 12, child: IgnorePointer(child: LiveBadge())),
                   if (!_audioOnly && (l.speaker != null || l.messageTitle != null))
                     Positioned(
                       left: 12,
@@ -123,6 +123,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     ]),
                   ]),
                 ),
+                const LiveChat(),
               ]),
             ),
           ],

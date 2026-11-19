@@ -797,6 +797,39 @@ async function showSettings() {
   body.append(btn);
 }
 
+// ─── Commentaires du direct ───
+async function showComments() {
+  const main = $('#main');
+  const { data, error } = await sb.from('live_comments').select('id,name,body,day,created_at').order('created_at', { ascending: false }).limit(1000);
+  if (current !== 'comments') return;
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Commentaires'),
+    h('p', { class: 'intro' }, 'Les messages laissés sous la TV. Ceux du jour sont visibles dans l’appli ; chaque jour à minuit, ils passent en archive ici.'))));
+  if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
+  if (!data.length) return main.append(h('div', { class: 'empty' }, 'Aucun message pour le moment.'));
+  const today = new Date(Date.now() + 3600e3).toISOString().slice(0, 10);
+  const byDay = {};
+  for (const c of data) (byDay[c.day] = byDay[c.day] || []).push(c);
+  for (const day of Object.keys(byDay).sort().reverse()) {
+    const label = day === today ? 'Aujourd’hui (visibles dans l’appli)' : 'Archive · ' + new Date(day + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    main.append(h('h2', { style: 'margin:22px 0 10px' }, label + ' — ' + byDay[day].length + ' message' + (byDay[day].length > 1 ? 's' : '')));
+    const list = h('div', { class: 'list' });
+    for (const c of byDay[day]) {
+      const del = h('button', { class: 'btn small danger' }, 'Supprimer');
+      const row = h('div', { class: 'item', style: 'grid-template-columns:1fr auto' },
+        h('div', {}, h('div', { class: 't' }, c.name + ' · ' + new Date(c.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })), h('div', { class: 's', style: 'white-space:pre-wrap' }, c.body)),
+        h('div', { class: 'acts' }, del));
+      del.addEventListener('click', async () => {
+        if (!confirm('Supprimer ce message ?')) return;
+        const { error } = await sb.from('live_comments').delete().eq('id', c.id);
+        if (error) return toast(friendly(error), true);
+        row.remove(); toast('Message supprimé ✔');
+      });
+      list.append(row);
+    }
+    main.append(list);
+  }
+}
+
 // ─── Équipe ───
 async function showTeam() {
   const main = $('#main');
@@ -823,7 +856,7 @@ async function showTeam() {
 
 // ─── Navigation ───
 const NAV = [
-  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '⛪', 'Cultes'],
+  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '⛪', 'Cultes'],
   ['works', '📖', 'Œuvres d’Or'], ['banners', '🖼️', 'Affiches'], ['settings', '⚙️', 'Réglages'], ['team', '👥', 'Équipe'],
 ];
 let current = null, me = null;
@@ -834,7 +867,7 @@ function show(key, arg) {
   document.querySelectorAll('button.nav').forEach(b => b.classList.toggle('on', b.dataset.k === key));
   const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
   if (ENT[key]) return showList(key);
-  ({ dash: showDash, live: showLive, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
+  ({ dash: showDash, live: showLive, comments: showComments, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
 }
 
 function shell(user) {

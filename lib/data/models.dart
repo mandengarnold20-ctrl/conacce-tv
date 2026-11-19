@@ -230,3 +230,20 @@ class AppSettings {
         contactEmail: m['contact_email'] as String?,
       );
 }
+
+/// Message laissé sous la TV en direct (visible le jour même, puis archivé).
+class LiveComment {
+  const LiveComment({required this.id, required this.name, required this.body, required this.createdAt});
+
+  final String id;
+  final String name;
+  final String body;
+  final DateTime createdAt;
+
+  factory LiveComment.fromMap(Map<String, dynamic> m) => LiveComment(
+        id: m['id'] as String,
+        name: (m['name'] as String?)?.trim() ?? '',
+        body: (m['body'] as String?)?.trim() ?? '',
+        createdAt: DateTime.tryParse(m['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+      );
+}

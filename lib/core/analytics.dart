@@ -49,6 +49,9 @@ class Analytics {
     }
   }
 
+  /// Identifiant anonyme de l'appareil (anti-spam des commentaires).
+  static Future<String> visitorId() => _id();
+
   static Future<void> visit() => _track('visit');
   static Future<void> sermonPlay(String id) => _track('play', id);
   static Future<void> liveView() => _track('live');
