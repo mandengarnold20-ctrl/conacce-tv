@@ -116,7 +116,16 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(l.title, style: AppTheme.title(size: 20, weight: FontWeight.w800)),
+                    Row(children: [
+                      Flexible(child: Text(l.title.replaceAll(RegExp(r'\s*HD$'), ''), style: AppTheme.title(size: 20, weight: FontWeight.w800))),
+                      const SizedBox(width: 8),
+                      // Conacce TV HD
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(gradient: AppColors.sunGradient, borderRadius: BorderRadius.circular(6)),
+                        child: Text('HD', style: AppTheme.title(size: 12, weight: FontWeight.w800, color: AppColors.navy)),
+                      ),
+                    ]),
                     if (l.messageTitle != null) ...[
                       const SizedBox(height: 4),
                       Text(l.messageTitle!, style: const TextStyle(color: AppColors.mist, fontSize: 13)),

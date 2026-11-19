@@ -19,7 +19,7 @@ final radioProvider = StreamProvider<RadioStation?>((ref) {
 final sermonCategoryProvider = StateProvider<SermonCategory?>((ref) => null);
 
 /// Rubrique affichée dans l'onglet Vidéos : « cultes » ou « conacce ».
-final videoSectionProvider = StateProvider<String>((ref) => 'cultes');
+final videoSectionProvider = StateProvider<String>((ref) => 'conacce');
 
 /// Vidéos publiées d'une rubrique (et d'une catégorie), du plus récent au plus ancien.
 final sermonsProvider = FutureProvider.family<List<Sermon>, (String, SermonCategory?)>((ref, key) async {
@@ -121,3 +121,20 @@ Future<void> sendMessage({
     'phone': clean(phone),
   });
 }
+
+/// Album affiché dans la galerie : « conacce » (Conacce Chaplains) ou « ciu ».
+final galleryAlbumProvider = StateProvider<String>((ref) => 'conacce');
+
+/// Photos publiées d'un album, les plus récentes d'abord.
+final galleryProvider = FutureProvider.family<List<GalleryPhoto>, String>((ref, album) async {
+  final rows = await _db
+      .from('gallery_photos')
+      .select()
+      .eq('is_published', true)
+      .eq('album', album)
+      .order('sort_order')
+      .order('taken_on', ascending: false, nullsFirst: false)
+      .order('created_at', ascending: false)
+      .limit(500);
+  return rows.map(GalleryPhoto.fromMap).toList();
+});

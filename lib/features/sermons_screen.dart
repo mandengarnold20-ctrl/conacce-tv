@@ -67,7 +67,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
   Widget build(BuildContext context) {
     final section = ref.watch(videoSectionProvider);
     final isCultes = section == 'cultes';
-    final category = isCultes ? ref.watch(sermonCategoryProvider) : null;
+    final category = ref.watch(sermonCategoryProvider);
     final sermons = ref.watch(sermonsProvider((section, category)));
     final downloads = ref.watch(downloadsProvider);
 
@@ -108,7 +108,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const _Message('Connexion impossible pour le moment.'),
         data: (items) => items.isEmpty
-            ? _Message(isCultes ? 'Aucun culte dans cette catégorie pour le moment.' : 'Les vidéos Conacce arrivent bientôt.')
+            ? _Message(category != null ? 'Aucune vidéo dans cette catégorie pour le moment.' : isCultes ? 'Les cultes arrivent bientôt.' : 'Les vidéos Conacce arrivent bientôt.')
             : _SermonList(items: items),
       );
     }
@@ -120,9 +120,10 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         Padding(
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 14, 20, 12),
           child: Row(children: [
-            Expanded(child: _SectionTab(label: 'Cultes', icon: Icons.church_rounded, selected: isCultes, onTap: () => _setSection('cultes'))),
-            const SizedBox(width: 10),
+            // La Conacce et ses projets d'abord, les cultes ensuite.
             Expanded(child: _SectionTab(label: 'Vidéos Conacce', icon: Icons.smart_display_rounded, selected: !isCultes, onTap: () => _setSection('conacce'))),
+            const SizedBox(width: 10),
+            Expanded(child: _SectionTab(label: 'Cultes', icon: Icons.church_rounded, selected: isCultes, onTap: () => _setSection('cultes'))),
           ]),
         ),
         Padding(
@@ -147,7 +148,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
             ),
           ),
         ),
-        if (isCultes) SizedBox(
+        SizedBox(
           height: 52,
           child: ListView(
             scrollDirection: Axis.horizontal,
@@ -157,8 +158,8 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
                     _offline = false;
                     ref.read(sermonCategoryProvider.notifier).state = null;
                   })),
-              for (final c in SermonCategory.values.where((c) => c != SermonCategory.autre))
-                chip(c == SermonCategory.dimanche ? 'Dimanche' : c.label, category == c && !_offline, () => setState(() {
+              for (final c in SermonCategory.shown)
+                chip(c.label, category == c && !_offline, () => setState(() {
                       _offline = false;
                       ref.read(sermonCategoryProvider.notifier).state = c;
                     })),

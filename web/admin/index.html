@@ -159,6 +159,80 @@
     .item .acts { grid-column: 1 / -1; justify-content: flex-end; }
     h1 { font-size: 28px; }
   }
+  /* ─── Finition « tableau de bord » : plus fin, plus structuré ─── */
+  body { font-size: 14px; line-height: 1.55; background: #070D3A; }
+  h1 { font-family: Poppins, system-ui, sans-serif; font-style: normal; text-transform: none; letter-spacing: 0;
+       font-weight: 600; font-size: 23px; line-height: 1.3; }
+  h2 { font-size: 15px; font-weight: 600; }
+  .btn { font-size: 13.5px; font-weight: 500; padding: 7px 14px; min-height: 36px; border-radius: 6px; }
+  .btn.small { padding: 4px 10px; min-height: 30px; font-size: 12.5px; }
+  .btn.primary { font-weight: 600; }
+  input, select, textarea { border-radius: 6px; padding: 8px 12px; min-height: 38px; background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.14); }
+  input:focus, select:focus, textarea:focus { outline: 2px solid rgba(249,202,34,.6); }
+  input[type=checkbox] { width: 18px; height: 18px; }
+
+  .app { grid-template-columns: 224px 1fr; }
+  nav.side { background: #050A2E; padding: 0 0 12px; gap: 0; border-right: 1px solid rgba(255,255,255,.06); }
+  nav.side .brand { padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,.06); margin-bottom: 8px; }
+  nav.side .brand img { width: 132px; }
+  nav.side .brand div { font-family: Poppins, sans-serif; font-style: normal; font-weight: 600; font-size: 10.5px; letter-spacing: 2.5px; margin-top: 6px; }
+  nav.side button.nav { font-size: 13.5px; padding: 9px 16px; border-radius: 0; gap: 10px; border-left: 3px solid transparent; color: #C9D2F5; }
+  nav.side button.nav span { width: 18px; text-align: center; font-size: 14px; filter: saturate(.6); }
+  nav.side button.nav:hover { background: rgba(255,255,255,.05); color: #fff; }
+  nav.side button.nav.on { background: rgba(249,202,34,.12); color: #F9CA22; font-weight: 600; border-left-color: #F9CA22; }
+  nav.side .who { font-size: 11.5px; padding: 8px 16px; }
+
+  .content { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { height: 46px; display: flex; align-items: center; gap: 18px; padding: 0 clamp(16px, 4vw, 40px);
+            background: #050A2E; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; color: #C9D2F5; position: sticky; top: 0; z-index: 10; }
+  .topbar b { color: #fff; font-weight: 600; }
+  .topbar a { color: #C9D2F5; text-decoration: none; }
+  .topbar a:hover { color: #F9CA22; }
+  .topbar .grow { flex: 1; }
+  main { padding: 24px clamp(16px, 4vw, 40px) 80px; }
+  .head { align-items: center; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .head .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .intro { font-size: 13.5px; margin-top: 4px; }
+
+  .list { gap: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; background: rgba(8,15,67,.55); }
+  .item { border: none; border-radius: 0; border-bottom: 1px solid rgba(255,255,255,.06); background: transparent; padding: 10px 14px; grid-template-columns: 52px 1fr auto; }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: rgba(255,255,255,.03); }
+  .item .thumb { width: 52px; height: 52px; border-radius: 6px; font-size: 20px; }
+  .item .t { font-weight: 600; font-size: 14px; }
+  .item .s { font-size: 12.5px; }
+  .item .acts { opacity: .85; }
+  .item:hover .acts { opacity: 1; }
+  .badge { font-weight: 600; border-radius: 4px; padding: 1px 7px; }
+  .empty { border-radius: 8px; }
+  .list > .empty { border: none; }
+
+  .panel, .stat { border-radius: 8px; background: rgba(8,15,67,.6); border-color: rgba(255,255,255,.08); }
+  .stat .n { font-family: Poppins, sans-serif; font-style: normal; font-weight: 600; font-size: 30px; }
+  .stat .l { font-size: 12.5px; }
+  .note { border-radius: 4px; border: none; border-left: 4px solid #F9CA22; background: rgba(249,202,34,.07); font-size: 13.5px; color: #E9EDFF; }
+  .check { border-radius: 6px; padding: 10px 12px; font-weight: 500; }
+  .fld > label { font-weight: 500; font-size: 13.5px; }
+  .drawer { background: #0A1250; }
+  .drawer header h2 { font-size: 17px; font-weight: 600; }
+  .up { border-radius: 8px; }
+  .login { border-radius: 12px; }
+  #toast { border-radius: 8px; font-weight: 500; }
+
+  /* Galerie : envoi de plusieurs photos */
+  .bulk { display: flex; gap: 8px; align-items: center; }
+  .bulk select { width: auto; min-width: 170px; }
+  .progress { margin: -6px 0 14px; font-size: 13px; color: #C9D2F5; }
+
+  @media (max-width: 900px) {
+    .content { display: block; }
+    .topbar { display: none; }
+    nav.side { padding: 6px; }
+    nav.side button.nav { border-left: none; border-radius: 6px; padding: 8px 10px; }
+    .item { grid-template-columns: 46px 1fr; }
+    .item .thumb { width: 46px; height: 46px; }
+    h1 { font-size: 20px; }
+  }
 </style>
 </head>
 <body>
@@ -217,8 +291,9 @@ function friendly(err) {
 }
 
 // ─── Listes de choix ───
-const CATS = [['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['special', 'Culte spécial'], ['autre', 'Autre']];
-const SECTIONS = [['cultes', 'Cultes'], ['conacce', 'Vidéos Conacce']];
+const CATS = [['special', 'Culte spécial'], ['tempsForts', 'Temps forts'], ['spots', 'Spots'], ['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['autre', 'Autre']];
+const SECTIONS = [['conacce', 'Vidéos Conacce'], ['cultes', 'Cultes']];
+const ALBUMS = [['conacce', 'Conacce Chaplains'], ['ciu', 'CIU']];
 // Vignette automatique des vidéos YouTube
 function ytId(u) {
   try {
@@ -254,12 +329,12 @@ const ENT = {
     intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [label(SECTIONS, r.section || 'cultes'), (r.section || 'cultes') === 'cultes' ? label(CATS, r.category) : '', r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
     badges: r => [ytId(r.video_url) ? ['▶ YouTube'] : isFb(r.video_url) ? ['▶ Facebook'] : r.video_url && ['🎬 Vidéo'], r.audio_url && ['🎧 Audio'], r.is_featured && ['★ À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
-      { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'cultes', req: true, help: '« Cultes » ou « Vidéos Conacce » (onglet Vidéos de l’appli).' },
+      { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce » ou « Cultes » (onglet Vidéos de l’appli).' },
       { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
-      { k: 'category', label: 'Type de culte', type: 'select', opts: CATS, def: 'dimanche', req: true, show: v => (v.section || 'cultes') === 'cultes' },
+      { k: 'category', label: 'Catégorie', type: 'select', opts: CATS, def: 'special', req: true, help: 'Dans l’appli, les filtres sont : Culte spécial, Temps forts, Spots.' },
       { k: 'speaker', label: 'Orateur', type: 'text' },
       { k: 'preached_on', label: 'Date du culte', type: 'date' },
       { k: 'video_url', label: 'Vidéo (lien YouTube / Facebook, ou fichier)', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: `Collez le lien YouTube ou Facebook (ex : https://youtu.be/…) : la vidéo joue dans l’appli et la miniature YouTube est prise automatiquement. Sinon : fichier (maximum ${MAX_MB} Mo) ou lien .m3u8 Cloudflare.` },
@@ -293,6 +368,23 @@ const ENT = {
       { k: 'description', label: 'Présentation', type: 'textarea', rows: 6 },
       { k: 'is_featured', label: 'Mettre à la une', type: 'checkbox' },
       { k: 'sort_order', label: 'Ordre d’affichage (le plus petit en premier)', type: 'number', def: 0 },
+    ],
+  },
+  gallery: {
+    table: 'gallery_photos', title: 'Galerie photo', one: 'une photo', icon: '📷',
+    intro: 'Les photos de la Conacce Chaplains et de la CIU, visibles dans l’onglet « Galerie » de l’appli. Vous pouvez en envoyer plusieurs d’un coup.',
+    select: '*', order: ['created_at', false], empty: 'Aucune photo pour le moment. Choisissez l’album puis « Envoyer des photos ».',
+    name: r => r.caption || 'Photo sans légende', img: r => r.image_url,
+    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' · '),
+    badges: r => [!r.is_published && ['Masquée', 'red']].filter(Boolean),
+    bulk: true,
+    fields: [
+      { k: 'album', label: 'Album', type: 'select', opts: ALBUMS, def: 'conacce', req: true },
+      { k: 'image_url', label: 'Photo', type: 'image', req: true },
+      { k: 'caption', label: 'Légende (facultatif)', type: 'text' },
+      { k: 'taken_on', label: 'Date (facultatif)', type: 'date' },
+      { k: 'is_published', label: 'Afficher dans l’appli', type: 'checkbox', def: true },
+      { k: 'sort_order', label: 'Ordre (le plus petit en premier)', type: 'number', def: 0 },
     ],
   },
   banners: {
@@ -604,7 +696,9 @@ async function showList(key) {
   main.append(
     h('div', { class: 'head' },
       h('div', {}, h('h1', {}, E.title), h('p', { class: 'intro' }, E.intro)),
-      h('button', { class: 'btn primary', onclick: () => openForm(key, null) }, '+ Ajouter')),
+      h('div', { class: 'tools' },
+        E.bulk ? bulkBox(key) : null,
+        h('button', { class: 'btn' + (E.bulk ? '' : ' primary'), onclick: () => openForm(key, null) }, '+ Ajouter'))),
     search, list);
   const { data, error } = await sb.from(E.table).select(E.select).order(E.order[0], { ascending: E.order[1], nullsFirst: false }).limit(1000);
   if (current !== key) return;
@@ -629,6 +723,49 @@ async function showList(key) {
   };
   search.addEventListener('input', draw);
   draw();
+}
+
+// Photos : réduites dans le navigateur (envoi rapide, même en 3G), puis enregistrées une par une.
+async function shrinkImage(file, max = 2000) {
+  if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k === 1 && file.size < 1.5e6) return file;
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file;
+  } catch (_) { return file; }
+}
+
+function bulkBox(key) {
+  const album = h('select', {}, ALBUMS.map(([v, l]) => h('option', { value: v }, l)));
+  const input = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'hidden' });
+  const btn = h('button', { class: 'btn primary', type: 'button', onclick: () => input.click() }, '📷 Envoyer des photos');
+  input.addEventListener('change', async () => {
+    const files = [...input.files]; input.value = '';
+    if (!files.length) return;
+    const where = label(ALBUMS, album.value);
+    let ok = 0, fail = 0;
+    btn.disabled = true; uploading++;
+    const status = h('div', { class: 'progress' });
+    $('#main .head').after(status);
+    for (const [i, f] of files.entries()) {
+      status.textContent = `Envoi ${i + 1} / ${files.length} dans « ${where} »…`;
+      try {
+        const url = await upload('images', await shrinkImage(f), () => {});
+        const { error } = await sb.from('gallery_photos').insert({ album: album.value, image_url: url });
+        if (error) throw error;
+        ok++;
+      } catch (e) { fail++; console.warn(e); }
+    }
+    uploading--; btn.disabled = false; status.remove();
+    toast(fail ? `${ok} photo(s) ajoutée(s), ${fail} en échec.` : `${ok} photo(s) ajoutée(s) dans « ${where} » ✔`, !!fail && !ok);
+    if (current === key) show(key);
+  });
+  return h('div', { class: 'bulk' }, album, btn, input);
 }
 
 async function remove(key, r) {
@@ -914,7 +1051,7 @@ async function showTeam() {
 
 // ─── Navigation ───
 const NAV = [
-  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['inbox', '✉️', 'Messagerie'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '🎬', 'Vidéos'],
+  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['inbox', '✉️', 'Messagerie'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '🎬', 'Vidéos'], ['gallery', '📷', 'Galerie photo'],
   ['works', '📖', 'Œuvres d’Or'], ['banners', '🖼️', 'Affiches'], ['settings', '⚙️', 'Réglages'], ['team', '👥', 'Équipe'],
 ];
 let current = null, me = null;
@@ -937,7 +1074,13 @@ function shell(user) {
       h('div', { class: 'spacer' }),
       h('div', { class: 'who' }, userLabel(user.email)),
       h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, h('span', {}, '🚪'), 'Se déconnecter')),
-    h('main', { id: 'main' })));
+    h('div', { class: 'content' },
+      h('div', { class: 'topbar' },
+        h('b', {}, 'Conacce TV'),
+        h('a', { href: '../', target: '_blank', rel: 'noopener' }, 'Voir l’appli ↗'),
+        h('span', { class: 'grow' }),
+        h('span', {}, 'Bonjour, ', h('b', {}, userLabel(user.email)))),
+      h('main', { id: 'main' }))));
   const start = location.hash.slice(1);
   show(NAV.some(n => n[0] === start) ? start : 'dash');
 }

@@ -12,39 +12,32 @@ import '../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 
-/// Sous la TV : la phrase d'accueil, puis les messages du jour.
-/// Dès le premier message, la phrase monte et disparaît ; elle revient le lendemain
-/// quand les messages de la veille sont passés en archive.
+/// Sous la TV : la phrase d'accueil (qui reste en place), la zone pour écrire,
+/// puis les messages du jour juste en dessous. Les messages de la veille passent en archive.
 class LiveChat extends ConsumerWidget {
   const LiveChat({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final comments = ref.watch(liveCommentsProvider).valueOrNull ?? const <LiveComment>[];
-    final hasComments = comments.isNotEmpty;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // La phrase monte et s'efface dès le premier message du jour.
-      ClipRect(
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 1100),
-          curve: Curves.easeInOutCubic,
-          alignment: Alignment.bottomCenter,
-          heightFactor: hasComments ? 0 : 1,
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 900),
-            opacity: hasComments ? 0 : 1,
-            child: const Padding(padding: EdgeInsets.fromLTRB(20, 28, 20, 8), child: WelcomeSlogan()),
-          ),
-        ),
-      ),
-      const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 6), child: _Composer()),
+      const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 0), child: WelcomeSlogan()),
+      const Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 6), child: _Composer()),
       for (final c in comments) Padding(padding: const EdgeInsets.fromLTRB(20, 6, 20, 0), child: _Bubble(comment: c)),
     ]);
   }
 }
 
-/// « Vous regardez Conacce TV, désormais partout avec vous à travers le monde ! »
-/// avec un trait jaune-orange du logo qui se dessine sous « partout avec vous » chaque minute.
+/// Une phrase : début, partie soulignée, fin.
+typedef _Slogan = (String, String, String);
+
+/// Les phrases changent chaque minute ; le trait jaune-orange du logo se dessine sous la partie clé.
+const List<_Slogan> _slogans = [
+  ('Vous regardez Conacce TV, désormais ', 'partout avec vous', ' à travers le monde !'),
+  ('Conacce TV, ', 'le meilleur', ' chez vous !'),
+  ('Conacce TV, nos ', 'actions humanitaires', ' à travers le monde !'),
+];
+
 class WelcomeSlogan extends StatefulWidget {
   const WelcomeSlogan({super.key});
 
@@ -55,13 +48,19 @@ class WelcomeSlogan extends StatefulWidget {
 class _WelcomeSloganState extends State<WelcomeSlogan> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
   Timer? _timer;
+  int _index = 0;
 
   @override
   void initState() {
     super.initState();
     _c.forward();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) _c.forward(from: 0);
+      if (!mounted) return;
+      setState(() => _index = (_index + 1) % _slogans.length);
+      // Le trait se redessine une fois la nouvelle phrase apparue.
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _c.forward(from: 0);
+      });
     });
   }
 
@@ -74,25 +73,35 @@ class _WelcomeSloganState extends State<WelcomeSlogan> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context).width < 420 ? 26.0 : 32.0;
+    final size = MediaQuery.sizeOf(context).width < 420 ? 23.0 : 30.0;
     final style = AppTheme.title(size: size, weight: FontWeight.w800).copyWith(height: 1.35);
-    return Text.rich(
-      TextSpan(style: style, children: [
-        const TextSpan(text: 'Vous regardez Conacce TV, désormais '),
-        WidgetSpan(
-          alignment: PlaceholderAlignment.baseline,
-          baseline: TextBaseline.alphabetic,
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (context, child) => CustomPaint(
-              foregroundPainter: _Swoosh(Curves.easeInOutCubic.transform(_c.value)),
-              child: child,
+    final (start, mark, end) = _slogans[_index];
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      transitionBuilder: (child, a) => FadeTransition(
+        opacity: a,
+        child: SlideTransition(position: Tween(begin: const Offset(0, .15), end: Offset.zero).animate(a), child: child),
+      ),
+      layoutBuilder: (current, previous) => Stack(alignment: Alignment.topLeft, children: [...previous, if (current != null) current]),
+      child: Text.rich(
+        key: ValueKey(_index),
+        TextSpan(style: style, children: [
+          TextSpan(text: start),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: AnimatedBuilder(
+              animation: _c,
+              builder: (context, child) => CustomPaint(
+                foregroundPainter: _Swoosh(Curves.easeInOutCubic.transform(_c.value)),
+                child: child,
+              ),
+              child: Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(mark, style: style)),
             ),
-            child: Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('partout avec vous', style: style)),
           ),
-        ),
-        const TextSpan(text: ' à travers le monde !'),
-      ]),
+          TextSpan(text: end),
+        ]),
+      ),
     );
   }
 }

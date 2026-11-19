@@ -63,7 +63,12 @@ enum SermonCategory {
   enseignement('Enseignement'),
   priere('Prière'),
   special('Culte spécial'),
+  tempsForts('Temps forts'),
+  spots('Spots'),
   autre('Autre');
+
+  /// Les catégories proposées dans l'appli (les autres restent visibles dans « Tous »).
+  static const shown = [special, tempsForts, spots];
 
   const SermonCategory(this.label);
   final String label;
@@ -299,4 +304,24 @@ String? parseYoutubeId(String? url) {
     if (seg.length >= 2 && const ['shorts', 'live', 'embed', 'v'].contains(seg[0])) return seg[1];
   }
   return null;
+}
+
+/// Photo de la galerie (Conacce Chaplains ou CIU).
+class GalleryPhoto {
+  const GalleryPhoto({required this.id, required this.album, required this.imageUrl, this.caption, this.takenOn});
+
+  final String id;
+  /// « conacce » (Conacce Chaplains) ou « ciu ».
+  final String album;
+  final String imageUrl;
+  final String? caption;
+  final DateTime? takenOn;
+
+  factory GalleryPhoto.fromMap(Map<String, dynamic> m) => GalleryPhoto(
+        id: m['id'] as String,
+        album: (m['album'] as String?) ?? 'conacce',
+        imageUrl: m['image_url'] as String,
+        caption: m['caption'] as String?,
+        takenOn: m['taken_on'] == null ? null : DateTime.tryParse(m['taken_on'] as String),
+      );
 }
