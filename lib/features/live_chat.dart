@@ -75,34 +75,57 @@ class _WelcomeSloganState extends State<WelcomeSlogan> with SingleTickerProvider
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context).width < 420 ? 23.0 : 30.0;
     final style = AppTheme.title(size: size, weight: FontWeight.w800).copyWith(height: 1.35);
-    final (start, mark, end) = _slogans[_index];
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      transitionBuilder: (child, a) => FadeTransition(
-        opacity: a,
-        child: SlideTransition(position: Tween(begin: const Offset(0, .15), end: Offset.zero).animate(a), child: child),
-      ),
-      layoutBuilder: (current, previous) => Stack(alignment: Alignment.topLeft, children: [...previous, if (current != null) current]),
-      child: Text.rich(
-        key: ValueKey(_index),
-        TextSpan(style: style, children: [
-          TextSpan(text: start),
-          WidgetSpan(
-            alignment: PlaceholderAlignment.baseline,
-            baseline: TextBaseline.alphabetic,
-            child: AnimatedBuilder(
-              animation: _c,
-              builder: (context, child) => CustomPaint(
-                foregroundPainter: _Swoosh(Curves.easeInOutCubic.transform(_c.value)),
-                child: child,
-              ),
-              child: Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(mark, style: style)),
-            ),
+    // Le texte du soulignement : animé pour la phrase affichée, fixe pour les phrases de mesure.
+    InlineSpan span(_Slogan sl, {required bool animated}) {
+      final (start, mark, end) = sl;
+      final word = Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(mark, style: style));
+      return TextSpan(style: style, children: [
+        TextSpan(text: start),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: animated
+              ? AnimatedBuilder(
+                  animation: _c,
+                  builder: (context, child) => CustomPaint(
+                    foregroundPainter: _Swoosh(Curves.easeInOutCubic.transform(_c.value)),
+                    child: child,
+                  ),
+                  child: word,
+                )
+              : word,
+        ),
+        TextSpan(text: end),
+      ]);
+    }
+
+    // La zone garde toujours la hauteur de la phrase la plus longue :
+    // quand la phrase change, la zone de commentaire en dessous ne bouge pas.
+    return Stack(children: [
+      for (final sl in _slogans)
+        SizedBox(
+          width: double.infinity,
+          child: Visibility(
+            visible: false,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: Text.rich(span(sl, animated: false)),
           ),
-          TextSpan(text: end),
-        ]),
+        ),
+      Positioned.fill(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          transitionBuilder: (child, a) => FadeTransition(opacity: a, child: child),
+          layoutBuilder: (current, previous) => Stack(alignment: Alignment.topLeft, children: [...previous, if (current != null) current]),
+          child: Align(
+            key: ValueKey(_index),
+            alignment: Alignment.topLeft,
+            child: Text.rich(span(_slogans[_index], animated: true)),
+          ),
+        ),
       ),
-    );
+    ]);
   }
 }
 
@@ -224,7 +247,7 @@ class _ComposerState extends State<_Composer> {
             textInputAction: TextInputAction.send,
             onSubmitted: (_) => _send(),
             style: const TextStyle(fontSize: 14),
-            decoration: _deco('Écrivez un message, un amen, un témoignage…').copyWith(counterText: ''),
+            decoration: _deco('Laissez votre commentaire').copyWith(counterText: ''),
           ),
         ),
         const SizedBox(width: 8),

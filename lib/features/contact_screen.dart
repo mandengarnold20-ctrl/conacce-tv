@@ -17,7 +17,10 @@ void openContact(BuildContext context) {
 
 /// Contact : site et e-mail de la CONACCE, puis messagerie (avec le pays de chacun).
 class ContactScreen extends ConsumerWidget {
-  const ContactScreen({super.key});
+  const ContactScreen({super.key, this.asTab = false});
+
+  /// Affiché comme onglet du menu du bas (sans barre de titre).
+  final bool asTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,11 +29,8 @@ class ContactScreen extends ConsumerWidget {
     final siteLabel = Uri.tryParse(site)?.host.replaceFirst('www.', '') ?? site;
     final email = settings.email;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Contact')),
-      body: WaveBackground(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+    final content = ListView(
+          padding: EdgeInsets.fromLTRB(20, asTab ? MediaQuery.paddingOf(context).top + 18 : 12, 20, asTab ? 120 : 40),
           children: [
             MaxWidth(
               maxWidth: 640,
@@ -90,8 +90,11 @@ class ContactScreen extends ConsumerWidget {
               ]),
             ),
           ],
-        ),
-      ),
+        );
+    if (asTab) return content;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Contact')),
+      body: WaveBackground(child: content),
     );
   }
 }

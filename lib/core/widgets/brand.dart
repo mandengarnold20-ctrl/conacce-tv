@@ -31,16 +31,20 @@ class _WaveBackgroundState extends State<WaveBackground> with SingleTickerProvid
     return Stack(
       fit: StackFit.expand,
       children: [
-        RepaintBoundary(
+        ClipRect(
+          child: RepaintBoundary(
           child: AnimatedBuilder(
             animation: _c,
             builder: (context, _) {
               final t = _c.value * 2 * math.pi;
-              // Léger balancement de l'image de fond
+              // Léger balancement de l'image de fond. L'image est toujours assez agrandie
+              // pour que le mouvement ne découvre jamais les bords de l'écran.
+              final size = MediaQuery.sizeOf(context);
+              final minScale = 1 + 2 * 16 / math.max(1, math.min(size.width, size.height)) + .06;
               return Transform.translate(
-                offset: Offset(math.sin(t) * 28, math.cos(t) * 18),
+                offset: Offset(math.sin(t) * 14, math.cos(t) * 10),
                 child: Transform.scale(
-                  scale: 1.12 + math.sin(t) * 0.03,
+                  scale: minScale + (math.sin(t) + 1) * 0.01,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       color: AppColors.royal,
@@ -50,6 +54,7 @@ class _WaveBackgroundState extends State<WaveBackground> with SingleTickerProvid
                 ),
               );
             },
+          ),
           ),
         ),
         RepaintBoundary(

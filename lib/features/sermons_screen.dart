@@ -296,7 +296,7 @@ class SermonCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(sermon.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-        Text('${sermon.category.label}${sermon.preachedOn == null ? '' : ' · ${DateFormat('d MMM', 'fr_FR').format(sermon.preachedOn!)}'}',
+        Text('${sermon.kindLabel}${sermon.preachedOn == null ? '' : ' · ${DateFormat('d MMM', 'fr_FR').format(sermon.preachedOn!)}'}',
             maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mist, fontSize: 11)),
       ]),
     );
@@ -422,7 +422,7 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(s.section == 'conacce' ? 'Vidéos Conacce' : s.category.label)),
+      appBar: AppBar(title: Text(s.section == 'conacce' ? 'Vidéos Conacce' : s.kindLabel)),
       extendBodyBehindAppBar: false,
       body: WaveBackground(
         child: ListView(

@@ -181,6 +181,8 @@
   nav.side button.nav:hover { background: rgba(255,255,255,.05); color: #fff; }
   nav.side button.nav.on { background: rgba(249,202,34,.12); color: #F9CA22; font-weight: 600; border-left-color: #F9CA22; }
   nav.side .who { font-size: 11.5px; padding: 8px 16px; }
+  nav.side .group { font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: #7F8BC4; padding: 14px 16px 4px; font-weight: 600; }
+  @media (max-width: 900px) { nav.side .group { display: none; } }
 
   .content { min-width: 0; display: flex; flex-direction: column; }
   .topbar { height: 46px; display: flex; align-items: center; gap: 18px; padding: 0 clamp(16px, 4vw, 40px);
@@ -319,18 +321,18 @@ async function loadRefs() {
     sb.from('sermons').select('id,title,preached_on').order('created_at', { ascending: false }),
     sb.from('works').select('id,title').order('title'),
   ]);
-  REFS.sermons = (s.data || []).map(r => [r.id, r.title + (r.preached_on ? ' (' + new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR') +')' : '')]);
+  REFS.sermons = (s.data || []).map(r => [r.id, r.title + (r.preached_on ? ' (' + new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR') + ')' : '')]);
   REFS.works = (w.data || []).map(r => [r.id, r.title]);
 }
 
 // ─── Description de chaque rubrique ───
 const ENT = {
   sermons: {
-    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '',
+    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.neq('section', 'louange'),
     intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' ·'),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
     badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
       { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce » ou « Cultes » (onglet Vidéos de l’appli).' },
@@ -349,12 +351,34 @@ const ENT = {
     ],
     validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
   },
+  worship: {
+    table: 'sermons', title: 'Louange & adoration', one: 'un chant', icon: '', where: q => q.eq('section', 'louange'),
+    intro: 'Les chants de l’onglet « Louange » de l’appli. Comme pour les vidéos : collez le lien YouTube ou Facebook, ou envoyez un fichier audio (MP3) pour l’écoute hors connexion.',
+    select: '*', order: ['created_at', false], empty: 'Aucun chant pour le moment. Cliquez sur « Ajouter ».',
+    name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
+    sub: r => [r.speaker, fmtDur(r.duration), r.view_count ? r.view_count + ' écoutes' : ''].filter(Boolean).join(' · '),
+    badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    fields: [
+      { k: 'section', label: 'Rubrique', type: 'text', def: 'louange', show: () => false },
+      { k: 'category', label: 'Catégorie', type: 'text', def: 'autre', show: () => false },
+      { k: 'title', label: 'Titre du chant', type: 'text', req: true },
+      { k: 'speaker', label: 'Artiste / chorale', type: 'text' },
+      { k: 'audio_url', label: 'Audio (MP3)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et le téléchargement hors connexion.' },
+      { k: 'video_url', label: 'Ou lien YouTube / Facebook (ou fichier vidéo)', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: 'Collez le lien : le chant se lit directement dans l’appli.' },
+      { k: 'thumbnail_url', label: 'Image', type: 'image', help: 'Image carrée ou paysage. Prise automatiquement sur YouTube si vide.' },
+      { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
+      { k: 'description', label: 'Paroles ou description (facultatif)', type: 'textarea', rows: 6 },
+      { k: 'is_downloadable', label: 'Autoriser le téléchargement hors connexion', type: 'checkbox', def: true },
+      { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
+    ],
+    validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez l’audio ou le lien du chant.' : null,
+  },
   works: {
     table: 'works', title: 'Œuvres d’Or', one: 'une œuvre', icon: '',
     intro: 'Les écrits de l’homme de Dieu. Gratuit : envoyez le PDF, il se lit dans l’appli. Payant : indiquez le prix et le lien d’achat.',
     select: '*', order: ['sort_order', true], empty: 'Aucune œuvre pour le moment.',
     name: r => r.title, img: r => r.cover_url,
-    sub: r => [r.pages && r.pages + ' pages', r.year, r.is_free ? 'Gratuit' : (r.price_label || 'Payant')].filter(Boolean).join(' ·'),
+    sub: r => [r.pages && r.pages + ' pages', r.year, r.is_free ? 'Gratuit' : (r.price_label || 'Payant')].filter(Boolean).join(' · '),
     badges: r => [r.pdf_url && ['PDF'], r.is_featured && ['À la une', 'green']].filter(Boolean),
     fields: [
       { k: 'title', label: 'Titre', type: 'text', req: true },
@@ -376,7 +400,7 @@ const ENT = {
     intro: 'Les photos de la Conacce Chaplains et de la CIU, visibles dans l’onglet « Galerie » de l’appli. Vous pouvez en envoyer plusieurs d’un coup.',
     select: '*', order: ['created_at', false], empty: 'Aucune photo pour le moment. Choisissez l’album puis « Envoyer des photos ».',
     name: r => r.caption || 'Photo sans légende', img: r => r.image_url,
-    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' ·'),
+    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' · '),
     badges: r => [!r.is_published && ['Masquée', 'red']].filter(Boolean),
     bulk: true,
     fields: [
@@ -393,7 +417,7 @@ const ENT = {
     intro: 'Les images qui défilent sur l’accueil : annonces, campagnes, nouveaux cultes…',
     select: '*', order: ['sort_order', true], empty: 'Aucune affiche pour le moment.',
     name: r => r.title, img: r => r.image_url,
-    sub: r => ['Ouvre : ' + label(TARGETS, r.target_type), r.ends_at && 'jusqu’au ' + fmtDate(r.ends_at)].filter(Boolean).join(' ·'),
+    sub: r => ['Ouvre : ' + label(TARGETS, r.target_type), r.ends_at && 'jusqu’au ' + fmtDate(r.ends_at)].filter(Boolean).join(' · '),
     badges: r => [r.is_active ? ['Visible', 'green'] : ['Masquée']],
     fields: [
       { k: 'image_url', label: 'Image (format paysage)', type: 'image', req: true, help: '1600 × 900 conseillé.' },
@@ -652,7 +676,7 @@ async function openForm(key, row) {
   const esc = e => e.key === 'Escape' && close();
   const overlay = h('div', { class: 'overlay', onclick: e => e.target === overlay && close() },
     h('div', { class: 'drawer', role: 'dialog', 'aria-modal': 'true' },
-      h('header', {}, h('h2', {}, (row ? 'Modifier ' : 'Ajouter') + E.one), h('button', { class: 'btn ghost small', onclick: close, 'aria-label': 'Fermer' }, 'Retirer')),
+      h('header', {}, h('h2', {}, (row ? 'Modifier ' : 'Ajouter ') + E.one), h('button', { class: 'btn ghost small', onclick: close, 'aria-label': 'Fermer' }, 'Retirer')),
       body,
       h('footer', {}, h('button', { class: 'btn ghost', onclick: close }, 'Annuler'), saveBtn)));
   document.addEventListener('keydown', esc);
@@ -701,7 +725,9 @@ async function showList(key) {
         E.bulk ? bulkBox(key) : null,
         h('button', { class: 'btn' + (E.bulk ? '' : ' primary'), onclick: () => openForm(key, null) }, 'Ajouter'))),
     search, list);
-  const { data, error } = await sb.from(E.table).select(E.select).order(E.order[0], { ascending: E.order[1], nullsFirst: false }).limit(1000);
+  let query = sb.from(E.table).select(E.select);
+  if (E.where) query = E.where(query);
+  const { data, error } = await query.order(E.order[0], { ascending: E.order[1], nullsFirst: false }).limit(1000);
   if (current !== key) return;
   if (error) { list.textContent = ''; list.append(h('div', { class: 'empty bad' }, friendly(error))); return; }
   const draw = () => {
@@ -876,11 +902,11 @@ async function showSingle(key, table, fields, title, intro, note, flag, check) {
 }
 const showLive = () => showSingle('live', 'live_stream', LIVE_FIELDS, 'TV en direct',
   'Reliez OBS ou vMix à Cloudflare Stream, collez ici le lien .m3u8, puis cochez « En direct ».',
-  [h('b', {}, 'Pour lancer un culte en direct :'), '1) Démarrez la diffusion dans OBS / vMix. 2) Remplissez le bandeau (orateur, message). 3) Cochez « En direct maintenant » et enregistrez. À la fin, décochez et enregistrez. L’enregistrement Cloudflare du direct peut ensuite être publié dans « Cultes ».'],
+  [h('b', {}, 'Pour lancer un culte en direct : '), '1) Démarrez la diffusion dans OBS / vMix. 2) Remplissez le bandeau (orateur, message). 3) Cochez « En direct maintenant » et enregistrez. À la fin, décochez et enregistrez. L’enregistrement Cloudflare du direct peut ensuite être publié dans « Cultes ».'],
   'is_live', p => p.is_live && !p.hls_url ? 'Pour passer en direct, collez d’abord le lien vidéo (.m3u8).' : null);
 const showRadio = () => showSingle('radio', 'radio', RADIO_FIELDS, 'Radio Dunamis FM',
   'Le flux de la radio joue dans l’appli, même écran éteint.',
-  [h('b', {}, 'Mettre la radio à l’antenne :'), 'collez le lien du flux audio, indiquez l’émission en cours, cochez « À l’antenne » et enregistrez.'],
+  [h('b', {}, 'Mettre la radio à l’antenne : '), 'collez le lien du flux audio, indiquez l’émission en cours, cochez « À l’antenne » et enregistrez.'],
   'is_on_air', p => p.is_on_air && !p.stream_url ? 'Collez d’abord le lien du flux audio.' : null);
 
 // ─── Réglages ───
@@ -1051,9 +1077,13 @@ async function showTeam() {
 }
 
 // ─── Navigation ───
+// Menu rangé par thèmes : [clé, titre de groupe ou '', libellé]
 const NAV = [
-  ['dash', '', 'Tableau de bord'], ['live', '', 'TV en direct'], ['comments', '', 'Commentaires'], ['inbox', '', 'Messagerie'], ['radio', '', 'Radio Dunamis FM'], ['sermons', '', 'Vidéos'], ['gallery', '', 'Galerie photo'],
-  ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches'], ['settings', '', 'Réglages'], ['team', '', 'Équipe'],
+  ['dash', 'Général', 'Tableau de bord'],
+  ['live', 'Diffusion', 'TV en direct'], ['radio', '', 'Radio Dunamis FM'],
+  ['sermons', 'Contenus', 'Vidéos'], ['worship', '', 'Louange & adoration'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
+  ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
+  ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],
 ];
 let current = null, me = null;
 
@@ -1071,7 +1101,7 @@ function shell(user) {
   root.append(h('div', { class: 'app' },
     h('nav', { class: 'side' },
       h('div', { class: 'brand' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }), h('div', {}, 'ADMINISTRATION')),
-      NAV.map(([k, i, l]) => h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, l)),
+      NAV.flatMap(([k, g, l]) => [g ? h('div', { class: 'group' }, g) : null, h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, l)]),
       h('div', { class: 'spacer' }),
       h('div', { class: 'who' }, userLabel(user.email)),
       h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, 'Se déconnecter')),

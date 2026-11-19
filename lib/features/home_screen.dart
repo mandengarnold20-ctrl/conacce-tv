@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,7 +10,6 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
-import 'contact_screen.dart';
 import 'shell.dart';
 import 'sermons_screen.dart';
 import 'works_screen.dart';
@@ -41,6 +42,7 @@ class HomeScreen extends ConsumerWidget {
     final live = ref.watch(liveStreamProvider).valueOrNull;
     final radio = ref.watch(radioProvider).valueOrNull;
     final banners = ref.watch(bannersProvider).valueOrNull ?? const [];
+    final conacce = ref.watch(sermonsProvider(('conacce', null)));
     final sermons = ref.watch(sermonsProvider(('cultes', null)));
     final works = ref.watch(worksProvider).valueOrNull ?? const [];
 
@@ -49,7 +51,7 @@ class HomeScreen extends ConsumerWidget {
         ref.invalidate(bannersProvider);
         ref.invalidate(sermonsProvider);
         ref.invalidate(worksProvider);
-        await ref.read(sermonsProvider(('cultes', null)).future).catchError((_) => <Sermon>[]);
+        await ref.read(sermonsProvider(('conacce', null)).future).catchError((_) => <Sermon>[]);
       },
       child: ListView(
         padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 12, bottom: 110),
@@ -64,23 +66,32 @@ class HomeScreen extends ConsumerWidget {
                   const Spacer(),
                   IconButton(
                     tooltip: 'Contact et messagerie',
-                    onPressed: () => openContact(context),
+                    onPressed: () => _go(ref, AppTab.contact),
                     icon: const Icon(Icons.mail_outline_rounded, color: Colors.white),
                   ),
                 ]),
               ),
               const SizedBox(height: 18),
 
-              // Vidéos des cultes (à la place de l'ancien écran TV)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: sermons.when(
-                  loading: () => const AspectRatio(aspectRatio: 16 / 9, child: Center(child: CircularProgressIndicator())),
-                  error: (_, __) => const _FeaturedPlaceholder('Connexion impossible pour le moment.'),
-                  data: (list) => list.isEmpty ? const _FeaturedPlaceholder('Les vidéos des cultes apparaîtront ici.') : _FeaturedSermon(sermon: list.first),
+              // Grand écran : les vidéos de la Conacce, qui défilent toutes seules
+              conacce.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: AspectRatio(aspectRatio: 16 / 9, child: Center(child: CircularProgressIndicator())),
                 ),
+                error: (_, __) => const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: _FeaturedPlaceholder('Connexion impossible pour le moment.'),
+                ),
+                data: (list) => list.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: _FeaturedPlaceholder('Les vidéos de la Conacce apparaîtront ici.'),
+                      )
+                    : _ConacceCarousel(items: list.take(10).toList()),
               ),
-              if ((sermons.valueOrNull?.length ?? 0) > 1) ...[
+              // Petits écrans : les vidéos des cultes
+              if ((sermons.valueOrNull?.length ?? 0) > 0) ...[
                 SectionTitle('Cultes enregistrés', onSeeAll: () {
                   ref.read(videoSectionProvider.notifier).state = 'cultes';
                   _go(ref, AppTab.sermons);
@@ -90,9 +101,9 @@ class HomeScreen extends ConsumerWidget {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: (sermons.valueOrNull!.length - 1).clamp(0, 10),
+                    itemCount: sermons.valueOrNull!.length.clamp(0, 12),
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) => SizedBox(width: 210, child: SermonCard(sermon: sermons.valueOrNull![i + 1])),
+                    itemBuilder: (context, i) => SizedBox(width: 210, child: SermonCard(sermon: sermons.valueOrNull![i])),
                   ),
                 ),
               ],
@@ -177,7 +188,7 @@ class HomeScreen extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
                 child: NavyCard(
-                  onTap: () => openContact(context),
+                  onTap: () => _go(ref, AppTab.contact),
                   child: Row(children: [
                     Container(
                       width: 46,
@@ -205,7 +216,75 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Grande vignette du dernier culte publié.
+/// Grand écran de l'accueil : les vidéos Conacce défilent (au doigt, et toutes seules toutes les 6 s).
+class _ConacceCarousel extends StatefulWidget {
+  const _ConacceCarousel({required this.items});
+
+  final List<Sermon> items;
+
+  @override
+  State<_ConacceCarousel> createState() => _ConacceCarouselState();
+}
+
+class _ConacceCarouselState extends State<_ConacceCarousel> {
+  final _pages = PageController();
+  Timer? _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (!mounted || !_pages.hasClients || widget.items.length < 2) return;
+      final next = (_index + 1) % widget.items.length;
+      _pages.animateToPage(next, duration: const Duration(milliseconds: 600), curve: Curves.easeInOutCubic);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pages.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width.clamp(0.0, 900.0).toDouble() - 40;
+    // Image 16:9 + titre et orateur en dessous.
+    final height = width * 9 / 16 + 74;
+    return Column(children: [
+      SizedBox(
+        height: height,
+        child: PageView.builder(
+          controller: _pages,
+          itemCount: widget.items.length,
+          onPageChanged: (i) => setState(() => _index = i),
+          itemBuilder: (context, i) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _FeaturedSermon(sermon: widget.items[i]),
+          ),
+        ),
+      ),
+      if (widget.items.length > 1)
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          for (var i = 0; i < widget.items.length; i++)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: i == _index ? 18 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: i == _index ? AppColors.sunYellow : const Color(0x55FFFFFF),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+        ]),
+    ]);
+  }
+}
+
+/// Grande vignette d'une vidéo.
 class _FeaturedSermon extends StatelessWidget {
   const _FeaturedSermon({required this.sermon});
 
@@ -260,11 +339,8 @@ class _FeaturedPlaceholder extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0x14FFFFFF)),
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.play_circle_outline_rounded, color: AppColors.mist, size: 44),
-          const SizedBox(height: 10),
-          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.mist, fontSize: 13)),
-        ]),
+        alignment: Alignment.center,
+        child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.mist, fontSize: 13)),
       ),
     );
   }

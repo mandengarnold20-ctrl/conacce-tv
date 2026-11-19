@@ -8,13 +8,15 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/providers.dart';
 import 'home_screen.dart';
+import 'contact_screen.dart';
 import 'gallery_screen.dart';
 import 'live_screen.dart';
 import 'radio_screen.dart';
 import 'sermons_screen.dart';
 import 'works_screen.dart';
+import 'worship_screen.dart';
 
-enum AppTab { home, tv, radio, sermons, gallery, works }
+enum AppTab { home, tv, radio, sermons, worship, gallery, works, contact }
 
 final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
@@ -100,7 +102,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), SermonsScreen(), GalleryScreen(), WorksScreen()];
+  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), SermonsScreen(), WorshipScreen(), GalleryScreen(), WorksScreen(), ContactScreen(asTab: true)];
 
   @override
   void initState() {
@@ -120,8 +122,10 @@ class _AppShellState extends ConsumerState<AppShell> {
       (badge(Icons.live_tv_rounded), 'TV'),
       (const Icon(Icons.radio_rounded), 'Radio'),
       (const Icon(Icons.video_library_rounded), 'Vidéos'),
+      (const Icon(Icons.music_note_rounded), 'Louange'),
       (const Icon(Icons.photo_library_rounded), 'Galerie'),
       (const Icon(Icons.menu_book_rounded), 'Œuvres'),
+      (const Icon(Icons.mail_rounded), 'Contact'),
     ];
     final body = WaveBackground(child: IndexedStack(index: tab.index, children: _pages));
     final immersive = ref.watch(immersiveProvider);
