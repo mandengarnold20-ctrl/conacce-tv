@@ -1,0 +1,43 @@
+name: conacce_tv
+description: "Conacce TV — télévision en direct, Radio Dunamis FM, cultes enregistrés et Œuvres d'Or."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  flutter_riverpod: ^2.6.1
+  supabase_flutter: ^2.8.0
+
+  # Lecteurs : TV en direct, cultes, radio
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+  just_audio: ^0.9.42
+  just_audio_background: ^0.0.1-beta.13
+  audio_session: ^0.1.21
+
+  # Lecture des Œuvres d'Or (PDF)
+  pdfx: ^2.8.0
+
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
+  intl: ^0.19.0
+  url_launcher: ^6.3.1
+  shared_preferences: ^2.3.3
+  path_provider: ^2.1.5
+  http: ^1.2.2
+  share_plus: ^10.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

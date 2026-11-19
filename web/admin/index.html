@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#080F43">
+<title>Conacce TV — Administration</title>
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --night: #050A2E; --plum: #0B1463; --deep: #080F43; --violet: #F9CA22; --vivid: #FA5304;
+    --lilac: #F9CA22; --pale: #FFE7A3; --mist: #DCE3FF; --live: #E5002B; --ok: #2BD488;
+    --card: rgba(11,20,99,.55); --line: rgba(255,255,255,.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: Poppins, system-ui, sans-serif; color: #fff; font-size: 15px;
+    background: linear-gradient(180deg, #0D2389 0%, #0B1463 40%, #050A2E 100%);
+    background-attachment: fixed;
+  }
+  a { color: var(--pale); }
+  h1 { font-family: 'Barlow Condensed', sans-serif; font-style: italic; font-weight: 800; font-size: 34px;
+       letter-spacing: 1px; text-transform: uppercase; margin: 0; line-height: 1.1; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .muted { color: var(--mist); }
+  .hidden { display: none !important; }
+
+  /* Boutons */
+  .btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: #fff;
+         padding: 10px 16px; border-radius: 12px; cursor: pointer; white-space: nowrap; min-height: 44px; }
+  .btn:hover { border-color: var(--lilac); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .btn.primary { background: linear-gradient(90deg, #F9CA22, #F9B91B 30%, #FD9113 60%, #FC6306 85%, #FA5304); border: none; color: #0B1463; }
+  .btn.white { background: #fff; color: var(--deep); border: none; }
+  .btn.danger { color: #FF8A9B; }
+  .btn.ghost { background: transparent; }
+  .btn.small { padding: 6px 12px; min-height: 36px; font-size: 13px; }
+
+  /* Connexion */
+  .center { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .login { width: 100%; max-width: 420px; background: rgba(8,15,67,.85); border: 1px solid var(--line);
+           border-radius: 24px; padding: 32px; backdrop-filter: blur(10px); }
+  .logo { display: block; width: 240px; margin: 0 auto 12px; border-radius: 4px; }
+  .login p { color: var(--mist); line-height: 1.6; }
+
+  /* Mise en page */
+  .app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+  nav.side { background: linear-gradient(180deg, #0B1463, #080F43); border-right: 1px solid var(--line); padding: 20px 12px;
+             position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  nav.side .brand { text-align: center; padding: 0 0 16px; }
+  nav.side .brand img { width: 160px; border-radius: 4px; }
+  nav.side .brand div { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 700; letter-spacing: 3px;
+                        color: var(--lilac); font-size: 14px; }
+  nav.side button.nav { font: inherit; text-align: left; background: none; border: none; color: var(--mist);
+                        padding: 11px 14px; border-radius: 12px; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+  nav.side button.nav:hover { background: var(--card); color: #fff; }
+  nav.side button.nav.on { background: linear-gradient(90deg, #F9CA22, #FD9113); color: #0B1463; font-weight: 700; }
+  nav.side .spacer { flex: 1; }
+  nav.side .who { font-size: 12px; color: var(--mist); padding: 8px 14px; word-break: break-all; }
+  main { padding: 28px clamp(16px, 4vw, 48px) 80px; max-width: 1150px; width: 100%; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .intro { color: var(--mist); margin: 6px 0 0; max-width: 640px; line-height: 1.5; }
+
+  /* Listes */
+  input, select, textarea { font: inherit; color: #fff; background: rgba(255,255,255,.07); border: 1px solid var(--line);
+                            border-radius: 12px; padding: 11px 14px; width: 100%; min-height: 44px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--lilac); outline-offset: 0; border-color: transparent; }
+  select option { background: var(--plum); }
+  textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+  input[type=checkbox] { width: 22px; height: 22px; min-height: 0; accent-color: var(--vivid); }
+  .search { margin-bottom: 14px; }
+  .list { display: grid; gap: 10px; }
+  .item { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; background: var(--card);
+          border: 1px solid var(--line); border-radius: 16px; padding: 10px; }
+  .item .thumb { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: linear-gradient(135deg, var(--vivid), var(--deep));
+                 display: grid; place-items: center; font-size: 26px; overflow: hidden; }
+  .item .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .item .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .s { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .acts { display: flex; gap: 6px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--deep); color: var(--pale); margin-right: 4px; }
+  .badge.red { background: var(--live); color: #fff; }
+  .badge.green { background: #0d5c3c; color: #b9ffe0; }
+  .empty { padding: 40px 20px; text-align: center; color: var(--mist); background: var(--card); border-radius: 16px; border: 1px dashed var(--line); }
+  .bad { color: #FF8A9B; }
+
+  /* Formulaire */
+  .overlay { position: fixed; inset: 0; background: rgba(5,0,10,.7); z-index: 50; display: flex; justify-content: flex-end; }
+  .drawer { width: min(640px, 100%); height: 100%; background: var(--plum); border-left: 1px solid var(--line);
+            display: flex; flex-direction: column; animation: slide .2s ease-out; }
+  @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
+  .drawer header { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .drawer header h2 { margin: 0; font-size: 19px; }
+  .drawer .body { padding: 20px 22px; overflow-y: auto; flex: 1; }
+  .drawer footer { padding: 14px 22px; border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: flex-end; }
+  .fld { margin-bottom: 18px; }
+  .fld > label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .fld .req { color: var(--lilac); }
+  .fld .help { font-size: 12.5px; color: var(--mist); margin-top: 5px; line-height: 1.45; }
+  .check { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+
+  /* Envoi de fichier */
+  .up { border: 1px dashed var(--line); border-radius: 14px; padding: 12px; display: grid; gap: 10px; }
+  .up .prev img { max-width: 100%; max-height: 180px; border-radius: 10px; display: block; }
+  .up .prev video { width: 100%; max-height: 220px; border-radius: 10px; background: #000; }
+  .up .prev audio { width: 100%; }
+  .up .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .up .bar { height: 6px; border-radius: 6px; background: var(--card); overflow: hidden; display: none; }
+  .up.busy .bar { display: block; }
+  .up .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--lilac), var(--vivid)); transition: width .2s; }
+
+  /* Pistes de playlist */
+  .tracks { display: grid; gap: 6px; margin-bottom: 8px; }
+  .track { display: flex; gap: 8px; align-items: center; background: var(--card); border-radius: 10px; padding: 6px 6px 6px 12px; }
+  .track span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .track button { font: inherit; background: none; border: none; color: var(--mist); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+  .track button:hover { background: var(--card); color: #fff; }
+
+  /* Tableau de bord */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+  .stat .n { font-family: 'Barlow Condensed'; font-style: italic; font-weight: 800; font-size: 42px; line-height: 1; }
+  .stat .l { color: var(--mist); font-size: 13px; margin-top: 6px; }
+  .stat.hl { background: linear-gradient(90deg, #F9CA22, #FD9113 60%, #FA5304); border: none; color: #0B1463; }
+  .stat.hl .l { color: #0B1463; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  .chart { display: flex; align-items: flex-end; gap: 3px; height: 180px; padding-top: 10px; }
+  .chart .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; height: 100%; }
+  .chart .b { width: 100%; max-width: 26px; background: linear-gradient(180deg, var(--lilac), var(--violet)); border-radius: 5px 5px 0 0; min-height: 2px; }
+  .chart .d { font-size: 10px; color: var(--mist); margin-top: 4px; height: 14px; }
+  .two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  .rank { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .rank:last-child { border: none; }
+  .quick { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .note { background: rgba(199,116,255,.1); border: 1px solid rgba(199,116,255,.35); border-radius: 14px; padding: 14px 16px; line-height: 1.6; color: var(--pale); margin-bottom: 18px; }
+  .live-on { background: rgba(229,0,43,.15); border-color: var(--live); }
+
+  /* Message */
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 99; background: #fff; color: var(--deep);
+           font-weight: 600; padding: 12px 20px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); max-width: calc(100% - 32px); display: none; }
+  #toast.bad { background: var(--live); color: #fff; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    nav.side { position: sticky; top: 0; z-index: 20; height: auto; flex-direction: row; overflow-x: auto; padding: 8px; border-right: none; border-bottom: 1px solid var(--line); gap: 2px; }
+    nav.side .brand, nav.side .spacer, nav.side .who { display: none; }
+    nav.side button.nav { white-space: nowrap; padding: 9px 12px; font-size: 14px; }
+    main { padding-top: 20px; }
+    .two, .grid2 { grid-template-columns: 1fr; }
+    .item { grid-template-columns: 52px 1fr; }
+    .item .thumb { width: 52px; height: 52px; }
+    .item .acts { grid-column: 1 / -1; justify-content: flex-end; }
+    h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ─── Connexion à la base Conacce TV (clé publique : la sécurité est assurée par les règles Supabase) ───
+const SB_URL = 'https://nidvzxeyqasvspmtdfcu.supabase.co';
+const SB_KEY = 'sb_publishable_0YuinNEK3O-9dYV7xacbsQ_9Wu2e2s8';
+const MAX_MB = 50; // limite par fichier (offre gratuite Supabase)
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ─── Petits outils ───
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+}
+const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const pad = n => String(n).padStart(2, '0');
+const toLocal = iso => { if (!iso) return ''; const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fromLocal = v => v ? new Date(v).toISOString() : null;
+const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: iso.length > 10 ? 'short' : undefined }) : '';
+const fmtDur = s => s ? `${Math.floor(s / 60)}:${pad(s % 60)}` : '';
+const label = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
+let toastTimer;
+function toast(msg, bad) {
+  const t = $('#toast'); t.textContent = msg; t.className = bad ? 'bad' : ''; t.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = 'none', bad ? 6000 : 3000);
+}
+function friendly(err) {
+  const m = (err && (err.message || err.error_description || err.msg)) || String(err);
+  if (/row-level security|permission denied|Réservé aux administrateurs/i.test(m)) return 'Votre compte n’a pas les droits administrateur.';
+  if (/sermon_has_source/.test(m)) return 'Ajoutez au moins la vidéo ou l’audio du culte.';
+  if (/radio_requires_url/.test(m)) return 'Pour mettre la radio à l’antenne, collez d’abord le lien du flux audio.';
+  if (/live_requires_url/.test(m)) return 'Pour passer en direct, collez d’abord le lien vidéo (.m3u8).';
+  if (/event_dates/.test(m)) return 'La date de fin doit être après la date de début.';
+  if (/daily_verses_display_date_key|duplicate key.*display_date/.test(m)) return 'Un verset existe déjà pour cette date.';
+  if (/Invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
+  if (/already registered|already exists/i.test(m)) return 'Ce compte existe déjà : choisissez « Se connecter ».';
+  if (/Email not confirmed/i.test(m)) return 'Adresse pas encore confirmée : ouvrez le lien reçu par e-mail.';
+  if (/Password should|at least 6/i.test(m)) return 'Mot de passe trop court (6 caractères minimum).';
+  if (/rate limit|too many/i.test(m)) return 'Trop d’e-mails envoyés pour le moment. Connectez-vous plutôt avec un mot de passe, ou réessayez dans une heure.';
+  if (/Failed to fetch|NetworkError/i.test(m)) return 'Pas de connexion internet.';
+  return 'Erreur : ' + m;
+}
+
+// ─── Listes de choix ───
+const CATS = [['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['special', 'Culte spécial'], ['autre', 'Autre']];
+const TARGETS = [['none', 'Rien (simple affiche)'], ['live', 'La TV en direct'], ['radio', 'Radio Dunamis FM'], ['sermon', 'Un culte'], ['work', 'Une Œuvre d’Or'], ['url', 'Un lien internet']];
+const TARGET_REF = { sermon: 'sermons', work: 'works' };
+const PLATFORMS = { android: 'Android', ios: 'iPhone', web: 'Site web', desktop: 'Ordinateur', tv: 'TV', autre: 'Autre' };
+
+// Listes chargées depuis la base (menus déroulants)
+const REFS = { sermons: [], works: [] };
+async function loadRefs() {
+  const [s, w] = await Promise.all([
+    sb.from('sermons').select('id,title,preached_on').order('created_at', { ascending: false }),
+    sb.from('works').select('id,title').order('title'),
+  ]);
+  REFS.sermons = (s.data || []).map(r => [r.id, r.title + (r.preached_on ? ' (' + new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR') + ')' : '')]);
+  REFS.works = (w.data || []).map(r => [r.id, r.title]);
+}
+
+// ─── Description de chaque rubrique ───
+const ENT = {
+  sermons: {
+    table: 'sermons', title: 'Cultes', one: 'un culte', icon: '⛪',
+    intro: 'Publiez vos cultes enregistrés, comme sur une chaîne vidéo. Vidéo longue : envoyez-la sur Cloudflare Stream (Vidéos hébergées) et collez ici son lien .m3u8.',
+    select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
+    name: r => r.title, img: r => r.thumbnail_url,
+    sub: r => [label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
+    badges: r => [r.video_url && ['🎬 Vidéo'], r.audio_url && ['🎧 Audio'], r.is_featured && ['★ À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    fields: [
+      { k: 'title', label: 'Titre du culte', type: 'text', req: true },
+      { k: 'category', label: 'Type de culte', type: 'select', opts: CATS, def: 'dimanche', req: true },
+      { k: 'speaker', label: 'Orateur', type: 'text' },
+      { k: 'preached_on', label: 'Date du culte', type: 'date' },
+      { k: 'video_url', label: 'Vidéo du culte', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: `Courte vidéo : envoyez le fichier (maximum ${MAX_MB} Mo). Culte complet : collez le lien .m3u8 de Cloudflare Stream.` },
+      { k: 'audio_url', label: 'Audio du culte (MP3)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et hors connexion.' },
+      { k: 'thumbnail_url', label: 'Miniature', type: 'image', help: 'Image paysage (1280 × 720 conseillé).' },
+      { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
+      { k: 'description', label: 'Description / résumé du message', type: 'textarea', rows: 6 },
+      { k: 'is_featured', label: 'Mettre à la une', type: 'checkbox' },
+      { k: 'is_downloadable', label: 'Autoriser l’écoute hors connexion', type: 'checkbox', def: true },
+      { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
+    ],
+    validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
+  },
+  works: {
+    table: 'works', title: 'Œuvres d’Or', one: 'une œuvre', icon: '📖',
+    intro: 'Les écrits de l’homme de Dieu. Gratuit : envoyez le PDF, il se lit dans l’appli. Payant : indiquez le prix et le lien d’achat.',
+    select: '*', order: ['sort_order', true], empty: 'Aucune œuvre pour le moment.',
+    name: r => r.title, img: r => r.cover_url,
+    sub: r => [r.pages && r.pages + ' pages', r.year, r.is_free ? 'Gratuit' : (r.price_label || 'Payant')].filter(Boolean).join(' · '),
+    badges: r => [r.pdf_url && ['PDF'], r.is_featured && ['★ À la une', 'green']].filter(Boolean),
+    fields: [
+      { k: 'title', label: 'Titre', type: 'text', req: true },
+      { k: 'subtitle', label: 'Sous-titre', type: 'text' },
+      { k: 'cover_url', label: 'Couverture', type: 'image', help: 'Format portrait (800 × 1200 conseillé).' },
+      { k: 'is_free', label: 'Gratuit (lecture dans l’appli)', type: 'checkbox', def: true },
+      { k: 'pdf_url', label: 'Fichier PDF du livre', type: 'file', media: 'pdf', accept: 'application/pdf', bucket: 'media', show: v => v.is_free, help: `Maximum ${MAX_MB} Mo.` },
+      { k: 'price_label', label: 'Prix affiché', type: 'text', show: v => !v.is_free, help: 'Ex : « 5 000 FCFA »' },
+      { k: 'buy_url', label: 'Lien pour l’obtenir (achat externe)', type: 'url', show: v => !v.is_free },
+      { k: 'pages', label: 'Nombre de pages', type: 'number' },
+      { k: 'year', label: 'Année de parution', type: 'number' },
+      { k: 'description', label: 'Présentation', type: 'textarea', rows: 6 },
+      { k: 'is_featured', label: 'Mettre à la une', type: 'checkbox' },
+      { k: 'sort_order', label: 'Ordre d’affichage (le plus petit en premier)', type: 'number', def: 0 },
+    ],
+  },
+  banners: {
+    table: 'home_banners', title: 'Affiches de l’accueil', one: 'une affiche', icon: '🖼️',
+    intro: 'Les images qui défilent sur l’accueil : annonces, campagnes, nouveaux cultes…',
+    select: '*', order: ['sort_order', true], empty: 'Aucune affiche pour le moment.',
+    name: r => r.title, img: r => r.image_url,
+    sub: r => ['Ouvre : ' + label(TARGETS, r.target_type), r.ends_at && 'jusqu’au ' + fmtDate(r.ends_at)].filter(Boolean).join(' · '),
+    badges: r => [r.is_active ? ['Visible', 'green'] : ['Masquée']],
+    fields: [
+      { k: 'image_url', label: 'Image (format paysage)', type: 'image', req: true, help: '1600 × 900 conseillé.' },
+      { k: 'title', label: 'Titre', type: 'text', req: true },
+      { k: 'subtitle', label: 'Sous-titre', type: 'text' },
+      { k: 'target_type', label: 'Quand on touche l’affiche, ouvrir…', type: 'select', opts: TARGETS, def: 'none' },
+      { k: 'target_id', label: 'Choix', type: 'target', show: v => !!TARGET_REF[v.target_type], req: true },
+      { k: 'target_url', label: 'Lien internet', type: 'url', show: v => v.target_type === 'url', req: true },
+      { k: 'is_active', label: 'Afficher dans l’appli', type: 'checkbox', def: true },
+      { k: 'sort_order', label: 'Ordre (le plus petit en premier)', type: 'number', def: 0 },
+      { k: 'starts_at', label: 'Afficher à partir du (facultatif)', type: 'datetime' },
+      { k: 'ends_at', label: 'Retirer automatiquement le (facultatif)', type: 'datetime' },
+    ],
+  },
+};
+
+// ─── Champs de formulaire ───
+let uploading = 0;
+
+function upload(bucket, file, onProgress) {
+  return new Promise(async (resolve, reject) => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return reject(new Error('Session expirée : reconnectez-vous.'));
+    const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
+    const base = norm(file.name.replace(/\.[^.]+$/, '')).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'fichier';
+    const path = `${new Date().getFullYear()}/${Date.now()}-${base}.${ext}`;
+    const x = new XMLHttpRequest();
+    x.open('POST', `${SB_URL}/storage/v1/object/${bucket}/${path}`);
+    x.setRequestHeader('Authorization', 'Bearer ' + session.access_token);
+    x.setRequestHeader('apikey', SB_KEY);
+    x.setRequestHeader('x-upsert', 'false');
+    x.setRequestHeader('cache-control', 'max-age=31536000');
+    x.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    x.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded / e.total);
+    x.onload = () => {
+      if (x.status < 300) return resolve(`${SB_URL}/storage/v1/object/public/${bucket}/${path}`);
+      let m = x.responseText; try { m = JSON.parse(m).message || m; } catch (_) {}
+      if (/exceeded the maximum|too large|413/i.test(m + x.status)) m = `Fichier trop lourd (maximum ${MAX_MB} Mo).`;
+      else if (/row-level security|Unauthorized|403/i.test(m + x.status)) m = 'Envoi refusé : votre compte n’a pas les droits administrateur.';
+      else if (/Bucket not found/i.test(m)) m = 'Le dossier de stockage n’est pas encore créé.';
+      reject(new Error(m));
+    };
+    x.onerror = () => reject(new Error('Connexion interrompue pendant l’envoi.'));
+    x.send(file);
+  });
+}
+
+function readDuration(file) {
+  return new Promise(res => {
+    const el = document.createElement(file.type.startsWith('video') ? 'video' : 'audio');
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => { res(isFinite(el.duration) ? Math.round(el.duration) : null); URL.revokeObjectURL(el.src); };
+    el.onerror = () => res(null);
+    el.src = URL.createObjectURL(file);
+  });
+}
+
+function uploader(f, vals, changed, form) {
+  const isImg = f.type === 'image';
+  const wrap = h('div', { class: 'up' });
+  const prev = h('div', { class: 'prev' });
+  const bar = h('div', { class: 'bar' }, h('i'));
+  const link = h('input', { type: 'url', placeholder: '…ou collez un lien (https://…)', inputmode: 'url' });
+  const input = h('input', { type: 'file', accept: isImg ? 'image/*' : f.accept, hidden: true });
+  const pick = h('button', { type: 'button', class: 'btn', onclick: () => input.click() }, isImg ? '📷 Choisir une image' : '⬆️ Choisir un fichier');
+  const clear = h('button', { type: 'button', class: 'btn ghost small', onclick: () => set(null) }, 'Retirer');
+  link.value = vals[f.k] || '';
+  function draw() {
+    prev.textContent = '';
+    const u = vals[f.k];
+    clear.classList.toggle('hidden', !u);
+    if (!u) return prev.append(h('span', { class: 'muted' }, 'Aucun fichier pour le moment.'));
+    if (isImg) prev.append(h('img', { src: u, alt: '' }));
+    else if (/\.m3u8(\?|$)/i.test(u)) prev.append(h('span', { class: 'muted' }, '✔ Lien de diffusion en streaming'));
+    else if (f.media === 'audio') prev.append(h('audio', { src: u, controls: true, preload: 'none' }));
+    else if (f.media === 'pdf') prev.append(h('a', { href: u, target: '_blank' }, '📄 Ouvrir le PDF'));
+    else prev.append(h('video', { src: u, controls: true, preload: 'metadata', playsinline: true }));
+  }
+  function set(u) { vals[f.k] = u || null; link.value = u || ''; draw(); changed(f.k); }
+  link.addEventListener('change', () => set(link.value.trim()));
+  input.addEventListener('change', async () => {
+    const file = input.files[0]; input.value = '';
+    if (!file) return;
+    if (file.size > MAX_MB * 1024 * 1024) return toast(`Fichier trop lourd (${(file.size / 1048576).toFixed(0)} Mo). Maximum ${MAX_MB} Mo : compressez-le ou collez un lien.`, true);
+    if (!isImg && f.media !== 'pdf' && form) {
+      readDuration(file).then(d => {
+        const dur = form.querySelector('[name=duration]');
+        if (d && dur && !vals.duration) { vals.duration = d; dur.value = d; }
+      });
+    }
+    uploading++; pick.disabled = true; wrap.classList.add('busy'); bar.firstChild.style.width = '0%';
+    pick.textContent = 'Envoi en cours…';
+    try {
+      set(await upload(f.bucket || 'images', file, p => { bar.firstChild.style.width = Math.round(p * 100) + '%'; pick.textContent = `Envoi… ${Math.round(p * 100)} %`; }));
+      toast('Fichier envoyé ✔');
+    } catch (e) { toast(e.message, true); }
+    finally { uploading--; pick.disabled = false; wrap.classList.remove('busy'); pick.textContent = isImg ? '📷 Choisir une image' : '⬆️ Choisir un fichier'; }
+  });
+  draw();
+  wrap.append(prev, h('div', { class: 'row' }, pick, clear), bar, link, input);
+  return wrap;
+}
+
+function options(sel, list, value, emptyLabel) {
+  if (emptyLabel) sel.append(h('option', { value: '' }, emptyLabel));
+  for (const [v, l] of list) { const o = h('option', { value: v }, l); if (v === value) o.selected = true; sel.append(o); }
+  return sel;
+}
+
+function tracksEditor(vals) {
+  const box = h('div');
+  const list = h('div', { class: 'tracks' });
+  const add = options(h('select'), REFS.media, null, '+ Ajouter un titre…');
+  const name = id => (REFS.media.find(m => m[0] === id) || [id, 'Titre supprimé'])[1];
+  function draw() {
+    list.textContent = '';
+    if (!vals._tracks.length) list.append(h('div', { class: 'muted' }, 'Aucun titre. Choisissez-en dans la liste ci-dessous.'));
+    vals._tracks.forEach((id, i) => list.append(h('div', { class: 'track' },
+      h('span', {}, `${i + 1}. ${name(id)}`),
+      h('button', { type: 'button', title: 'Monter', onclick: () => { if (i) { [vals._tracks[i - 1], vals._tracks[i]] = [vals._tracks[i], vals._tracks[i - 1]]; draw(); } } }, '▲'),
+      h('button', { type: 'button', title: 'Descendre', onclick: () => { if (i < vals._tracks.length - 1) { [vals._tracks[i + 1], vals._tracks[i]] = [vals._tracks[i], vals._tracks[i + 1]]; draw(); } } }, '▼'),
+      h('button', { type: 'button', title: 'Retirer', onclick: () => { vals._tracks.splice(i, 1); draw(); } }, '✕'))));
+  }
+  add.addEventListener('change', () => { if (add.value && !vals._tracks.includes(add.value)) vals._tracks.push(add.value); add.value = ''; draw(); });
+  draw();
+  box.append(list, REFS.media.length ? add : h('div', { class: 'help' }, 'Ajoutez d’abord des titres dans « Musiques & clips ».'));
+  return box;
+}
+
+/** Construit les champs dans [container] ; renvoie une fonction qui met à jour l'affichage conditionnel. */
+function renderFields(fields, vals, container) {
+  const wrappers = [];
+  const refresh = () => wrappers.forEach(([f, w]) => w.classList.toggle('hidden', !!f.show && !f.show(vals)));
+  const changed = k => {
+    if (k === 'target_type') { vals.target_id = null; rebuildTarget(); }
+    refresh();
+  };
+  let rebuildTarget = () => {};
+  for (const f of fields) {
+    const w = h('div', { class: 'fld' });
+    let ctl;
+    switch (f.type) {
+      case 'checkbox': {
+        const cb = h('input', { type: 'checkbox', name: f.k });
+        cb.checked = !!vals[f.k];
+        cb.addEventListener('change', () => { vals[f.k] = cb.checked; changed(f.k); });
+        w.append(h('label', { class: 'check' }, cb, f.label));
+        break;
+      }
+      case 'textarea':
+        ctl = h('textarea', { name: f.k, rows: f.rows || 4 }); ctl.value = vals[f.k] || '';
+        ctl.addEventListener('input', () => { vals[f.k] = ctl.value; });
+        break;
+      case 'select':
+        ctl = options(h('select', { name: f.k }), f.opts, vals[f.k]);
+        ctl.addEventListener('change', () => { vals[f.k] = ctl.value; changed(f.k); });
+        break;
+      case 'ref':
+        ctl = options(h('select', { name: f.k }), REFS[f.ref], vals[f.k], '— Aucun —');
+        ctl.addEventListener('change', () => { vals[f.k] = ctl.value || null; changed(f.k); });
+        break;
+      case 'target': {
+        ctl = h('div');
+        rebuildTarget = () => {
+          ctl.textContent = '';
+          const ref = TARGET_REF[vals.target_type];
+          if (!ref) return;
+          const s = options(h('select', { name: f.k }), REFS[ref], vals.target_id, '— Choisissez —');
+          s.addEventListener('change', () => { vals.target_id = s.value || null; });
+          ctl.append(s);
+        };
+        rebuildTarget();
+        break;
+      }
+      case 'number':
+        ctl = h('input', { type: 'number', name: f.k, min: 0, inputmode: 'numeric' }); ctl.value = vals[f.k] ?? '';
+        ctl.addEventListener('input', () => { vals[f.k] = ctl.value === '' ? null : Number(ctl.value); });
+        break;
+      case 'date':
+        ctl = h('input', { type: 'date', name: f.k }); ctl.value = (vals[f.k] || '').slice(0, 10);
+        ctl.addEventListener('change', () => { vals[f.k] = ctl.value || null; });
+        break;
+      case 'datetime':
+        ctl = h('input', { type: 'datetime-local', name: f.k }); ctl.value = toLocal(vals[f.k]);
+        ctl.addEventListener('change', () => { vals[f.k] = fromLocal(ctl.value); });
+        break;
+      case 'image': case 'file':
+        ctl = uploader(f, vals, changed, container);
+        break;
+      case 'links': {
+        ctl = h('div', { class: 'grid2' });
+        vals[f.k] = { ...(vals[f.k] || {}) };
+        for (const [k, l] of NETWORKS) {
+          const i = h('input', { type: 'url', placeholder: l + ' (https://…)', 'aria-label': l });
+          i.value = vals[f.k][k] || '';
+          i.addEventListener('input', () => { vals[f.k][k] = i.value.trim(); });
+          ctl.append(h('div', { class: 'fld' }, i));
+        }
+        break;
+      }
+      case 'tracks':
+        ctl = tracksEditor(vals);
+        break;
+      default:
+        ctl = h('input', { type: f.type === 'url' ? 'url' : 'text', name: f.k, inputmode: f.type === 'url' ? 'url' : null });
+        ctl.value = vals[f.k] || '';
+        ctl.addEventListener('input', () => { vals[f.k] = ctl.value; });
+    }
+    if (ctl) w.append(h('label', {}, f.label, f.req ? h('span', { class: 'req' }, ' *') : null), ctl);
+    if (f.help) w.append(h('div', { class: 'help' }, f.help));
+    wrappers.push([f, w]);
+    container.append(w);
+  }
+  refresh();
+}
+
+/** Vérifie et prépare les valeurs à enregistrer. Renvoie [payload, message d'erreur]. */
+function collect(fields, vals, validate) {
+  const visible = f => !f.show || f.show(vals);
+  for (const f of fields) {
+    const v = vals[f.k];
+    if (f.req && visible(f) && (v == null || String(v).trim() === '')) return [null, `« ${f.label} » est obligatoire.`];
+    if (f.type === 'url' && v && visible(f) && !/^https?:\/\//i.test(v.trim())) return [null, `« ${f.label} » doit commencer par https://`];
+  }
+  const payload = {};
+  for (const f of fields) {
+    if (f.k.startsWith('_')) continue;
+    let v = vals[f.k];
+    if (!visible(f)) v = f.type === 'checkbox' ? false : null;
+    if (f.type === 'checkbox') v = !!v;
+    else if (f.type === 'links') v = Object.fromEntries(Object.entries(v || {}).filter(([, x]) => x));
+    else if (typeof v === 'string') { v = v.trim(); if (v === '') v = null; }
+    if (v === undefined) v = null;
+    if (f.type === 'number' && v == null && f.def != null) v = f.def;
+    payload[f.k] = v;
+  }
+  const err = validate && validate(payload);
+  return err ? [null, err] : [payload, null];
+}
+
+// ─── Fenêtre d'ajout / modification ───
+async function openForm(key, row) {
+  const E = ENT[key];
+  const vals = row ? { ...row } : {};
+  if (!row) for (const f of E.fields) if (f.def !== undefined) vals[f.k] = typeof f.def === 'object' ? { ...f.def } : f.def;
+  if (key === 'playlists') {
+    vals._tracks = [];
+    if (row) {
+      const { data } = await sb.from('playlist_items').select('media_id,position').eq('playlist_id', row.id).order('position');
+      vals._tracks = (data || []).map(r => r.media_id);
+    }
+  }
+  const body = h('div', { class: 'body' });
+  const saveBtn = h('button', { class: 'btn primary', onclick: save }, row ? 'Enregistrer' : 'Ajouter');
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', esc); };
+  const esc = e => e.key === 'Escape' && close();
+  const overlay = h('div', { class: 'overlay', onclick: e => e.target === overlay && close() },
+    h('div', { class: 'drawer', role: 'dialog', 'aria-modal': 'true' },
+      h('header', {}, h('h2', {}, (row ? 'Modifier ' : 'Ajouter ') + E.one), h('button', { class: 'btn ghost small', onclick: close, 'aria-label': 'Fermer' }, '✕')),
+      body,
+      h('footer', {}, h('button', { class: 'btn ghost', onclick: close }, 'Annuler'), saveBtn)));
+  document.addEventListener('keydown', esc);
+  document.body.append(overlay);
+  renderFields(E.fields, vals, body);
+  body.querySelector('input:not([type=checkbox]):not([type=file]), textarea')?.focus();
+
+  async function save() {
+    if (uploading) return toast('Patientez : un fichier est encore en cours d’envoi.', true);
+    const [payload, err] = collect(E.fields, vals, E.validate);
+    if (err) return toast(err, true);
+    saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement…';
+    try {
+      const q = row ? sb.from(E.table).update(payload).eq('id', row.id) : sb.from(E.table).insert(payload);
+      const { data, error } = await q.select('id').single();
+      if (error) throw error;
+      if (key === 'playlists') {
+        const del = await sb.from('playlist_items').delete().eq('playlist_id', data.id);
+        if (del.error) throw del.error;
+        if (vals._tracks.length) {
+          const ins = await sb.from('playlist_items').insert(vals._tracks.map((media_id, position) => ({ playlist_id: data.id, media_id, position })));
+          if (ins.error) throw ins.error;
+        }
+      }
+      close();
+      toast(row ? 'Modifications enregistrées ✔' : 'Ajouté ✔ — visible dans l’appli');
+      await loadRefs();
+      show(key);
+    } catch (e) {
+      toast(friendly(e), true);
+      saveBtn.disabled = false; saveBtn.textContent = row ? 'Enregistrer' : 'Ajouter';
+    }
+  }
+}
+
+// ─── Listes ───
+async function showList(key) {
+  const E = ENT[key];
+  const main = $('#main');
+  const search = h('input', { type: 'search', class: 'search', placeholder: 'Rechercher…' });
+  const list = h('div', { class: 'list' }, h('div', { class: 'empty' }, 'Chargement…'));
+  main.append(
+    h('div', { class: 'head' },
+      h('div', {}, h('h1', {}, E.title), h('p', { class: 'intro' }, E.intro)),
+      h('button', { class: 'btn primary', onclick: () => openForm(key, null) }, '+ Ajouter')),
+    search, list);
+  const { data, error } = await sb.from(E.table).select(E.select).order(E.order[0], { ascending: E.order[1], nullsFirst: false }).limit(1000);
+  if (current !== key) return;
+  if (error) { list.textContent = ''; list.append(h('div', { class: 'empty bad' }, friendly(error))); return; }
+  const draw = () => {
+    const q = norm(search.value);
+    list.textContent = '';
+    const rows = data.filter(r => !q || norm(E.name(r) + ' ' + (E.sub ? E.sub(r) : '')).includes(q));
+    if (!rows.length) list.append(h('div', { class: 'empty' }, data.length ? 'Aucun résultat.' : E.empty));
+    for (const r of rows) {
+      const img = E.img && E.img(r);
+      list.append(h('div', { class: 'item' },
+        h('div', { class: 'thumb', style: E.round ? 'border-radius:50%' : null }, img ? h('img', { src: img, alt: '', loading: 'lazy' }) : (E.icon2 || E.icon)),
+        h('div', { style: 'min-width:0' },
+          h('div', { class: 't' }, E.name(r)),
+          E.sub ? h('div', { class: 's' }, E.sub(r)) : null,
+          E.badges ? h('div', { style: 'margin-top:4px' }, E.badges(r).map(([t, c]) => h('span', { class: 'badge ' + (c || '') }, t))) : null),
+        h('div', { class: 'acts' },
+          h('button', { class: 'btn small', onclick: () => openForm(key, r) }, 'Modifier'),
+          h('button', { class: 'btn small danger', onclick: () => remove(key, r) }, 'Supprimer'))));
+    }
+  };
+  search.addEventListener('input', draw);
+  draw();
+}
+
+async function remove(key, r) {
+  const E = ENT[key];
+  if (!confirm(`Supprimer définitivement « ${E.name(r)} » ?\nCette action ne peut pas être annulée.`)) return;
+  const { error } = await sb.from(E.table).delete().eq('id', r.id);
+  if (error) return toast(friendly(error), true);
+  toast('Supprimé ✔');
+  await loadRefs();
+  show(key);
+}
+
+// ─── Tableau de bord ───
+async function showDash(days = 30) {
+  const main = $('#main');
+  const period = options(h('select', { style: 'width:auto' }), [['7', '7 derniers jours'], ['30', '30 derniers jours'], ['90', '3 derniers mois'], ['365', '12 derniers mois']], String(days));
+  period.addEventListener('change', () => show('dash', Number(period.value)));
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Tableau de bord'), h('p', { class: 'intro' }, 'Fréquentation de Conacce TV (téléphones, tablettes, ordinateurs, site web).')), period),
+    h('div', { class: 'quick' },
+      h('button', { class: 'btn primary', onclick: () => { show('sermons'); openForm('sermons', null); } }, '⛪ Publier un culte'),
+      h('button', { class: 'btn', onclick: () => show('live') }, '📡 TV en direct'),
+      h('button', { class: 'btn', onclick: () => show('radio') }, '📻 Radio'),
+      h('button', { class: 'btn', onclick: () => { show('works'); openForm('works', null); } }, '📖 Ajouter une œuvre')));
+  const box = h('div', {}, h('div', { class: 'empty' }, 'Chargement des statistiques…'));
+  main.append(box);
+  const count = t => sb.from(t).select('*', { count: 'exact', head: true }).then(r => r.count ?? 0);
+  const [stats, nSermons, nWorks] = await Promise.all([sb.rpc('admin_stats', { p_days: days }), count('sermons'), count('works')]);
+  if (current !== 'dash') return;
+  box.textContent = '';
+  if (stats.error) return box.append(h('div', { class: 'empty bad' }, friendly(stats.error)));
+  const s = stats.data;
+  const stat = (n, l, hl) => h('div', { class: 'stat' + (hl ? ' hl' : '') }, h('div', { class: 'n' }, Number(n || 0).toLocaleString('fr-FR')), h('div', { class: 'l' }, l));
+  box.append(h('div', { class: 'cards' },
+    stat(s.visiteurs_uniques, `Visiteurs uniques (${days} j)`, true),
+    stat(s.visiteurs_aujourdhui, 'Visiteurs aujourd’hui'),
+    stat(s.spectateurs_tv, 'Spectateurs de la TV'),
+    stat(s.auditeurs_radio, 'Auditeurs de la radio'),
+    stat(s.vues_cultes, 'Vues des cultes'),
+    stat(s.lectures_oeuvres, 'Lectures des Œuvres d’Or')));
+  const byDay = Object.fromEntries((s.par_jour || []).map(d => [d.day, d]));
+  const shownDays = Math.min(days, 60), cols = [];
+  for (let i = shownDays - 1; i >= 0; i--) {
+    const d = new Date(); d.setUTCDate(d.getUTCDate() - i);
+    cols.push([d, byDay[d.toISOString().slice(0, 10)] || { visiteurs: 0, vues: 0 }]);
+  }
+  const max = Math.max(1, ...cols.map(([, v]) => v.visiteurs));
+  const every = Math.ceil(shownDays / 10);
+  box.append(h('div', { class: 'panel' }, h('h2', {}, 'Visiteurs par jour'),
+    h('div', { class: 'chart' }, cols.map(([d, v], i) => h('div', { class: 'col', title: `${d.toLocaleDateString('fr-FR')} : ${v.visiteurs} visiteur(s), ${v.vues} vue(s)` },
+      h('div', { class: 'b', style: `height:${(v.visiteurs / max) * 100}%` }),
+      h('div', { class: 'd' }, (shownDays - 1 - i) % every === 0 ? `${d.getDate()}/${d.getMonth() + 1}` : ''))))));
+  const top = s.top_cultes || [];
+  const plat = Object.entries(s.par_plateforme || {}).sort((a, b) => b[1] - a[1]);
+  box.append(h('div', { class: 'two' },
+    h('div', { class: 'panel' }, h('h2', {}, 'Cultes les plus regardés'),
+      top.length ? top.map((t, i) => h('div', { class: 'rank' }, h('span', {}, `${i + 1}. ${t.title}`), h('b', {}, t.vues))) : h('div', { class: 'muted' }, 'Pas encore de vues sur la période.')),
+    h('div', { class: 'panel' }, h('h2', {}, 'Appareils des visiteurs'),
+      plat.length ? plat.map(([p, n]) => h('div', { class: 'rank' }, h('span', {}, PLATFORMS[p] || p), h('b', {}, n))) : h('div', { class: 'muted' }, 'Pas encore de visites.'))));
+  box.append(h('div', { class: 'cards' }, stat(nSermons, 'Cultes publiés'), stat(nWorks, 'Œuvres d’Or')));
+}
+
+// ─── TV en direct et radio (une seule fiche chacune) ───
+const LIVE_FIELDS = [
+  { k: 'is_live', label: '📡 EN DIRECT MAINTENANT (affiche la TV dans l’appli)', type: 'checkbox' },
+  { k: 'title', label: 'Nom de la chaîne', type: 'text', req: true, def: 'Conacce TV' },
+  { k: 'hls_url', label: 'Lien vidéo du direct (.m3u8)', type: 'url', help: 'Cloudflare Stream : Entrées en direct → votre entrée → Lecture → Manifeste HLS.' },
+  { k: 'speaker', label: 'Bandeau : nom de l’orateur', type: 'text' },
+  { k: 'message_title', label: 'Bandeau : titre du message', type: 'text' },
+  { k: 'next_live_info', label: 'Prochain direct (texte affiché hors direct)', type: 'text', help: 'Ex : « Culte du dimanche à 9h »' },
+  { k: 'next_live_at', label: 'Date du prochain direct', type: 'datetime' },
+  { k: 'offline_image_url', label: 'Image de la carte du direct', type: 'image' },
+];
+const RADIO_FIELDS = [
+  { k: 'is_on_air', label: '📻 À L’ANTENNE (la radio joue dans l’appli)', type: 'checkbox' },
+  { k: 'name', label: 'Nom de la radio', type: 'text', req: true, def: 'Radio Dunamis FM' },
+  { k: 'stream_url', label: 'Lien du flux audio', type: 'url', help: 'Lien de diffusion de la radio (mp3, aac ou .m3u8), fourni par votre hébergeur radio.' },
+  { k: 'current_show', label: 'Émission en cours', type: 'text' },
+  { k: 'host', label: 'Animateur', type: 'text' },
+  { k: 'cover_url', label: 'Image (écran verrouillé)', type: 'image' },
+];
+async function showSingle(key, table, fields, title, intro, note, flag, check) {
+  const main = $('#main');
+  const { data, error } = await sb.from(table).select('*').limit(1).maybeSingle();
+  if (current !== key) return;
+  const row = data;
+  const vals = row ? { ...row } : {};
+  if (!row) for (const f of fields) if (f.def !== undefined) vals[f.k] = f.def;
+  const body = h('div', { class: 'panel' + (vals[flag] ? ' live-on' : '') });
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, title), h('p', { class: 'intro' }, intro))),
+    h('div', { class: 'note' }, note), error ? h('div', { class: 'empty bad' }, friendly(error)) : body);
+  if (error) return;
+  renderFields(fields, vals, body);
+  body.querySelector(`[name=${flag}]`).addEventListener('change', e => body.classList.toggle('live-on', e.target.checked));
+  const btn = h('button', { class: 'btn primary' }, 'Enregistrer');
+  btn.addEventListener('click', async () => {
+    if (uploading) return toast('Patientez : un fichier est encore en cours d’envoi.', true);
+    const [payload, err] = collect(fields, vals, check);
+    if (err) return toast(err, true);
+    btn.disabled = true;
+    const { error } = row ? await sb.from(table).update(payload).eq('id', row.id) : await sb.from(table).insert(payload);
+    btn.disabled = false;
+    if (error) return toast(friendly(error), true);
+    toast(payload[flag] ? '✔ C’est en ligne dans l’appli !' : 'Enregistré ✔');
+    show(key);
+  });
+  body.append(btn);
+}
+const showLive = () => showSingle('live', 'live_stream', LIVE_FIELDS, 'TV en direct',
+  'Reliez OBS ou vMix à Cloudflare Stream, collez ici le lien .m3u8, puis cochez « En direct ».',
+  [h('b', {}, 'Pour lancer un culte en direct : '), '1) Démarrez la diffusion dans OBS / vMix. 2) Remplissez le bandeau (orateur, message). 3) Cochez « En direct maintenant » et enregistrez. À la fin, décochez et enregistrez. L’enregistrement Cloudflare du direct peut ensuite être publié dans « Cultes ».'],
+  'is_live', p => p.is_live && !p.hls_url ? 'Pour passer en direct, collez d’abord le lien vidéo (.m3u8).' : null);
+const showRadio = () => showSingle('radio', 'radio', RADIO_FIELDS, 'Radio Dunamis FM',
+  'Le flux de la radio joue dans l’appli, même écran éteint.',
+  [h('b', {}, 'Mettre la radio à l’antenne : '), 'collez le lien du flux audio, indiquez l’émission en cours, cochez « À l’antenne » et enregistrez.'],
+  'is_on_air', p => p.is_on_air && !p.stream_url ? 'Collez d’abord le lien du flux audio.' : null);
+
+// ─── Réglages ───
+async function showSettings() {
+  const main = $('#main');
+  const { data } = await sb.from('app_settings').select('*').eq('id', 1).maybeSingle();
+  if (current !== 'settings') return;
+  const fields = [
+    { k: 'man_of_god_name', label: 'Nom de l’homme de Dieu (affiché dans Œuvres d’Or)', type: 'text' },
+    { k: 'donation_url', label: 'Lien de don (page de paiement externe)', type: 'url', help: 'Ajoute le bouton « Soutenir » à la TV en direct. Le don s’ouvre dans le navigateur (règle Apple).' },
+    { k: 'whatsapp_url', label: 'Lien WhatsApp', type: 'url' },
+    { k: 'facebook_url', label: 'Page Facebook', type: 'url' },
+    { k: 'youtube_url', label: 'Chaîne YouTube', type: 'url' },
+    { k: 'contact_email', label: 'E-mail de contact', type: 'text' },
+  ];
+  const vals = { ...(data || {}) };
+  const body = h('div', { class: 'panel' });
+  const appUrl = location.href.replace(/admin\/?.*$/, '');
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Réglages'))), body,
+    h('div', { class: 'panel' }, h('h2', {}, 'Liens utiles'),
+      h('div', { class: 'rank' }, h('span', {}, 'L’appli sur internet (iPhone, ordinateur, TV)'), h('a', { href: appUrl, target: '_blank' }, 'Ouvrir')),
+      h('div', { class: 'rank' }, h('span', {}, 'Cette page d’administration'), h('a', { href: location.href.split('#')[0] }, location.host + location.pathname))));
+  renderFields(fields, vals, body);
+  const btn = h('button', { class: 'btn primary' }, 'Enregistrer');
+  btn.addEventListener('click', async () => {
+    const [payload, err] = collect(fields, vals);
+    if (err) return toast(err, true);
+    const { error } = await sb.from('app_settings').upsert({ id: 1, ...payload });
+    if (error) return toast(friendly(error), true);
+    toast('Enregistré ✔');
+  });
+  body.append(btn);
+}
+
+// ─── Équipe ───
+async function showTeam() {
+  const main = $('#main');
+  const { data, error } = await sb.from('app_users').select('id,display_name,role,created_at').order('role').order('created_at');
+  if (current !== 'team') return;
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Équipe'),
+    h('p', { class: 'intro' }, 'Toute personne qui s’est connectée une fois (appli ou cette page) apparaît ici. Donnez le rôle « Administrateur » à ceux qui doivent gérer le contenu.'))));
+  if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
+  const list = h('div', { class: 'list' });
+  for (const u of data) {
+    const sel = options(h('select', { style: 'width:auto' }), [['user', 'Utilisateur'], ['admin', 'Administrateur']], u.role);
+    sel.addEventListener('change', async () => {
+      if (u.id === me.id && sel.value !== 'admin' && !confirm('Vous allez perdre votre propre accès à cette page. Continuer ?')) { sel.value = u.role; return; }
+      const { error } = await sb.from('app_users').update({ role: sel.value }).eq('id', u.id);
+      if (error) { sel.value = u.role; return toast(friendly(error), true); }
+      u.role = sel.value; toast('Rôle mis à jour ✔');
+    });
+    list.append(h('div', { class: 'item' }, h('div', { class: 'thumb', style: 'border-radius:50%' }, '👤'),
+      h('div', {}, h('div', { class: 't' }, (u.display_name || 'Sans nom') + (u.id === me.id ? ' (vous)' : '')), h('div', { class: 's' }, 'Inscrit le ' + fmtDate(u.created_at))),
+      h('div', { class: 'acts' }, sel)));
+  }
+  main.append(list);
+}
+
+// ─── Navigation ───
+const NAV = [
+  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '⛪', 'Cultes'],
+  ['works', '📖', 'Œuvres d’Or'], ['banners', '🖼️', 'Affiches'], ['settings', '⚙️', 'Réglages'], ['team', '👥', 'Équipe'],
+];
+let current = null, me = null;
+
+function show(key, arg) {
+  current = key;
+  history.replaceState(null, '', '#' + key);
+  document.querySelectorAll('button.nav').forEach(b => b.classList.toggle('on', b.dataset.k === key));
+  const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
+  if (ENT[key]) return showList(key);
+  ({ dash: showDash, live: showLive, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
+}
+
+function shell(user) {
+  const root = $('#root'); root.textContent = '';
+  root.append(h('div', { class: 'app' },
+    h('nav', { class: 'side' },
+      h('div', { class: 'brand' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }), h('div', {}, 'ADMINISTRATION')),
+      NAV.map(([k, i, l]) => h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, h('span', {}, i), l)),
+      h('div', { class: 'spacer' }),
+      h('div', { class: 'who' }, user.email),
+      h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, h('span', {}, '🚪'), 'Se déconnecter')),
+    h('main', { id: 'main' })));
+  const start = location.hash.slice(1);
+  show(NAV.some(n => n[0] === start) ? start : 'dash');
+}
+
+function loginScreen(msg) {
+  const root = $('#root'); root.textContent = '';
+  let mode = 'login';
+  const email = h('input', { type: 'email', placeholder: 'votre@email.com', autocomplete: 'email', required: true });
+  const pass = h('input', { type: 'password', placeholder: 'Mot de passe (6 caractères minimum)', autocomplete: 'current-password', style: 'margin-top:10px' });
+  const btn = h('button', { class: 'btn primary', style: 'width:100%;margin-top:12px' });
+  const info = h('p', {});
+  const tabs = h('div', { class: 'quick', style: 'justify-content:center;margin:10px 0 4px' });
+  const modes = [['login', 'Se connecter'], ['signup', 'Créer mon compte'], ['link', 'Lien par e-mail']];
+  const texts = {
+    login: 'Connectez-vous avec votre e-mail et votre mot de passe.',
+    signup: 'Choisissez votre mot de passe. Un administrateur activera ensuite votre accès.',
+    link: 'Vous recevrez un lien de connexion par e-mail (quelques envois par heure au maximum).',
+  };
+  function draw() {
+    tabs.textContent = '';
+    for (const [k, l] of modes) tabs.append(h('button', { type: 'button', class: 'btn small ' + (mode === k ? 'primary' : 'ghost'), onclick: () => { mode = k; msg = null; draw(); } }, l));
+    pass.classList.toggle('hidden', mode === 'link');
+    pass.required = mode !== 'link';
+    pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+    btn.textContent = { login: 'Se connecter', signup: 'Créer mon compte', link: 'Recevoir mon lien de connexion' }[mode];
+    info.textContent = msg || texts[mode];
+  }
+  const form = h('form', { onsubmit: async e => {
+    e.preventDefault();
+    const em = email.value.trim(), pw = pass.value, label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Patientez…';
+    try {
+      if (mode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email: em, password: pw });
+        if (error) throw error;
+        return boot();
+      }
+      if (mode === 'signup') {
+        const { data, error } = await sb.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } });
+        if (error) throw error;
+        if (data.session) return boot();
+        info.textContent = 'Compte créé. Confirmez-le avec le lien reçu par e-mail, puis connectez-vous ici.';
+        return;
+      }
+      const { error } = await sb.auth.signInWithOtp({ email: em, options: { emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      info.textContent = '';
+      info.append('✉️ C’est envoyé à ', h('b', {}, em), '. Ouvrez le DERNIER e-mail reçu et touchez le lien (pensez aux spams).');
+    } catch (err) {
+      toast(friendly(err), true);
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  } }, email, pass, btn);
+  draw();
+  root.append(h('div', { class: 'center' }, h('div', { class: 'login' },
+    h('img', { class: 'logo', src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }),
+    h('h1', { style: 'text-align:center;margin-bottom:6px' }, 'Administration'), tabs, info, form)));
+}
+
+function deniedScreen(user) {
+  const root = $('#root'); root.textContent = '';
+  root.append(h('div', { class: 'center' }, h('div', { class: 'login' },
+    h('img', { class: 'logo', src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }),
+    h('h1', { style: 'text-align:center' }, 'Accès réservé'),
+    h('p', {}, 'Vous êtes connecté avec ', h('b', {}, user.email), ', mais ce compte n’est pas encore administrateur.'),
+    h('p', {}, 'Un administrateur peut vous donner l’accès dans la rubrique « Équipe ». Rechargez ensuite cette page.'),
+    h('div', { style: 'display:flex;gap:10px' },
+      h('button', { class: 'btn primary', onclick: () => location.reload() }, 'Recharger'),
+      h('button', { class: 'btn', onclick: async () => { await sb.auth.signOut(); boot(); } }, 'Changer de compte')))));
+}
+
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    const err = new URLSearchParams(location.hash.slice(1)).get('error_description');
+    return loginScreen(err ? 'Ce lien a expiré ou a déjà servi. Connectez-vous avec votre mot de passe ou demandez un nouveau lien.' : null);
+  }
+  me = session.user;
+  const { data, error } = await sb.from('app_users').select('role').eq('id', me.id).maybeSingle();
+  if (error) return loginScreen(friendly(error));
+  if (data?.role !== 'admin') return deniedScreen(me);
+  await loadRefs();
+  shell(me);
+}
+
+let booted = false;
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN' && booted && !me) setTimeout(boot, 0);
+});
+boot().finally(() => { booted = true; });
+</script>
+</body>
+</html>

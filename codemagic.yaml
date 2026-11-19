@@ -1,0 +1,24 @@
+# Fabrication automatique de l'appli Conacce TV sur Codemagic.
+# Dans Codemagic : choisir ce dépôt, puis « Start new build » › « Conacce TV — Android ».
+# À la fin, le fichier app-release.apk est téléchargeable et s'installe sur un téléphone Android.
+
+workflows:
+  android:
+    name: Conacce TV — Android
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      java: 17
+    scripts:
+      - name: Créer les dossiers Android et iOS
+        script: flutter create . --org com.conacce --project-name conacce_tv --platforms android,ios
+      - name: Réglages Android (audio en arrière-plan, nom et icône de l'appli)
+        script: python3 tool/patch_android.py
+      - name: Télécharger les dépendances
+        script: flutter pub get
+      - name: Fabriquer l'APK
+        script: |
+          flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
