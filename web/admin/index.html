@@ -733,8 +733,43 @@ const showRadio = () => showSingle('radio', 'radio', RADIO_FIELDS, 'Radio Dunami
 // ─── Réglages ───
 async function showSettings() {
   const main = $('#main');
-  const { data } = await sb.from('app_settings').select('*').eq('id', 1).maybeSingle();
+  const [{ data }, liveRes, radioRes] = await Promise.all([
+    sb.from('app_settings').select('*').eq('id', 1).maybeSingle(),
+    sb.from('live_stream').select('id,is_live,hls_url').limit(1).maybeSingle(),
+    sb.from('radio').select('id,is_on_air,stream_url').limit(1).maybeSingle(),
+  ]);
   if (current !== 'settings') return;
+
+  // Interrupteurs : allumer / éteindre le direct et la radio en un clic
+  const switchRow = (label, table, row, flag, urlKey, missing) => {
+    const state = h('b', {});
+    const btn = h('button', { class: 'btn' });
+    const draw = () => {
+      const on = !!(row && row[flag]);
+      state.textContent = on ? '🔴 EN DIRECT' : '⚪ Éteint';
+      state.style.color = on ? '#ff5a6e' : 'var(--mist)';
+      btn.textContent = on ? 'Éteindre' : 'Allumer';
+      btn.className = 'btn ' + (on ? 'danger' : 'primary');
+    };
+    btn.addEventListener('click', async () => {
+      if (!row) return toast('Fiche introuvable : ouvrez d’abord la rubrique correspondante.', true);
+      const next = !row[flag];
+      if (next && !row[urlKey]) return toast(missing, true);
+      btn.disabled = true;
+      const { error } = await sb.from(table).update({ [flag]: next }).eq('id', row.id);
+      btn.disabled = false;
+      if (error) return toast(friendly(error), true);
+      row[flag] = next; draw();
+      toast(next ? '✔ Allumé : visible dans l’appli' : 'Éteint ✔');
+    });
+    draw();
+    return h('div', { class: 'rank', style: 'align-items:center;gap:12px' },
+      h('span', { style: 'flex:1' }, label), state, btn);
+  };
+  const switches = h('div', { class: 'panel' }, h('h2', {}, 'Allumer / éteindre'),
+    h('p', { class: 'intro' }, 'Pendant un culte : démarrez OBS / vMix, puis cliquez sur « Allumer ». À la fin, cliquez sur « Éteindre ».'),
+    switchRow('📡 Conacce TV en direct', 'live_stream', liveRes.data, 'is_live', 'hls_url', 'Collez d’abord le lien vidéo (.m3u8) dans « TV en direct ».'),
+    switchRow('📻 Radio Dunamis FM', 'radio', radioRes.data, 'is_on_air', 'stream_url', 'Collez d’abord le lien du flux audio dans « Radio Dunamis FM ».'));
   const fields = [
     { k: 'man_of_god_name', label: 'Nom de l’homme de Dieu (affiché dans Œuvres d’Or)', type: 'text' },
     { k: 'donation_url', label: 'Lien de don (page de paiement externe)', type: 'url', help: 'Ajoute le bouton « Soutenir » à la TV en direct. Le don s’ouvre dans le navigateur (règle Apple).' },
@@ -746,7 +781,7 @@ async function showSettings() {
   const vals = { ...(data || {}) };
   const body = h('div', { class: 'panel' });
   const appUrl = location.href.replace(/admin\/?.*$/, '');
-  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Réglages'))), body,
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Réglages'))), switches, body,
     h('div', { class: 'panel' }, h('h2', {}, 'Liens utiles'),
       h('div', { class: 'rank' }, h('span', {}, 'L’appli sur internet (iPhone, ordinateur, TV)'), h('a', { href: appUrl, target: '_blank' }, 'Ouvrir')),
       h('div', { class: 'rank' }, h('span', {}, 'Cette page d’administration'), h('a', { href: location.href.split('#')[0] }, location.host + location.pathname))));
