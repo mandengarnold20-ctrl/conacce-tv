@@ -19,11 +19,14 @@ class WorshipScreen extends ConsumerStatefulWidget {
 
 class _WorshipScreenState extends ConsumerState<WorshipScreen> {
   bool _offline = false;
+  /// « louange » ou « adoration » : deux rubriques bien séparées.
+  String _section = 'louange';
 
   @override
   Widget build(BuildContext context) {
-    final songs = ref.watch(sermonsProvider(('louange', null)));
-    final downloads = ref.watch(downloadsProvider).items.where((t) => t.item.section == 'louange').toList();
+    final songs = ref.watch(sermonsProvider((_section, null)));
+    final downloads = ref.watch(downloadsProvider).items.where((t) => t.item.section == _section).toList();
+    final label = _section == 'louange' ? 'louange' : 'adoration';
 
     Widget chip(String label, bool selected, VoidCallback onTap) => Padding(
           padding: const EdgeInsets.only(right: 8),
@@ -49,7 +52,7 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
 
     final Widget list = _offline
         ? (downloads.isEmpty
-            ? message('Aucun chant téléchargé.\nOuvrez un chant puis touchez « Télécharger ».')
+            ? message('Aucun chant de $label téléchargé.\nOuvrez un chant puis touchez « Télécharger ».')
             : ListView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                 children: [for (final t in downloads) SermonTile(sermon: t.item, offline: t)],
@@ -58,9 +61,9 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => message('Connexion impossible pour le moment.'),
             data: (items) => items.isEmpty
-                ? message('Les chants de louange et d’adoration arrivent bientôt.')
+                ? message('Les chants de $label arrivent bientôt.')
                 : RefreshIndicator(
-                    onRefresh: () => ref.refresh(sermonsProvider(('louange', null)).future),
+                    onRefresh: () => ref.refresh(sermonsProvider((_section, null)).future),
                     child: ListView.builder(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                       itemCount: items.length,
@@ -78,6 +81,13 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
             Text('Louange & adoration', style: AppTheme.title(size: 24, weight: FontWeight.w800)),
             const SizedBox(height: 4),
             const Text('Chants à écouter en ligne ou à télécharger.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
+            const SizedBox(height: 14),
+            // Deux rubriques séparées : Louange | Adoration
+            Row(children: [
+              Expanded(child: _Tab(label: 'Louange', selected: _section == 'louange', onTap: () => setState(() => _section = 'louange'))),
+              const SizedBox(width: 10),
+              Expanded(child: _Tab(label: 'Adoration', selected: _section == 'adoration', onTap: () => setState(() => _section = 'adoration'))),
+            ]),
           ]),
         ),
         if (DownloadsController.supported)
@@ -100,3 +110,27 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
   }
 }
 
+
+class _Tab extends StatelessWidget {
+  const _Tab({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: selected ? AppColors.sunGradient : AppColors.cardGradient,
+            borderRadius: BorderRadius.circular(12),
+            border: selected ? null : Border.all(color: const Color(0x22FFFFFF)),
+          ),
+          child: Text(label, style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
+        ),
+      );
+}

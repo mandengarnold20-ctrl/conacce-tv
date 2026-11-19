@@ -46,7 +46,9 @@ class SplashScreen extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: () => _enter(context),
           child: WaveBackground(
-            child: SafeArea(
+            child: Stack(fit: StackFit.expand, children: [
+              const IgnorePointer(child: ConacceWatermark()),
+              SafeArea(
               child: SizedBox.expand(
                 child: Column(
                   children: [
@@ -63,6 +65,7 @@ class SplashScreen extends StatelessWidget {
                 ),
               ),
             ),
+            ]),
           ),
         ),
       ),
@@ -129,9 +132,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     ];
     // Filigrane du logo CONACCE Chaplains : seulement sur les pages qui parlent de la Conacce.
     final showMark = switch (tab) {
+      AppTab.home || AppTab.tv || AppTab.contact => true,
       AppTab.sermons => ref.watch(videoSectionProvider) == 'conacce',
       AppTab.gallery => ref.watch(galleryAlbumProvider) == 'conacce',
-      AppTab.contact => true,
       _ => false,
     };
     final body = WaveBackground(
@@ -273,7 +276,7 @@ class _ScrollNavBarState extends State<_ScrollNavBar> {
 }
 
 /// Logo CONACCE Chaplains en filigrane, très discret, comme sur un papier à en-tête :
-/// grand, en bas à droite, débordant légèrement de l'écran, sans changer le fond.
+/// grand et centré, sans changer le fond.
 class ConacceWatermark extends StatelessWidget {
   const ConacceWatermark({super.key});
 
@@ -288,11 +291,11 @@ class ConacceWatermark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
-      final size = (c.maxWidth < 700 ? c.maxWidth * 1.05 : c.maxHeight * .8).clamp(260.0, 900.0).toDouble();
-      return Stack(clipBehavior: Clip.hardEdge, children: [
-        Positioned(
-          right: -size * .22,
-          bottom: c.maxHeight * .08,
+      // Bien centré, grand, très pâle.
+      final shortest = c.maxWidth < c.maxHeight ? c.maxWidth : c.maxHeight;
+      final size = (shortest * .92).clamp(240.0, 760.0).toDouble();
+      return Center(
+        child: SizedBox(
           width: size,
           height: size,
           child: Opacity(
@@ -303,7 +306,7 @@ class ConacceWatermark extends StatelessWidget {
             ),
           ),
         ),
-      ]);
+      );
     });
   }
 }

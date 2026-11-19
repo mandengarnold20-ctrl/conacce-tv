@@ -296,6 +296,7 @@ function friendly(err) {
 // ─── Listes de choix ───
 const CATS = [['special', 'Culte spécial'], ['tempsForts', 'Temps forts'], ['spots', 'Spots'], ['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['autre', 'Autre']];
 const SECTIONS = [['conacce', 'Vidéos Conacce'], ['cultes', 'Cultes']];
+const WORSHIP = [['louange', 'Louange'], ['adoration', 'Adoration']];
 const ALBUMS = [['conacce', 'Conacce Chaplains'], ['ciu', 'CIU']];
 // Vignette automatique des vidéos YouTube
 function ytId(u) {
@@ -328,7 +329,7 @@ async function loadRefs() {
 // ─── Description de chaque rubrique ───
 const ENT = {
   sermons: {
-    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.neq('section', 'louange'),
+    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.in('section', ['cultes', 'conacce']),
     intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
@@ -352,14 +353,14 @@ const ENT = {
     validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
   },
   worship: {
-    table: 'sermons', title: 'Louange & adoration', one: 'un chant', icon: '', where: q => q.eq('section', 'louange'),
-    intro: 'Les chants de l’onglet « Louange » de l’appli. Comme pour les vidéos : collez le lien YouTube ou Facebook, ou envoyez un fichier audio (MP3) pour l’écoute hors connexion.',
+    table: 'sermons', title: 'Louange & adoration', one: 'un chant', icon: '', where: q => q.in('section', ['louange', 'adoration']),
+    intro: 'Les chants de l’onglet « Louange » de l’appli, en deux rubriques séparées : Louange et Adoration. Comme pour les vidéos : collez le lien YouTube ou Facebook, ou envoyez un fichier audio (MP3) pour l’écoute hors connexion.',
     select: '*', order: ['created_at', false], empty: 'Aucun chant pour le moment. Cliquez sur « Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [r.speaker, fmtDur(r.duration), r.view_count ? r.view_count + ' écoutes' : ''].filter(Boolean).join(' · '),
+    sub: r => [label(WORSHIP, r.section), r.speaker, fmtDur(r.duration), r.view_count ? r.view_count + ' écoutes' : ''].filter(Boolean).join(' · '),
     badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
-      { k: 'section', label: 'Rubrique', type: 'text', def: 'louange', show: () => false },
+      { k: 'section', label: 'Rubrique', type: 'select', opts: WORSHIP, def: 'louange', req: true, help: 'Louange ou Adoration : chaque chant va dans sa rubrique.' },
       { k: 'category', label: 'Catégorie', type: 'text', def: 'autre', show: () => false },
       { k: 'title', label: 'Titre du chant', type: 'text', req: true },
       { k: 'speaker', label: 'Artiste / chorale', type: 'text' },
