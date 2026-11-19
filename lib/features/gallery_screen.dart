@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
@@ -138,6 +140,24 @@ class _PhotoViewerState extends State<_PhotoViewer> {
     super.dispose();
   }
 
+  /// Lance le téléchargement : le fichier est enregistré dans le téléphone
+  /// (dossier Téléchargements, ou « Fichiers » sur iPhone).
+  Future<void> _download(GalleryPhoto photo) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    var url = photo.imageUrl;
+    // Photos de la galerie (stockage Supabase) : on demande le fichier « à télécharger ».
+    if (url.contains('/storage/v1/object/public/')) {
+      final name = 'conacce-${photo.album}-${photo.id.substring(0, 8)}.jpg';
+      url = '$url${url.contains('?') ? '&' : '?'}download=$name';
+    }
+    final ok = await launchUrl(
+      Uri.parse(url),
+      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      webOnlyWindowName: '_self',
+    );
+    messenger?.showSnackBar(SnackBar(content: Text(ok ? 'Téléchargement de la photo lancé.' : 'Téléchargement impossible pour le moment.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final photo = widget.items[_index];
@@ -172,9 +192,22 @@ class _PhotoViewerState extends State<_PhotoViewer> {
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.close_rounded, color: Colors.white),
               ),
-              const Spacer(),
+              const SizedBox(width: 4),
               Text('${_index + 1} / ${widget.items.length}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(width: 12),
+              const Spacer(),
+              // Télécharger la photo dans le téléphone
+              TextButton.icon(
+                onPressed: () => _download(photo),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.navy,
+                  backgroundColor: AppColors.sunYellow,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Télécharger', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 8),
             ]),
           ),
         ),

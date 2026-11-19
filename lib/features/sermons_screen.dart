@@ -67,7 +67,9 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
   Widget build(BuildContext context) {
     final section = ref.watch(videoSectionProvider);
     final isCultes = section == 'cultes';
-    final category = ref.watch(sermonCategoryProvider);
+    final picked = ref.watch(sermonCategoryProvider);
+    // Un filtre qui n'existe pas dans la rubrique affichée revient à « Tous ».
+    final category = picked == null || isCultes || picked == SermonCategory.spots ? picked : null;
     final sermons = ref.watch(sermonsProvider((section, category)));
     final downloads = ref.watch(downloadsProvider);
 
@@ -158,7 +160,8 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
                     _offline = false;
                     ref.read(sermonCategoryProvider.notifier).state = null;
                   })),
-              for (final c in SermonCategory.shown)
+              // Vidéos Conacce : seulement « Spots » ; Cultes : Culte spécial, Temps forts, Spots.
+              for (final c in isCultes ? SermonCategory.shown : const [SermonCategory.spots])
                 chip(c.label, category == c && !_offline, () => setState(() {
                       _offline = false;
                       ref.read(sermonCategoryProvider.notifier).state = c;
