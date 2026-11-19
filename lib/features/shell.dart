@@ -127,7 +127,25 @@ class _AppShellState extends ConsumerState<AppShell> {
       (const Icon(Icons.menu_book_rounded), 'Œuvres'),
       (const Icon(Icons.mail_rounded), 'Contact'),
     ];
-    final body = WaveBackground(child: IndexedStack(index: tab.index, children: _pages));
+    // Filigrane du logo CONACCE Chaplains : seulement sur les pages qui parlent de la Conacce.
+    final showMark = switch (tab) {
+      AppTab.sermons => ref.watch(videoSectionProvider) == 'conacce',
+      AppTab.gallery => ref.watch(galleryAlbumProvider) == 'conacce',
+      AppTab.contact => true,
+      _ => false,
+    };
+    final body = WaveBackground(
+      child: Stack(fit: StackFit.expand, children: [
+        IgnorePointer(
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 500),
+            opacity: showMark ? 1 : 0,
+            child: const ConacceWatermark(),
+          ),
+        ),
+        IndexedStack(index: tab.index, children: _pages),
+      ]),
+    );
     final immersive = ref.watch(immersiveProvider);
     final wide = Breakpoints.isWide(context);
 
@@ -251,5 +269,41 @@ class _ScrollNavBarState extends State<_ScrollNavBar> {
         ),
       ),
     );
+  }
+}
+
+/// Logo CONACCE Chaplains en filigrane, très discret, comme sur un papier à en-tête :
+/// grand, en bas à droite, débordant légèrement de l'écran, sans changer le fond.
+class ConacceWatermark extends StatelessWidget {
+  const ConacceWatermark({super.key});
+
+  // Gris clair (le logo garde ses détails mais perd ses couleurs).
+  static const _greyscale = ColorFilter.matrix([
+    0.30, 0.59, 0.11, 0, 40,
+    0.30, 0.59, 0.11, 0, 40,
+    0.30, 0.59, 0.11, 0, 60,
+    0, 0, 0, 1, 0,
+  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, c) {
+      final size = (c.maxWidth < 700 ? c.maxWidth * 1.05 : c.maxHeight * .8).clamp(260.0, 900.0).toDouble();
+      return Stack(clipBehavior: Clip.hardEdge, children: [
+        Positioned(
+          right: -size * .22,
+          bottom: c.maxHeight * .08,
+          width: size,
+          height: size,
+          child: Opacity(
+            opacity: .07,
+            child: ColorFiltered(
+              colorFilter: _greyscale,
+              child: Image.asset('assets/images/conacce_chaplains.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+            ),
+          ),
+        ),
+      ]);
+    });
   }
 }
