@@ -17,6 +17,9 @@ enum AppTab { home, tv, radio, sermons, works }
 
 final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
+/// Vidéo en grand (téléphone tourné sur la TV) : on cache les menus.
+final immersiveProvider = StateProvider<bool>((ref) => false);
+
 /// Écran de démarrage : le logo Conacce TV et sa lumière.
 /// Toucher l'écran ouvre l'accueil.
 class SplashScreen extends StatelessWidget {
@@ -119,11 +122,17 @@ class _AppShellState extends ConsumerState<AppShell> {
       (const Icon(Icons.menu_book_rounded), 'Œuvres'),
     ];
     final body = WaveBackground(child: IndexedStack(index: tab.index, children: _pages));
+    final immersive = ref.watch(immersiveProvider);
+    final wide = Breakpoints.isWide(context);
 
-    if (Breakpoints.isWide(context)) {
-      return Scaffold(
-        body: Row(children: [
+    // La zone des pages garde toujours la même place dans l'arbre (clé) :
+    // tourner le téléphone ne recrée pas la vidéo en cours.
+    return Scaffold(
+      extendBody: true,
+      body: Row(children: [
+        if (wide && !immersive)
           Container(
+            key: const ValueKey('rail'),
             decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [AppColors.navy, AppColors.navyDeep])),
             child: NavigationRail(
               backgroundColor: Colors.transparent,
@@ -139,37 +148,33 @@ class _AppShellState extends ConsumerState<AppShell> {
               destinations: [for (final (icon, label) in items) NavigationRailDestination(icon: icon, label: Text(label))],
             ),
           ),
-          Expanded(child: body),
-        ]),
-      );
-    }
-
-    return Scaffold(
-      body: body,
-      extendBody: true,
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00080F43), Color(0xD9080F43), AppColors.navyDeep], stops: [0, .35, 1]),
-        ),
-        child: NavigationBarTheme(
-          data: NavigationBarThemeData(
-            backgroundColor: Colors.transparent,
-            indicatorColor: AppColors.sunYellow,
-            iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(color: s.contains(WidgetState.selected) ? AppColors.navy : AppColors.muted)),
-            labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
-                  fontSize: 11,
-                  color: s.contains(WidgetState.selected) ? AppColors.sunYellow : AppColors.muted,
-                  fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-                )),
-          ),
-          child: NavigationBar(
-            elevation: 0,
-            selectedIndex: tab.index,
-            onDestinationSelected: select,
-            destinations: [for (final (icon, label) in items) NavigationDestination(icon: icon, label: label)],
-          ),
-        ),
-      ),
+        Expanded(key: const ValueKey('pages'), child: body),
+      ]),
+      bottomNavigationBar: wide || immersive
+          ? null
+          : DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00080F43), Color(0xD9080F43), AppColors.navyDeep], stops: [0, .35, 1]),
+              ),
+              child: NavigationBarTheme(
+                data: NavigationBarThemeData(
+                  backgroundColor: Colors.transparent,
+                  indicatorColor: AppColors.sunYellow,
+                  iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(color: s.contains(WidgetState.selected) ? AppColors.navy : AppColors.muted)),
+                  labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
+                        fontSize: 11,
+                        color: s.contains(WidgetState.selected) ? AppColors.sunYellow : AppColors.muted,
+                        fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                ),
+                child: NavigationBar(
+                  elevation: 0,
+                  selectedIndex: tab.index,
+                  onDestinationSelected: select,
+                  destinations: [for (final (icon, label) in items) NavigationDestination(icon: icon, label: label)],
+                ),
+              ),
+            ),
     );
   }
 }

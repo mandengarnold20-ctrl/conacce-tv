@@ -57,6 +57,16 @@
     };
   })();
   </script>
+  <!-- Plein écran de la vidéo avec le lecteur du téléphone (appelé par le bouton ⛶) -->
+  <script>
+  window.conacceFullscreen = function () {
+    var v = document.querySelector('video');
+    if (!v) return;
+    if (v.webkitEnterFullscreen) { v.webkitEnterFullscreen(); return; }
+    if (v.requestFullscreen) { v.requestFullscreen(); return; }
+    if (v.webkitRequestFullscreen) v.webkitRequestFullscreen();
+  };
+  </script>
   <!-- Supprime l'ancienne version gardée en mémoire par le navigateur (mise à jour immédiate) -->
   <script>
   if ('serviceWorker' in navigator) {

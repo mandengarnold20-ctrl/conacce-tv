@@ -14,6 +14,7 @@ import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import 'live_chat.dart';
+import 'shell.dart';
 
 /// Conacce TV en direct : vidéo, bandeau orateur / message, audio seul, partage, soutien.
 class LiveScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,16 @@ class LiveScreen extends ConsumerStatefulWidget {
 
 class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool _audioOnly = false;
+  // Même lecteur en mode normal et en grand écran : la vidéo continue sans coupure.
+  final _playerKey = GlobalKey();
+
+  /// Prévient la coque de l'appli qu'il faut cacher (ou réafficher) les menus.
+  void _syncImmersive(bool value) {
+    if (ref.read(immersiveProvider) == value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(immersiveProvider.notifier).state = value;
+    });
+  }
 
   Future<void> _toggleAudio(LiveStream live) async {
     final audio = ref.read(audioPlayerServiceProvider);
@@ -42,11 +53,23 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Widget build(BuildContext context) {
     final live = ref.watch(liveStreamProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
+    // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
+    final onTv = ref.watch(currentTabProvider) == AppTab.tv;
+    final size = MediaQuery.sizeOf(context);
+    final landscape = size.width > size.height && size.shortestSide < 600;
     return live.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => const Center(child: Text('Connexion impossible pour le moment.', style: TextStyle(color: AppColors.muted))),
       data: (l) {
+        final canPlay = l != null && l.canPlay;
+        final immersive = canPlay && onTv && landscape && !_audioOnly;
+        _syncImmersive(immersive);
         if (l == null || !l.canPlay) return _Offline(live: l);
+        final Widget player = onTv
+            ? HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView)
+            : const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
+        // Téléphone tourné : la vidéo occupe tout l'écran.
+        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: player));
         return ListView(
           padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: 110),
           children: [
@@ -67,7 +90,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       ),
                     )
                   else
-                    HlsVideoPlayer(url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView),
+                    player,
                   if (!_audioOnly && (l.speaker != null || l.messageTitle != null))
                     Positioned(
                       left: 12,

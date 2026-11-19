@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:chewie/chewie.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../theme/app_colors.dart';
+import 'web_fullscreen.dart';
 
 /// Lecteur vidéo adaptatif (HLS .m3u8 ou MP4) basé sur video_player + chewie.
 /// Utilisé par la TV Live (isLive = true) et par la VOD.
@@ -34,42 +36,17 @@ class HlsVideoPlayer extends StatefulWidget {
   State<HlsVideoPlayer> createState() => _HlsVideoPlayerState();
 }
 
-class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObserver {
+class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   VideoPlayerController? _video;
   ChewieController? _chewie;
   Object? _error;
-  bool? _wasLandscape;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     // Tant que la vidéo est à l'écran, on autorise la rotation du téléphone.
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
-    _wasLandscape = _isLandscape;
     _init();
-  }
-
-  /// Téléphone tourné (ou fenêtre plus large que haute), sur un petit écran uniquement.
-  bool get _isLandscape {
-    final view = WidgetsBinding.instance.platformDispatcher.views.first;
-    final size = view.physicalSize / view.devicePixelRatio;
-    return size.width > size.height && size.shortestSide < 600;
-  }
-
-  @override
-  void didChangeMetrics() {
-    final landscape = _isLandscape;
-    if (landscape == _wasLandscape) return;
-    _wasLandscape = landscape;
-    final chewie = _chewie;
-    if (chewie == null || !mounted) return;
-    // On tourne le téléphone : la vidéo prend tout l'écran ; on le remet droit : retour normal.
-    if (landscape && !chewie.isFullScreen) {
-      chewie.enterFullScreen();
-    } else if (!landscape && chewie.isFullScreen) {
-      chewie.exitFullScreen();
-    }
   }
 
   @override
@@ -102,7 +79,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
         allowedScreenSleep: false,
         allowMuting: true,
         showOptions: false,
-        allowFullScreen: true,
+        // Sur le web, le plein écran passe par le lecteur natif du téléphone (bouton dédié).
+        allowFullScreen: !kIsWeb,
         showControlsOnInitialize: false,
         // Plein écran en paysage, puis retour au portrait de l'appli.
         deviceOrientationsOnEnterFullScreen: const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
@@ -136,7 +114,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();
     // L'appli reprend l'affichage vertical.
     SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
@@ -153,7 +130,23 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
             ? _ErrorView(onRetry: _retry)
             : _chewie == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
-                : Chewie(controller: _chewie!),
+                : Stack(fit: StackFit.expand, children: [
+                    Chewie(controller: _chewie!),
+                    if (kIsWeb)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Material(
+                          color: const Color(0x80000000),
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: 'Plein écran',
+                            icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
+                            onPressed: requestVideoFullscreen,
+                          ),
+                        ),
+                      ),
+                  ]),
       ),
     );
   }
