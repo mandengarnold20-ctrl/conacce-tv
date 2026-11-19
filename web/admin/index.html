@@ -935,63 +935,72 @@ function shell(user) {
       h('div', { class: 'brand' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }), h('div', {}, 'ADMINISTRATION')),
       NAV.map(([k, i, l]) => h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, h('span', {}, i), l)),
       h('div', { class: 'spacer' }),
-      h('div', { class: 'who' }, user.email),
+      h('div', { class: 'who' }, userLabel(user.email)),
       h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, h('span', {}, '🚪'), 'Se déconnecter')),
     h('main', { id: 'main' })));
   const start = location.hash.slice(1);
   show(NAV.some(n => n[0] === start) ? start : 'dash');
 }
 
+// Connexion par nom d'utilisateur + mot de passe (le nom est converti en identifiant interne).
+const ADMIN_DOMAIN = 'admin.conacce-tv.app';
+const toLogin = u => {
+  u = String(u || '').trim();
+  if (u.includes('@')) return u.toLowerCase();
+  const slug = u.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9._-]+/g, '.').replace(/^[.]+|[.]+$/g, '');
+  return slug ? slug + '@' + ADMIN_DOMAIN : '';
+};
+const userLabel = e => String(e || '').endsWith('@' + ADMIN_DOMAIN) ? String(e).split('@')[0] : e;
+
 function loginScreen(msg) {
   const root = $('#root'); root.textContent = '';
   let mode = 'login';
-  const email = h('input', { type: 'email', placeholder: 'votre@email.com', autocomplete: 'email', required: true });
-  const pass = h('input', { type: 'password', placeholder: 'Mot de passe (6 caractères minimum)', autocomplete: 'current-password', style: 'margin-top:10px' });
+  const user = h('input', { type: 'text', placeholder: 'Nom d’utilisateur', autocomplete: 'username', autocapitalize: 'none', spellcheck: 'false', required: true });
+  const pass = h('input', { type: 'password', placeholder: 'Mot de passe (6 caractères minimum)', autocomplete: 'current-password', required: true, style: 'margin-top:10px' });
+  const pass2 = h('input', { type: 'password', placeholder: 'Retapez le mot de passe', autocomplete: 'new-password', style: 'margin-top:10px' });
   const btn = h('button', { class: 'btn primary', style: 'width:100%;margin-top:12px' });
   const info = h('p', {});
   const tabs = h('div', { class: 'quick', style: 'justify-content:center;margin:10px 0 4px' });
-  const modes = [['login', 'Se connecter'], ['signup', 'Créer mon compte'], ['link', 'Lien par e-mail']];
+  const modes = [['login', 'Se connecter'], ['signup', 'Créer mon compte']];
   const texts = {
-    login: 'Connectez-vous avec votre e-mail et votre mot de passe.',
-    signup: 'Choisissez votre mot de passe. Un administrateur activera ensuite votre accès.',
-    link: 'Vous recevrez un lien de connexion par e-mail (quelques envois par heure au maximum).',
+    login: 'Entrez votre nom d’utilisateur et votre mot de passe.',
+    signup: 'Choisissez vous-même votre nom d’utilisateur et votre mot de passe. Gardez-les précieusement.',
   };
   function draw() {
     tabs.textContent = '';
     for (const [k, l] of modes) tabs.append(h('button', { type: 'button', class: 'btn small ' + (mode === k ? 'primary' : 'ghost'), onclick: () => { mode = k; msg = null; draw(); } }, l));
-    pass.classList.toggle('hidden', mode === 'link');
-    pass.required = mode !== 'link';
+    pass2.classList.toggle('hidden', mode !== 'signup');
+    pass2.required = mode === 'signup';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-    btn.textContent = { login: 'Se connecter', signup: 'Créer mon compte', link: 'Recevoir mon lien de connexion' }[mode];
+    btn.textContent = mode === 'signup' ? 'Créer mon compte' : 'Se connecter';
     info.textContent = msg || texts[mode];
   }
   const form = h('form', { onsubmit: async e => {
     e.preventDefault();
-    const em = email.value.trim(), pw = pass.value, label = btn.textContent;
+    const name = user.value.trim(), login = toLogin(name), pw = pass.value, label = btn.textContent;
+    if (!login) return toast('Choisissez un nom d’utilisateur (lettres et chiffres).', true);
+    if (pw.length < 6) return toast('Le mot de passe doit faire au moins 6 caractères.', true);
+    if (mode === 'signup' && pw !== pass2.value) return toast('Les deux mots de passe ne sont pas identiques.', true);
     btn.disabled = true; btn.textContent = 'Patientez…';
     try {
       if (mode === 'login') {
-        const { error } = await sb.auth.signInWithPassword({ email: em, password: pw });
+        const { error } = await sb.auth.signInWithPassword({ email: login, password: pw });
         if (error) throw error;
         return boot();
       }
-      if (mode === 'signup') {
-        const { data, error } = await sb.auth.signUp({ email: em, password: pw, options: { emailRedirectTo: location.origin + location.pathname } });
-        if (error) throw error;
-        if (data.session) return boot();
-        info.textContent = 'Compte créé. Confirmez-le avec le lien reçu par e-mail, puis connectez-vous ici.';
-        return;
-      }
-      const { error } = await sb.auth.signInWithOtp({ email: em, options: { emailRedirectTo: location.origin + location.pathname } });
+      const { data, error } = await sb.auth.signUp({ email: login, password: pw, options: { data: { display_name: name } } });
       if (error) throw error;
-      info.textContent = '';
-      info.append('✉️ C’est envoyé à ', h('b', {}, em), '. Ouvrez le DERNIER e-mail reçu et touchez le lien (pensez aux spams).');
+      if (data.session) return boot();
+      mode = 'login';
+      msg = 'Compte « ' + name + ' » créé. Il doit être activé une fois par l’administrateur technique ; ensuite connectez-vous ici.';
+      draw();
     } catch (err) {
-      toast(friendly(err), true);
+      const m = String(err && err.message || err);
+      toast(/invalid login/i.test(m) ? 'Nom d’utilisateur ou mot de passe incorrect.' : /not confirmed/i.test(m) ? 'Ce compte n’est pas encore activé.' : friendly(err), true);
     } finally {
       btn.disabled = false; btn.textContent = label;
     }
-  } }, email, pass, btn);
+  } }, user, pass, pass2, btn);
   draw();
   root.append(h('div', { class: 'center' }, h('div', { class: 'login' },
     h('img', { class: 'logo', src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }),
@@ -1003,7 +1012,7 @@ function deniedScreen(user) {
   root.append(h('div', { class: 'center' }, h('div', { class: 'login' },
     h('img', { class: 'logo', src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }),
     h('h1', { style: 'text-align:center' }, 'Accès réservé'),
-    h('p', {}, 'Vous êtes connecté avec ', h('b', {}, user.email), ', mais ce compte n’est pas encore administrateur.'),
+    h('p', {}, 'Vous êtes connecté avec ', h('b', {}, userLabel(user.email)), ', mais ce compte n’est pas encore administrateur.'),
     h('p', {}, 'Un administrateur peut vous donner l’accès dans la rubrique « Équipe ». Rechargez ensuite cette page.'),
     h('div', { style: 'display:flex;gap:10px' },
       h('button', { class: 'btn primary', onclick: () => location.reload() }, 'Recharger'),
@@ -1014,7 +1023,7 @@ async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
     const err = new URLSearchParams(location.hash.slice(1)).get('error_description');
-    return loginScreen(err ? 'Ce lien a expiré ou a déjà servi. Connectez-vous avec votre mot de passe ou demandez un nouveau lien.' : null);
+    return loginScreen(err ? 'Ce lien a expiré. Connectez-vous avec votre nom d’utilisateur et votre mot de passe.' : null);
   }
   me = session.user;
   const { data, error } = await sb.from('app_users').select('role').eq('id', me.id).maybeSingle();
