@@ -48,6 +48,18 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   int _stalledTicks = 0;
   bool _wasPlayingBeforeHidden = false;
 
+  // Bouton plein écran (web) : visible 10 s après un toucher sur la vidéo.
+  bool _showFullscreen = false;
+  Timer? _fullscreenTimer;
+
+  void _revealFullscreen() {
+    _fullscreenTimer?.cancel();
+    if (!_showFullscreen) setState(() => _showFullscreen = true);
+    _fullscreenTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) setState(() => _showFullscreen = false);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -158,6 +170,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   @override
   void dispose() {
     _watchdog?.cancel();
+    _fullscreenTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();
     // L'appli reprend l'affichage vertical.
@@ -175,23 +188,34 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
             ? _ErrorView(onRetry: _retry)
             : _chewie == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
-                : Stack(fit: StackFit.expand, children: [
-                    Chewie(controller: _chewie!),
-                    if (kIsWeb)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Material(
-                          color: const Color(0x80000000),
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            tooltip: 'Plein écran',
-                            icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
-                            onPressed: requestVideoFullscreen,
+                : Listener(
+                    // Un toucher sur la vidéo fait apparaître le bouton plein écran.
+                    onPointerDown: kIsWeb ? (_) => _revealFullscreen() : null,
+                    child: Stack(fit: StackFit.expand, children: [
+                      Chewie(controller: _chewie!),
+                      if (kIsWeb)
+                        Positioned(
+                          left: 8,
+                          top: 8,
+                          child: IgnorePointer(
+                            ignoring: !_showFullscreen,
+                            child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 300),
+                              opacity: _showFullscreen ? 1 : 0,
+                              child: Material(
+                                color: const Color(0x80000000),
+                                shape: const CircleBorder(),
+                                child: IconButton(
+                                  tooltip: 'Plein écran',
+                                  icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
+                                  onPressed: requestVideoFullscreen,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                  ]),
+                    ]),
+                  ),
       ),
     );
   }

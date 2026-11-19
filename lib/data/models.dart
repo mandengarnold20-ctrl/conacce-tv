@@ -88,11 +88,14 @@ class Sermon {
     this.isFeatured = false,
     this.isDownloadable = true,
     this.viewCount = 0,
+    this.section = 'cultes',
   });
 
   final String id;
   final String title;
   final SermonCategory category;
+  /// « cultes » (onglet Cultes) ou « conacce » (Vidéos Conacce).
+  final String section;
   final String? description;
   final String? speaker;
   final DateTime? preachedOn;
@@ -106,6 +109,33 @@ class Sermon {
   final DateTime createdAt;
 
   bool get hasVideo => videoUrl?.isNotEmpty ?? false;
+
+  /// Identifiant YouTube si la vidéo est un lien YouTube.
+  String? get youtubeId => parseYoutubeId(videoUrl);
+
+  /// Lien Facebook (vidéo publique).
+  bool get isFacebook {
+    final host = Uri.tryParse(videoUrl?.trim() ?? '')?.host ?? '';
+    return host.contains('facebook.com') || host.contains('fb.watch');
+  }
+
+  /// Vidéo hébergée sur YouTube ou Facebook : lue dans l'appli via le lecteur intégré.
+  bool get isEmbed => youtubeId != null || isFacebook;
+
+  /// Adresse du lecteur intégré (YouTube / Facebook).
+  String? get embedUrl {
+    final id = youtubeId;
+    if (id != null) return 'https://www.youtube.com/embed/$id?autoplay=1&playsinline=1&rel=0&modestbranding=1';
+    if (isFacebook) return 'https://www.facebook.com/plugins/video.php?href=${Uri.encodeComponent(videoUrl!.trim())}&show_text=false&autoplay=true';
+    return null;
+  }
+
+  /// Image de la vignette : celle choisie par l'admin, sinon celle de YouTube.
+  String? get coverUrl {
+    if (thumbnailUrl?.isNotEmpty ?? false) return thumbnailUrl;
+    final id = youtubeId;
+    return id == null ? null : 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+  }
   bool get hasAudio => audioUrl?.isNotEmpty ?? false;
 
   String? get durationLabel {
@@ -129,6 +159,7 @@ class Sermon {
         isFeatured: m['is_featured'] as bool? ?? false,
         isDownloadable: m['is_downloadable'] as bool? ?? true,
         viewCount: (m['view_count'] as num?)?.toInt() ?? 0,
+        section: m['section'] as String? ?? 'cultes',
         createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
       );
 
@@ -146,6 +177,7 @@ class Sermon {
         'is_featured': isFeatured,
         'is_downloadable': isDownloadable,
         'view_count': viewCount,
+        'section': section,
         'created_at': createdAt.toUtc().toIso8601String(),
       };
 }
@@ -212,7 +244,7 @@ class HomeBanner {
 
 /// Réglages (table app_settings, id = 1).
 class AppSettings {
-  const AppSettings({this.manOfGodName, this.donationUrl, this.whatsappUrl, this.facebookUrl, this.youtubeUrl, this.contactEmail});
+  const AppSettings({this.manOfGodName, this.donationUrl, this.whatsappUrl, this.facebookUrl, this.youtubeUrl, this.contactEmail, this.websiteUrl});
 
   final String? manOfGodName;
   final String? donationUrl;
@@ -220,6 +252,11 @@ class AppSettings {
   final String? facebookUrl;
   final String? youtubeUrl;
   final String? contactEmail;
+  final String? websiteUrl;
+
+  /// Site et e-mail de la CONACCE (valeurs par défaut si non renseignés dans l'admin).
+  String get website => (websiteUrl?.trim().isNotEmpty ?? false) ? websiteUrl!.trim() : 'https://conaccechaplainsafrique.com';
+  String get email => (contactEmail?.trim().isNotEmpty ?? false) ? contactEmail!.trim() : 'contact@conaccechaplainsafrique.com';
 
   factory AppSettings.fromMap(Map<String, dynamic> m) => AppSettings(
         manOfGodName: m['man_of_god_name'] as String?,
@@ -228,6 +265,7 @@ class AppSettings {
         facebookUrl: m['facebook_url'] as String?,
         youtubeUrl: m['youtube_url'] as String?,
         contactEmail: m['contact_email'] as String?,
+        websiteUrl: m['website_url'] as String?,
       );
 }
 
@@ -246,4 +284,19 @@ class LiveComment {
         body: (m['body'] as String?)?.trim() ?? '',
         createdAt: DateTime.tryParse(m['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       );
+}
+
+/// Extrait l'identifiant d'une vidéo YouTube (watch, youtu.be, shorts, live, embed).
+String? parseYoutubeId(String? url) {
+  final u = Uri.tryParse(url?.trim() ?? '');
+  if (u == null || u.host.isEmpty) return null;
+  final host = u.host.replaceFirst('www.', '').replaceFirst('m.', '');
+  if (host == 'youtu.be') return u.pathSegments.isNotEmpty ? u.pathSegments.first : null;
+  if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+    final v = u.queryParameters['v'];
+    if (v != null && v.isNotEmpty) return v;
+    final seg = u.pathSegments;
+    if (seg.length >= 2 && const ['shorts', 'live', 'embed', 'v'].contains(seg[0])) return seg[1];
+  }
+  return null;
 }

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/analytics.dart';
 import '../core/media/audio_player_service.dart';
+import '../core/media/embed_video.dart';
 import '../core/media/hls_video_player.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
@@ -46,17 +47,28 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
     super.dispose();
   }
 
+  void _setSection(String section) {
+    _search.clear();
+    setState(() {
+      _results = null;
+      _offline = false;
+    });
+    ref.read(videoSectionProvider.notifier).state = section;
+  }
+
   void _onSearch(String v) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
-      setState(() => _results = v.trim().length < 2 ? null : searchSermons(v.trim()));
+      setState(() => _results = v.trim().length < 2 ? null : searchSermons(v.trim(), section: ref.read(videoSectionProvider)));
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final category = ref.watch(sermonCategoryProvider);
-    final sermons = ref.watch(sermonsProvider(category));
+    final section = ref.watch(videoSectionProvider);
+    final isCultes = section == 'cultes';
+    final category = isCultes ? ref.watch(sermonCategoryProvider) : null;
+    final sermons = ref.watch(sermonsProvider((section, category)));
     final downloads = ref.watch(downloadsProvider);
 
     Widget chip(String label, bool selected, VoidCallback onTap) => Padding(
@@ -81,7 +93,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
           final r = snap.data ?? const <Sermon>[];
-          return r.isEmpty ? const _Message('Aucun culte trouvé.') : _SermonList(items: r);
+          return r.isEmpty ? const _Message('Aucune vidéo trouvée.') : _SermonList(items: r);
         },
       );
     } else if (_offline) {
@@ -95,16 +107,23 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
       list = sermons.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const _Message('Connexion impossible pour le moment.'),
-        data: (items) => items.isEmpty ? const _Message('Aucun culte dans cette catégorie pour le moment.') : _SermonList(items: items),
+        data: (items) => items.isEmpty
+            ? _Message(isCultes ? 'Aucun culte dans cette catégorie pour le moment.' : 'Les vidéos Conacce arrivent bientôt.')
+            : _SermonList(items: items),
       );
     }
 
     return MaxWidth(
       maxWidth: 900,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Deux pages : les cultes et les vidéos Conacce
         Padding(
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 14, 20, 12),
-          child: Text('Cultes', style: AppTheme.title(size: 22, weight: FontWeight.w800)),
+          child: Row(children: [
+            Expanded(child: _SectionTab(label: 'Cultes', icon: Icons.church_rounded, selected: isCultes, onTap: () => _setSection('cultes'))),
+            const SizedBox(width: 10),
+            Expanded(child: _SectionTab(label: 'Vidéos Conacce', icon: Icons.smart_display_rounded, selected: !isCultes, onTap: () => _setSection('conacce'))),
+          ]),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -113,7 +132,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
             onChanged: _onSearch,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Rechercher un culte, un thème, un orateur…',
+              hintText: isCultes ? 'Rechercher un culte, un thème, un orateur…' : 'Rechercher une vidéo Conacce…',
               prefixIcon: const Icon(Icons.search_rounded, color: AppColors.muted),
               suffixIcon: _search.text.isEmpty
                   ? null
@@ -128,7 +147,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
             ),
           ),
         ),
-        SizedBox(
+        if (isCultes) SizedBox(
           height: 52,
           child: ListView(
             scrollDirection: Axis.horizontal,
@@ -149,6 +168,39 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         ),
         Expanded(child: list),
       ]),
+    );
+  }
+}
+
+class _SectionTab extends StatelessWidget {
+  const _SectionTab({required this.label, required this.icon, required this.selected, required this.onTap});
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        height: 46,
+        decoration: BoxDecoration(
+          gradient: selected ? AppColors.sunGradient : AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(14),
+          border: selected ? null : Border.all(color: const Color(0x22FFFFFF)),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 18, color: selected ? AppColors.navy : Colors.white),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
+          ),
+        ]),
+      ),
     );
   }
 }
@@ -185,7 +237,7 @@ class SermonTile extends StatelessWidget {
             width: 150,
             height: 86,
             child: Stack(fit: StackFit.expand, children: [
-              NetCover(url: sermon.thumbnailUrl, radius: 12),
+              NetCover(url: sermon.coverUrl, radius: 12),
               if (sermon.durationLabel != null)
                 Positioned(
                   right: 6,
@@ -234,7 +286,7 @@ class SermonCard extends StatelessWidget {
           height: 118,
           width: double.infinity,
           child: Stack(fit: StackFit.expand, children: [
-            NetCover(url: sermon.thumbnailUrl, radius: 14),
+            NetCover(url: sermon.coverUrl, radius: 14),
             if (sermon.durationLabel != null)
               Positioned(
                 right: 8,
@@ -305,14 +357,16 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
   void initState() {
     super.initState();
     if (_audioOnly) WidgetsBinding.instance.addPostFrameCallback((_) => _playAudio());
+    // Vidéo YouTube / Facebook : comptée comme une vue dès l'ouverture.
+    if (!_audioOnly && widget.sermon.isEmbed) Analytics.sermonPlay(widget.sermon.id);
   }
 
   Future<void> _playAudio() async {
     final local = _local(video: false);
-    final url = local?.path ?? s.audioUrl ?? (s.hasVideo ? s.videoUrl : null);
+    final url = local?.path ?? s.audioUrl ?? (s.hasVideo && !s.isEmbed ? s.videoUrl : null);
     if (url == null) return;
     Analytics.sermonPlay(s.id);
-    await ref.read(audioPlayerServiceProvider).play(id: s.id, url: url, isFile: local != null, title: s.title, artist: s.speaker ?? 'Conacce TV', artworkUrl: s.thumbnailUrl);
+    await ref.read(audioPlayerServiceProvider).play(id: s.id, url: url, isFile: local != null, title: s.title, artist: s.speaker ?? 'Conacce TV', artworkUrl: s.coverUrl);
   }
 
   Future<void> _download({required bool video}) async {
@@ -334,12 +388,14 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
     final localVideo = _local(video: true);
     final videoSource = localVideo?.path ?? s.videoUrl;
 
-    final player = !_audioOnly && videoSource != null
+    final player = !_audioOnly && s.isEmbed && localVideo == null
+        ? EmbedVideo(embedUrl: s.embedUrl!, sourceUrl: s.videoUrl!, coverUrl: s.coverUrl)
+        : !_audioOnly && videoSource != null
         ? HlsVideoPlayer(url: videoSource, isFile: localVideo != null, onStarted: () => Analytics.sermonPlay(s.id))
         : AspectRatio(
             aspectRatio: 16 / 9,
             child: Stack(fit: StackFit.expand, children: [
-              NetCover(url: s.thumbnailUrl, radius: 0),
+              NetCover(url: s.coverUrl, radius: 0),
               const ColoredBox(color: Color(0x99080F43)),
               Center(
                 child: GestureDetector(
@@ -371,7 +427,7 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(s.category.label)),
+      appBar: AppBar(title: Text(s.section == 'conacce' ? 'Vidéos Conacce' : s.category.label)),
       extendBodyBehindAppBar: false,
       body: WaveBackground(
         child: ListView(
@@ -400,7 +456,7 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
                         }),
                       pill(Icons.share_rounded, 'Partager', () => Share.share('« ${s.title} » — à revoir sur l’appli Conacce TV')),
                       if (DownloadsController.supported && s.isDownloadable && s.hasAudio) downloadPill(false),
-                      if (DownloadsController.supported && s.isDownloadable && s.hasVideo && !(s.videoUrl ?? '').contains('.m3u8')) downloadPill(true),
+                      if (DownloadsController.supported && s.isDownloadable && s.hasVideo && !s.isEmbed && !(s.videoUrl ?? '').contains('.m3u8')) downloadPill(true),
                     ]),
                     if (s.description != null && s.description!.trim().isNotEmpty) ...[
                       const SizedBox(height: 18),

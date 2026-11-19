@@ -118,7 +118,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       (const Icon(Icons.home_rounded), 'Accueil'),
       (badge(Icons.live_tv_rounded), 'TV'),
       (const Icon(Icons.radio_rounded), 'Radio'),
-      (const Icon(Icons.church_rounded), 'Cultes'),
+      (const Icon(Icons.video_library_rounded), 'Vidéos'),
       (const Icon(Icons.menu_book_rounded), 'Œuvres'),
     ];
     final body = WaveBackground(child: IndexedStack(index: tab.index, children: _pages));

@@ -8,6 +8,7 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
+import 'contact_screen.dart';
 import 'shell.dart';
 import 'sermons_screen.dart';
 import 'works_screen.dart';
@@ -40,7 +41,7 @@ class HomeScreen extends ConsumerWidget {
     final live = ref.watch(liveStreamProvider).valueOrNull;
     final radio = ref.watch(radioProvider).valueOrNull;
     final banners = ref.watch(bannersProvider).valueOrNull ?? const [];
-    final sermons = ref.watch(sermonsProvider(null));
+    final sermons = ref.watch(sermonsProvider(('cultes', null)));
     final works = ref.watch(worksProvider).valueOrNull ?? const [];
 
     return RefreshIndicator(
@@ -48,7 +49,7 @@ class HomeScreen extends ConsumerWidget {
         ref.invalidate(bannersProvider);
         ref.invalidate(sermonsProvider);
         ref.invalidate(worksProvider);
-        await ref.read(sermonsProvider(null).future).catchError((_) => <Sermon>[]);
+        await ref.read(sermonsProvider(('cultes', null)).future).catchError((_) => <Sermon>[]);
       },
       child: ListView(
         padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + 12, bottom: 110),
@@ -61,6 +62,11 @@ class HomeScreen extends ConsumerWidget {
                 child: Row(children: [
                   const LogoShine(width: 150, radius: 3),
                   const Spacer(),
+                  IconButton(
+                    tooltip: 'Contact et messagerie',
+                    onPressed: () => openContact(context),
+                    icon: const Icon(Icons.mail_outline_rounded, color: Colors.white),
+                  ),
                 ]),
               ),
               const SizedBox(height: 18),
@@ -75,7 +81,10 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               if ((sermons.valueOrNull?.length ?? 0) > 1) ...[
-                SectionTitle('Cultes enregistrés', onSeeAll: () => _go(ref, AppTab.sermons)),
+                SectionTitle('Cultes enregistrés', onSeeAll: () {
+                  ref.read(videoSectionProvider.notifier).state = 'cultes';
+                  _go(ref, AppTab.sermons);
+                }),
                 SizedBox(
                   height: 178,
                   child: ListView.separated(
@@ -163,6 +172,31 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+
+              // Contact et messagerie
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                child: NavyCard(
+                  onTap: () => openContact(context),
+                  child: Row(children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(gradient: AppColors.sunGradient, borderRadius: BorderRadius.circular(13)),
+                      child: const Icon(Icons.forum_rounded, color: AppColors.navy),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Écrivez-nous', style: AppTheme.title(size: 14)),
+                        const SizedBox(height: 2),
+                        const Text('Messagerie, site et e-mail de la CONACCE', style: TextStyle(color: AppColors.mist, fontSize: 12)),
+                      ]),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+                  ]),
+                ),
+              ),
             ]),
           ),
         ],
@@ -185,7 +219,7 @@ class _FeaturedSermon extends StatelessWidget {
         AspectRatio(
           aspectRatio: 16 / 9,
           child: Stack(fit: StackFit.expand, children: [
-            NetCover(url: sermon.thumbnailUrl, radius: 18),
+            NetCover(url: sermon.coverUrl, radius: 18),
             DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),

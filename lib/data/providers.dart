@@ -18,21 +18,26 @@ final radioProvider = StreamProvider<RadioStation?>((ref) {
 /// Filtre des cultes (null = tous).
 final sermonCategoryProvider = StateProvider<SermonCategory?>((ref) => null);
 
-/// Cultes publiés, du plus récent au plus ancien.
-final sermonsProvider = FutureProvider.family<List<Sermon>, SermonCategory?>((ref, category) async {
-  var q = _db.from('sermons').select().eq('is_published', true);
+/// Rubrique affichée dans l'onglet Vidéos : « cultes » ou « conacce ».
+final videoSectionProvider = StateProvider<String>((ref) => 'cultes');
+
+/// Vidéos publiées d'une rubrique (et d'une catégorie), du plus récent au plus ancien.
+final sermonsProvider = FutureProvider.family<List<Sermon>, (String, SermonCategory?)>((ref, key) async {
+  final (section, category) = key;
+  var q = _db.from('sermons').select().eq('is_published', true).eq('section', section);
   if (category != null) q = q.eq('category', category.name);
   final rows = await q.order('preached_on', ascending: false, nullsFirst: false).order('created_at', ascending: false).limit(200);
   return rows.map(Sermon.fromMap).toList();
 });
 
 /// Recherche dans les cultes (titre, orateur, description).
-Future<List<Sermon>> searchSermons(String query) async {
+Future<List<Sermon>> searchSermons(String query, {String section = 'cultes'}) async {
   final q = query.replaceAll(RegExp(r'[%,()]'), ' ').trim();
   final rows = await _db
       .from('sermons')
       .select()
       .eq('is_published', true)
+      .eq('section', section)
       .or('title.ilike.%$q%,speaker.ilike.%$q%,description.ilike.%$q%')
       .order('preached_on', ascending: false, nullsFirst: false)
       .limit(50);
@@ -93,4 +98,26 @@ final liveCommentsProvider = StreamProvider.autoDispose<List<LiveComment>>((ref)
 /// Envoie un message sous la TV.
 Future<void> sendLiveComment({required String name, required String body, required String visitorId}) async {
   await _db.from('live_comments').insert({'name': name.trim(), 'body': body.trim(), 'visitor_id': visitorId});
+}
+
+/// Envoie un message à la CONACCE (messagerie).
+Future<void> sendMessage({
+  required String name,
+  required String body,
+  required String visitorId,
+  String? countryCode,
+  String? countryName,
+  String? email,
+  String? phone,
+}) async {
+  String? clean(String? v) => (v == null || v.trim().isEmpty) ? null : v.trim();
+  await _db.from('messages').insert({
+    'name': name.trim(),
+    'body': body.trim(),
+    'visitor_id': visitorId,
+    'country_code': countryCode,
+    'country_name': countryName,
+    'email': clean(email),
+    'phone': clean(phone),
+  });
 }

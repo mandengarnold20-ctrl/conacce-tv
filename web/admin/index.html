@@ -218,6 +218,20 @@ function friendly(err) {
 
 // ─── Listes de choix ───
 const CATS = [['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['special', 'Culte spécial'], ['autre', 'Autre']];
+const SECTIONS = [['cultes', 'Cultes'], ['conacce', 'Vidéos Conacce']];
+// Vignette automatique des vidéos YouTube
+function ytId(u) {
+  try {
+    const x = new URL(String(u || '').trim()); const host = x.hostname.replace(/^(www|m)\./, '');
+    if (host === 'youtu.be') return x.pathname.split('/')[1] || null;
+    if (/youtube(-nocookie)?\.com$/.test(host)) { if (x.searchParams.get('v')) return x.searchParams.get('v'); const p = x.pathname.split('/'); if (['shorts', 'live', 'embed', 'v'].includes(p[1])) return p[2] || null; }
+  } catch (e) {}
+  return null;
+}
+const ytThumb = u => { const id = ytId(u); return id ? 'https://img.youtube.com/vi/' + id + '/hqdefault.jpg' : null; };
+const isFb = u => /(facebook\.com|fb\.watch)/i.test(String(u || ''));
+// Drapeau émoji à partir du code pays (BJ → 🇧🇯)
+const flag = c => (c && /^[A-Z]{2}$/.test(c)) ? String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '🌍';
 const TARGETS = [['none', 'Rien (simple affiche)'], ['live', 'La TV en direct'], ['radio', 'Radio Dunamis FM'], ['sermon', 'Un culte'], ['work', 'Une Œuvre d’Or'], ['url', 'Un lien internet']];
 const TARGET_REF = { sermon: 'sermons', work: 'works' };
 const PLATFORMS = { android: 'Android', ios: 'iPhone', web: 'Site web', desktop: 'Ordinateur', tv: 'TV', autre: 'Autre' };
@@ -236,18 +250,19 @@ async function loadRefs() {
 // ─── Description de chaque rubrique ───
 const ENT = {
   sermons: {
-    table: 'sermons', title: 'Cultes', one: 'un culte', icon: '⛪',
-    intro: 'Publiez vos cultes enregistrés, comme sur une chaîne vidéo. Vidéo longue : envoyez-la sur Cloudflare Stream (Vidéos hébergées) et collez ici son lien .m3u8.',
+    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '🎬',
+    intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
-    name: r => r.title, img: r => r.thumbnail_url,
-    sub: r => [label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
-    badges: r => [r.video_url && ['🎬 Vidéo'], r.audio_url && ['🎧 Audio'], r.is_featured && ['★ À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), (r.section || 'cultes') === 'cultes' ? label(CATS, r.category) : '', r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
+    badges: r => [ytId(r.video_url) ? ['▶ YouTube'] : isFb(r.video_url) ? ['▶ Facebook'] : r.video_url && ['🎬 Vidéo'], r.audio_url && ['🎧 Audio'], r.is_featured && ['★ À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
-      { k: 'title', label: 'Titre du culte', type: 'text', req: true },
-      { k: 'category', label: 'Type de culte', type: 'select', opts: CATS, def: 'dimanche', req: true },
+      { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'cultes', req: true, help: '« Cultes » ou « Vidéos Conacce » (onglet Vidéos de l’appli).' },
+      { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
+      { k: 'category', label: 'Type de culte', type: 'select', opts: CATS, def: 'dimanche', req: true, show: v => (v.section || 'cultes') === 'cultes' },
       { k: 'speaker', label: 'Orateur', type: 'text' },
       { k: 'preached_on', label: 'Date du culte', type: 'date' },
-      { k: 'video_url', label: 'Vidéo du culte', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: `Courte vidéo : envoyez le fichier (maximum ${MAX_MB} Mo). Culte complet : collez le lien .m3u8 de Cloudflare Stream.` },
+      { k: 'video_url', label: 'Vidéo (lien YouTube / Facebook, ou fichier)', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: `Collez le lien YouTube ou Facebook (ex : https://youtu.be/…) : la vidéo joue dans l’appli et la miniature YouTube est prise automatiquement. Sinon : fichier (maximum ${MAX_MB} Mo) ou lien .m3u8 Cloudflare.` },
       { k: 'audio_url', label: 'Audio du culte (MP3)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et hors connexion.' },
       { k: 'thumbnail_url', label: 'Miniature', type: 'image', help: 'Image paysage (1280 × 720 conseillé).' },
       { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
@@ -514,7 +529,7 @@ function collect(fields, vals, validate) {
   for (const f of fields) {
     if (f.k.startsWith('_')) continue;
     let v = vals[f.k];
-    if (!visible(f)) v = f.type === 'checkbox' ? false : null;
+    if (!visible(f)) v = f.type === 'checkbox' ? false : (f.def ?? null);
     if (f.type === 'checkbox') v = !!v;
     else if (f.type === 'links') v = Object.fromEntries(Object.entries(v || {}).filter(([, x]) => x));
     else if (typeof v === 'string') { v = v.trim(); if (v === '') v = null; }
@@ -633,7 +648,7 @@ async function showDash(days = 30) {
   period.addEventListener('change', () => show('dash', Number(period.value)));
   main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Tableau de bord'), h('p', { class: 'intro' }, 'Fréquentation de Conacce TV (téléphones, tablettes, ordinateurs, site web).')), period),
     h('div', { class: 'quick' },
-      h('button', { class: 'btn primary', onclick: () => { show('sermons'); openForm('sermons', null); } }, '⛪ Publier un culte'),
+      h('button', { class: 'btn primary', onclick: () => { show('sermons'); openForm('sermons', null); } }, '🎬 Publier une vidéo'),
       h('button', { class: 'btn', onclick: () => show('live') }, '📡 TV en direct'),
       h('button', { class: 'btn', onclick: () => show('radio') }, '📻 Radio'),
       h('button', { class: 'btn', onclick: () => { show('works'); openForm('works', null); } }, '📖 Ajouter une œuvre')));
@@ -776,7 +791,8 @@ async function showSettings() {
     { k: 'whatsapp_url', label: 'Lien WhatsApp', type: 'url' },
     { k: 'facebook_url', label: 'Page Facebook', type: 'url' },
     { k: 'youtube_url', label: 'Chaîne YouTube', type: 'url' },
-    { k: 'contact_email', label: 'E-mail de contact', type: 'text' },
+    { k: 'website_url', label: 'Site internet de la CONACCE', type: 'url', help: 'Ex : https://conaccechaplainsafrique.com (lien cliquable dans la page Contact de l’appli).' },
+    { k: 'contact_email', label: 'E-mail de contact', type: 'text', help: 'Ex : contact@conaccechaplainsafrique.com' },
   ];
   const vals = { ...(data || {}) };
   const body = h('div', { class: 'panel' });
@@ -830,6 +846,48 @@ async function showComments() {
   }
 }
 
+// ─── Messagerie (messages du monde entier) ───
+async function showInbox() {
+  const main = $('#main');
+  const { data, error } = await sb.from('messages').select('*').order('created_at', { ascending: false }).limit(1000);
+  if (current !== 'inbox') return;
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Messagerie'),
+    h('p', { class: 'intro' }, 'Les messages envoyés depuis l’appli (page Contact), avec le pays de chaque personne.'))));
+  if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
+  if (!data.length) return main.append(h('div', { class: 'empty' }, 'Aucun message pour le moment.'));
+  const byCountry = {};
+  for (const m of data) { const k = m.country_code || '??'; byCountry[k] = (byCountry[k] || 0) + 1; }
+  main.append(h('div', { class: 'panel' }, h('h2', {}, 'Pays'),
+    h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }, Object.entries(byCountry).sort((a, b) => b[1] - a[1]).map(([c, n]) =>
+      h('span', { class: 'badge', style: 'font-size:14px;padding:6px 10px' }, flag(c) + ' ' + (data.find(m => (m.country_code || '??') === c).country_name || 'Inconnu') + ' · ' + n)))));
+  const list = h('div', { class: 'list' });
+  for (const m of data) {
+    const read = h('button', { class: 'btn small' }, m.is_read ? 'Marquer non lu' : 'Marquer lu');
+    const del = h('button', { class: 'btn small danger' }, 'Supprimer');
+    const contact = [m.email && h('a', { href: 'mailto:' + m.email }, m.email), m.phone && h('a', { href: 'tel:' + m.phone.replace(/\s/g, '') }, m.phone)].filter(Boolean);
+    const row = h('div', { class: 'item', style: 'grid-template-columns:52px 1fr auto' + (m.is_read ? ';opacity:.65' : '') },
+      h('div', { class: 'thumb', style: 'font-size:30px;display:grid;place-items:center' }, flag(m.country_code)),
+      h('div', {},
+        h('div', { class: 't' }, (m.is_read ? '' : '🟡 ') + m.name + ' · ' + (m.country_name || 'Pays inconnu')),
+        h('div', { class: 's' }, new Date(m.created_at).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }), contact.length ? ' · ' : '', ...contact.flatMap((c, i) => i ? [' · ', c] : [c])),
+        h('div', { style: 'white-space:pre-wrap;margin-top:6px' }, m.body)),
+      h('div', { class: 'acts' }, read, del));
+    read.addEventListener('click', async () => {
+      const { error } = await sb.from('messages').update({ is_read: !m.is_read }).eq('id', m.id);
+      if (error) return toast(friendly(error), true);
+      show('inbox');
+    });
+    del.addEventListener('click', async () => {
+      if (!confirm('Supprimer ce message ?')) return;
+      const { error } = await sb.from('messages').delete().eq('id', m.id);
+      if (error) return toast(friendly(error), true);
+      row.remove(); toast('Message supprimé ✔');
+    });
+    list.append(row);
+  }
+  main.append(list);
+}
+
 // ─── Équipe ───
 async function showTeam() {
   const main = $('#main');
@@ -856,7 +914,7 @@ async function showTeam() {
 
 // ─── Navigation ───
 const NAV = [
-  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '⛪', 'Cultes'],
+  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['inbox', '✉️', 'Messagerie'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '🎬', 'Vidéos'],
   ['works', '📖', 'Œuvres d’Or'], ['banners', '🖼️', 'Affiches'], ['settings', '⚙️', 'Réglages'], ['team', '👥', 'Équipe'],
 ];
 let current = null, me = null;
@@ -867,7 +925,7 @@ function show(key, arg) {
   document.querySelectorAll('button.nav').forEach(b => b.classList.toggle('on', b.dataset.k === key));
   const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
   if (ENT[key]) return showList(key);
-  ({ dash: showDash, live: showLive, comments: showComments, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
+  ({ dash: showDash, live: showLive, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
 }
 
 function shell(user) {
