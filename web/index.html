@@ -57,6 +57,17 @@
     };
   })();
   </script>
+  <!-- Supprime l'ancienne version gardée en mémoire par le navigateur (mise à jour immédiate) -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (rs) {
+      if (!rs.length) return;
+      Promise.all(rs.map(function (r) { return r.unregister(); }))
+        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); }) : null; })
+        .then(function () { try { if (!sessionStorage.getItem('maj')) { sessionStorage.setItem('maj', '1'); location.reload(); } } catch (e) {} });
+    });
+  }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
