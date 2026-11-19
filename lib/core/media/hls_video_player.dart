@@ -70,24 +70,52 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 3), (_) => _keepAlive());
   }
 
-  /// Relance le direct s'il s'est figé, interrompu ou arrêté tout seul (réseau, fin de segment).
-  /// Une pause faite à la main (lecture arrêtée, sans erreur) est respectée.
+  /// Surveille le direct sans jamais le couper pour rien :
+  /// - tant que l'image avance, tout va bien (même si le navigateur a signalé une petite erreur
+  ///   que hls.js a déjà réparée) ;
+  /// - une pause faite à la main est respectée ;
+  /// - si l'image reste figée, on relance doucement la lecture, puis on recharge le direct
+  ///   seulement après ~15 s sans aucune image.
+  bool _stalled = false;
+
   void _keepAlive() {
     if (!mounted) return;
     if (_error != null) return _retry();
-    final v = _video?.value;
-    if (v == null || !v.isInitialized) return;
-    if (v.hasError) return _retry();
-    if (v.isCompleted) return _retry();
-    if (v.isPlaying) {
-      _stalledTicks = v.position == _lastPosition ? _stalledTicks + 1 : 0;
-      _lastPosition = v.position;
-      if (_stalledTicks >= 4) {
+    final video = _video;
+    final v = video?.value;
+    if (video == null || v == null) return;
+    if (v.hasError) {
+      // Le lecteur a perdu le fil : on recharge le direct après ~6 s.
+      _stalledTicks++;
+      if (!_stalled) setState(() => _stalled = true);
+      if (_stalledTicks >= 2) {
         _stalledTicks = 0;
         _retry();
       }
-    } else {
+      return;
+    }
+    if (!v.isInitialized) return;
+    final progressing = v.position != _lastPosition;
+    _lastPosition = v.position;
+    if (progressing) {
       _stalledTicks = 0;
+      if (_stalled) setState(() => _stalled = false);
+      return;
+    }
+    final manualPause = !v.isPlaying && !v.isBuffering && !v.isCompleted;
+    if (manualPause) {
+      _stalledTicks = 0;
+      if (_stalled) setState(() => _stalled = false);
+      return;
+    }
+    _stalledTicks++;
+    if (_stalledTicks >= 2) {
+      if (!_stalled) setState(() => _stalled = true);
+      video.play();
+    }
+    if (_stalledTicks >= 5) {
+      _stalledTicks = 0;
+      _retry();
     }
   }
 
@@ -146,8 +174,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
           bufferedColor: Colors.white24,
           backgroundColor: Colors.white12,
         ),
-        // Direct : jamais d'écran « pas d'internet », on se reconnecte tout seul.
-        errorBuilder: (context, message) => widget.isLive ? const _Reconnecting() : _ErrorView(onRetry: _retry),
+        // Direct : pas de message par-dessus l'image, la surveillance ci-dessus s'occupe de tout.
+        errorBuilder: (context, message) => widget.isLive ? const SizedBox.shrink() : _ErrorView(onRetry: _retry),
       );
       setState(() {});
       if (widget.autoPlay) widget.onStarted?.call();
@@ -157,6 +185,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   }
 
   void _retry() {
+    _lastPosition = Duration.zero;
+    _stalled = false;
     _disposeControllers();
     _init();
   }
@@ -194,6 +224,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                     onPointerDown: kIsWeb ? (_) => _revealFullscreen() : null,
                     child: Stack(fit: StackFit.expand, children: [
                       Chewie(controller: _chewie!),
+                      if (widget.isLive && _stalled) const IgnorePointer(child: _Reconnecting()),
                       if (kIsWeb)
                         Positioned(
                           left: 8,
@@ -229,11 +260,17 @@ class _Reconnecting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sunYellow)),
-        SizedBox(height: 10),
-        Text('Reconnexion au direct…', style: TextStyle(color: AppColors.mist, fontSize: 13)),
-      ]),
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: Color(0x99000000), borderRadius: BorderRadius.all(Radius.circular(12))),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sunYellow)),
+            SizedBox(height: 8),
+            Text('Reconnexion au direct…', style: TextStyle(color: AppColors.mist, fontSize: 12)),
+          ]),
+        ),
+      ),
     );
   }
 }

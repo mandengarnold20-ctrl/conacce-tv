@@ -59,6 +59,11 @@
       get: function () { return this.__hlsSrc || desc.get.call(this); },
       set: function (v) { if (!attach(this, v)) desc.set.call(this, v); }
     });
+    // Les petites erreurs que hls.js répare tout seul ne doivent pas arrêter le lecteur de l'appli.
+    window.addEventListener('error', function (e) {
+      var t = e.target;
+      if (t && t.__hls && t instanceof HTMLMediaElement) { e.stopImmediatePropagation(); }
+    }, true);
     var setAttr = Element.prototype.setAttribute;
     Element.prototype.setAttribute = function (name, value) {
       if (this instanceof HTMLMediaElement && String(name).toLowerCase() === 'src') { this.src = value; return; }
