@@ -67,7 +67,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     // Tant que la vidéo est à l'écran, on autorise la rotation du téléphone.
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _init();
-    if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 5), (_) => _keepAlive());
+    if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 3), (_) => _keepAlive());
   }
 
   /// Relance le direct s'il s'est figé, interrompu ou arrêté tout seul (réseau, fin de segment).
@@ -82,7 +82,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     if (v.isPlaying) {
       _stalledTicks = v.position == _lastPosition ? _stalledTicks + 1 : 0;
       _lastPosition = v.position;
-      if (_stalledTicks >= 3) {
+      if (_stalledTicks >= 4) {
         _stalledTicks = 0;
         _retry();
       }
@@ -146,7 +146,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
           bufferedColor: Colors.white24,
           backgroundColor: Colors.white12,
         ),
-        errorBuilder: (context, message) => _ErrorView(onRetry: _retry),
+        // Direct : jamais d'écran « pas d'internet », on se reconnecte tout seul.
+        errorBuilder: (context, message) => widget.isLive ? const _Reconnecting() : _ErrorView(onRetry: _retry),
       );
       setState(() {});
       if (widget.autoPlay) widget.onStarted?.call();
@@ -185,7 +186,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       child: ColoredBox(
         color: Colors.black,
         child: _error != null
-            ? _ErrorView(onRetry: _retry)
+            ? (widget.isLive ? const _Reconnecting() : _ErrorView(onRetry: _retry))
             : _chewie == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
                 : Listener(
@@ -217,6 +218,22 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                     ]),
                   ),
       ),
+    );
+  }
+}
+
+/// Petite coupure du direct : message discret pendant la reconnexion automatique.
+class _Reconnecting extends StatelessWidget {
+  const _Reconnecting();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sunYellow)),
+        SizedBox(height: 10),
+        Text('Reconnexion au direct…', style: TextStyle(color: AppColors.mist, fontSize: 13)),
+      ]),
     );
   }
 }

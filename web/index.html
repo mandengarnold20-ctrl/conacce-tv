@@ -30,14 +30,23 @@
   (function () {
     var desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
     if (!desc || !window.Hls || !Hls.isSupported()) return;
-    var iOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
     function attach(el, url) {
       if (el.__hls) { el.__hls.destroy(); el.__hls = null; el.__hlsSrc = null; }
-      if (iOS || typeof url !== 'string' || !/\.m3u8(\?|$)/i.test(url)) return false;
-      var hls = new Hls({ lowLatencyMode: true, backBufferLength: 30 });
+      // iPhone (iOS 17.1+) compris : hls.js gère mieux les coupures réseau que le lecteur natif.
+      if (typeof url !== 'string' || !/\.m3u8(\?|$)/i.test(url)) return false;
+      var hls = new Hls({
+        lowLatencyMode: false,          // un peu plus de retard, beaucoup moins de coupures
+        liveSyncDurationCount: 4,       // marge de 4 segments derrière le direct
+        liveMaxLatencyDurationCount: 12,
+        maxBufferLength: 30,
+        backBufferLength: 30,
+        manifestLoadingMaxRetry: 20, manifestLoadingRetryDelay: 1000,
+        levelLoadingMaxRetry: 20, levelLoadingRetryDelay: 1000,
+        fragLoadingMaxRetry: 20, fragLoadingRetryDelay: 1000
+      });
       hls.on(Hls.Events.ERROR, function (_, d) {
         if (!d.fatal) return;
-        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) setTimeout(function () { hls.startLoad(); }, 1000);
         else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
       });
       el.__hls = hls; el.__hlsSrc = url;
