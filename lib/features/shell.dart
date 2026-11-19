@@ -292,20 +292,20 @@ class ConacceWatermark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
-      // Bien centré au milieu de l'écran, très grand (il peut dépasser un peu des bords), très pâle.
-      final shortest = c.maxWidth < c.maxHeight ? c.maxWidth : c.maxHeight;
-      final size = (shortest * 1.12).clamp(300.0, 900.0).toDouble();
-      return OverflowBox(
-        alignment: Alignment.center,
-        minWidth: size,
-        maxWidth: size,
-        minHeight: size,
-        maxHeight: size,
-        child: Opacity(
-          opacity: .045,
-          child: ColorFiltered(
-            colorFilter: _greyscale,
-            child: Image.asset('assets/images/conacce_chaplains.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+      // Proportionnel à l'écran (jamais coupé), centré horizontalement et placé
+      // un peu plus bas que le milieu : sous la TV / le grand écran de l'accueil.
+      final size = [c.maxWidth * .9, c.maxHeight * .52, 640.0].reduce((a, b) => a < b ? a : b);
+      return Align(
+        alignment: const Alignment(0, .32),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Opacity(
+            opacity: .045,
+            child: ColorFiltered(
+              colorFilter: _greyscale,
+              child: Image.asset('assets/images/conacce_chaplains.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
+            ),
           ),
         ),
       );

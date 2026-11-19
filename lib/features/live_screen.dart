@@ -70,21 +70,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             : const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
         // Téléphone tourné : la vidéo occupe tout l'écran.
         if (immersive) return ColoredBox(color: Colors.black, child: Center(child: player));
-        // En haut : la TV, le titre et la phrase d'accueil. Au milieu : le fil des messages,
-        // qui passe sous la phrase. En bas : la zone pour écrire, toujours à la même place.
-        final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
-        final bottomPad = keyboard ? 8.0 : 110.0;
-        return LayoutBuilder(builder: (context, box) {
-          final headerMax = (box.maxHeight - MediaQuery.paddingOf(context).top - bottomPad - 112 - 150).clamp(0.0, double.infinity);
-          return Padding(
-            padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: bottomPad),
-            child: MaxWidth(
+        // La TV toujours entière en haut ; la page défile, rien n'est coupé.
+        // Sous la phrase d'accueil : un petit fil de commentaires, puis la zone pour écrire.
+        return ListView(
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: 110),
+          children: [
+            MaxWidth(
               maxWidth: 1000,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: headerMax),
-                  child: SingleChildScrollView(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Stack(children: [
                   if (_audioOnly)
                     AspectRatio(
@@ -164,16 +157,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     ]),
                   ]),
                 ),
-                      const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 0), child: WelcomeSlogan()),
-                    ]),
-                  ),
-                ),
-                const Expanded(child: LiveCommentsFeed()),
-                const Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 4), child: LiveComposer()),
+                const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 0), child: WelcomeSlogan()),
+                const LiveCommentsFeed(),
+                const Padding(padding: EdgeInsets.fromLTRB(20, 4, 20, 0), child: LiveComposer()),
               ]),
             ),
-          );
-        });
+          ],
+        );
       },
     );
   }

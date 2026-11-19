@@ -110,7 +110,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const _Message('Connexion impossible pour le moment.'),
         data: (items) => items.isEmpty
-            ? _Message(category != null ? 'Aucune vidéo dans cette catégorie pour le moment.' : isCultes ? 'Les cultes arrivent bientôt.' : 'Les vidéos Conacce arrivent bientôt.')
+            ? _Message(category != null ? 'Aucune vidéo dans cette catégorie pour le moment.' : isCultes ? 'Les cultes arrivent bientôt.' : 'Les ${Sermon.sectionTitle(section)} arrivent bientôt.')
             : _SermonList(items: items),
       );
     }
@@ -123,8 +123,10 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 14, 20, 12),
           child: Row(children: [
             // La Conacce et ses projets d'abord, les cultes ensuite.
-            Expanded(child: _SectionTab(label: 'Vidéos Conacce', selected: !isCultes, onTap: () => _setSection('conacce'))),
-            const SizedBox(width: 10),
+            Expanded(child: _SectionTab(label: 'Conacce', selected: section == 'conacce', onTap: () => _setSection('conacce'))),
+            const SizedBox(width: 8),
+            Expanded(child: _SectionTab(label: 'CIU', selected: section == 'ciu', onTap: () => _setSection('ciu'))),
+            const SizedBox(width: 8),
             Expanded(child: _SectionTab(label: 'Cultes', selected: isCultes, onTap: () => _setSection('cultes'))),
           ]),
         ),
@@ -135,7 +137,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
             onChanged: _onSearch,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: isCultes ? 'Rechercher un culte, un thème, un orateur…' : 'Rechercher une vidéo Conacce…',
+              hintText: isCultes ? 'Rechercher un culte, un thème, un orateur…' : 'Rechercher une vidéo ${section == 'ciu' ? 'CIU' : 'Conacce'}…',
               prefixIcon: const Icon(Icons.search_rounded, color: AppColors.muted),
               suffixIcon: _search.text.isEmpty
                   ? null
@@ -160,7 +162,7 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
                     _offline = false;
                     ref.read(sermonCategoryProvider.notifier).state = null;
                   })),
-              // Vidéos Conacce : seulement « Spots » ; Cultes : Culte spécial, Temps forts, Spots.
+              // Vidéos Conacce et CIU : seulement « Spots » ; Cultes : Culte spécial, Temps forts, Spots.
               for (final c in isCultes ? SermonCategory.shown : const [SermonCategory.spots])
                 chip(c.label, category == c && !_offline, () => setState(() {
                       _offline = false;
@@ -425,7 +427,7 @@ class _SermonPlayerScreenState extends ConsumerState<SermonPlayerScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(s.section == 'conacce' ? 'Vidéos Conacce' : s.kindLabel)),
+      appBar: AppBar(title: Text(s.section == 'cultes' ? s.kindLabel : Sermon.sectionTitle(s.section))),
       extendBodyBehindAppBar: false,
       body: WaveBackground(
         child: ListView(

@@ -88,7 +88,7 @@ class HomeScreen extends ConsumerWidget {
                         padding: EdgeInsets.symmetric(horizontal: 20),
                         child: _FeaturedPlaceholder('Les vidéos de la Conacce apparaîtront ici.'),
                       )
-                    : _ConacceCarousel(items: list.take(10).toList()),
+                    : _ConacceCarousel(items: list.take(7).toList()),
               ),
               // Petits écrans : les vidéos des cultes
               if ((sermons.valueOrNull?.length ?? 0) > 0) ...[
@@ -216,7 +216,8 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Grand écran de l'accueil : les vidéos Conacce défilent (au doigt, et toutes seules toutes les 6 s).
+/// Grand écran de l'accueil, comme la bannière d'un site web : les 7 dernières vidéos Conacce
+/// défilent toutes seules (toutes les 5 s), au doigt ou avec les flèches.
 class _ConacceCarousel extends StatefulWidget {
   const _ConacceCarousel({required this.items});
 
@@ -234,11 +235,19 @@ class _ConacceCarouselState extends State<_ConacceCarousel> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_pages.hasClients || widget.items.length < 2) return;
-      final next = (_index + 1) % widget.items.length;
-      _pages.animateToPage(next, duration: const Duration(milliseconds: 600), curve: Curves.easeInOutCubic);
-    });
+    _restart();
+  }
+
+  /// Relance le défilement automatique (après un geste, on repart pour 5 s).
+  void _restart() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _go(_index + 1));
+  }
+
+  void _go(int i) {
+    if (!mounted || !_pages.hasClients || widget.items.length < 2) return;
+    final n = widget.items.length;
+    _pages.animateToPage((i % n + n) % n, duration: const Duration(milliseconds: 700), curve: Curves.easeInOutCubic);
   }
 
   @override
@@ -250,41 +259,72 @@ class _ConacceCarouselState extends State<_ConacceCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width.clamp(0.0, 900.0).toDouble() - 40;
-    // Image 16:9 + titre et orateur en dessous.
-    final height = width * 9 / 16 + 74;
+    final many = widget.items.length > 1;
+    Widget arrow(IconData icon, int delta) => Material(
+          color: const Color(0x66080F43),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              _go(_index + delta);
+              _restart();
+            },
+            child: Padding(padding: const EdgeInsets.all(6), child: Icon(icon, color: Colors.white, size: 22)),
+          ),
+        );
     return Column(children: [
-      SizedBox(
-        height: height,
-        child: PageView.builder(
-          controller: _pages,
-          itemCount: widget.items.length,
-          onPageChanged: (i) => setState(() => _index = i),
-          itemBuilder: (context, i) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _FeaturedSermon(sermon: widget.items[i]),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(fit: StackFit.expand, children: [
+              PageView.builder(
+                controller: _pages,
+                itemCount: widget.items.length,
+                onPageChanged: (i) {
+                  setState(() => _index = i);
+                  _restart();
+                },
+                itemBuilder: (context, i) => _FeaturedSermon(sermon: widget.items[i]),
+              ),
+              if (many) ...[
+                Positioned(left: 8, top: 0, bottom: 0, child: Center(child: arrow(Icons.chevron_left_rounded, -1))),
+                Positioned(right: 8, top: 0, bottom: 0, child: Center(child: arrow(Icons.chevron_right_rounded, 1))),
+              ],
+            ]),
           ),
         ),
       ),
-      if (widget.items.length > 1)
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          for (var i = 0; i < widget.items.length; i++)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _index ? 18 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _index ? AppColors.sunYellow : const Color(0x55FFFFFF),
-                borderRadius: BorderRadius.circular(3),
+      if (many)
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            for (var i = 0; i < widget.items.length; i++)
+              GestureDetector(
+                onTap: () {
+                  _go(i);
+                  _restart();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == _index ? 20 : 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: i == _index ? AppColors.sunYellow : const Color(0x55FFFFFF),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
-            ),
-        ]),
+          ]),
+        ),
     ]);
   }
 }
 
-/// Grande vignette d'une vidéo.
+/// Une diapositive : l'image en plein cadre, le titre posé dessus en bas, et le bouton lecture.
 class _FeaturedSermon extends StatelessWidget {
   const _FeaturedSermon({required this.sermon});
 
@@ -294,31 +334,37 @@ class _FeaturedSermon extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => openSermon(context, sermon),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Stack(fit: StackFit.expand, children: [
-            NetCover(url: sermon.coverUrl, radius: 18),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00080F43), Color(0x99080F43)]),
-              ),
+      child: Stack(fit: StackFit.expand, children: [
+        NetCover(url: sermon.coverUrl, radius: 0),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x00080F43), Color(0x00080F43), Color(0xE6080F43)],
+              stops: [0, .45, 1],
             ),
-            Center(
-              child: Container(
-                width: 58,
-                height: 58,
-                decoration: const BoxDecoration(gradient: AppColors.sunGradient, shape: BoxShape.circle),
-                child: const Icon(Icons.play_arrow_rounded, color: AppColors.navy, size: 34),
-              ),
-            ),
-          ]),
+          ),
         ),
-        const SizedBox(height: 10),
-        Text(sermon.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 15)),
-        if (sermon.speaker != null)
-          Text(sermon.speaker!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mist, fontSize: 12)),
+        Center(
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(gradient: AppColors.sunGradient, shape: BoxShape.circle),
+            child: const Icon(Icons.play_arrow_rounded, color: AppColors.navy, size: 34),
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 14,
+          child: Text(
+            sermon.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTheme.title(size: 15).copyWith(shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 6)]),
+          ),
+        ),
       ]),
     );
   }

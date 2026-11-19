@@ -295,7 +295,10 @@ function friendly(err) {
 
 // ─── Listes de choix ───
 const CATS = [['special', 'Culte spécial'], ['tempsForts', 'Temps forts'], ['spots', 'Spots'], ['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['autre', 'Autre']];
-const SECTIONS = [['conacce', 'Vidéos Conacce'], ['cultes', 'Cultes']];
+const SECTIONS = [['conacce', 'Vidéos Conacce'], ['ciu', 'Vidéos CIU'], ['cultes', 'Cultes']];
+// Vidéos Conacce et CIU : pas de catégories de culte, seulement « Vidéo » ou « Spot ».
+const VCATS = [['autre', 'Vidéo'], ['spots', 'Spot']];
+const isCulte = v => (v.section || 'cultes') === 'cultes';
 const WORSHIP = [['louange', 'Louange'], ['adoration', 'Adoration']];
 const ALBUMS = [['conacce', 'Conacce Chaplains'], ['ciu', 'CIU']];
 // Vignette automatique des vidéos YouTube
@@ -329,28 +332,32 @@ async function loadRefs() {
 // ─── Description de chaque rubrique ───
 const ENT = {
   sermons: {
-    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.in('section', ['cultes', 'conacce']),
-    intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
+    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.in('section', ['cultes', 'conacce', 'ciu']),
+    intro: 'Vidéos Conacce, vidéos CIU et cultes. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), isCulte(r) ? label(CATS, r.category) : label(VCATS, r.category === 'spots' ? 'spots' : 'autre'), isCulte(r) && r.speaker, isCulte(r) && r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
     badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
-      { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce » ou « Cultes » (onglet Vidéos de l’appli).' },
+      { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce », « Vidéos CIU » ou « Cultes » (onglet Vidéos de l’appli).' },
       { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
-      { k: 'category', label: 'Catégorie', type: 'select', opts: CATS, def: 'special', req: true, help: 'Dans l’appli, les filtres sont : Culte spécial, Temps forts, Spots.' },
-      { k: 'speaker', label: 'Orateur', type: 'text' },
-      { k: 'preached_on', label: 'Date du culte', type: 'date' },
+      { k: 'category', label: 'Catégorie', type: 'select', opts: CATS, def: 'special', req: true, show: isCulte, help: 'Dans l’appli, les filtres sont : Culte spécial, Temps forts, Spots.' },
+      { k: 'category', label: 'Type', type: 'select', opts: VCATS, def: 'autre', show: v => !isCulte(v), help: '« Spot » : la vidéo apparaît aussi dans le filtre « Spots ».' },
+      { k: 'speaker', label: 'Orateur', type: 'text', show: isCulte },
+      { k: 'preached_on', label: 'Date du culte', type: 'date', show: isCulte },
       { k: 'video_url', label: 'Vidéo (lien YouTube / Facebook, ou fichier)', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: `Collez le lien YouTube ou Facebook (ex : https://youtu.be/…) : la vidéo joue dans l’appli et la miniature YouTube est prise automatiquement. Sinon : fichier (maximum ${MAX_MB} Mo) ou lien .m3u8 Cloudflare.` },
-      { k: 'audio_url', label: 'Audio du culte (MP3)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et hors connexion.' },
+      { k: 'audio_url', label: 'Audio (MP3, facultatif)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et hors connexion.' },
       { k: 'thumbnail_url', label: 'Miniature', type: 'image', help: 'Image paysage (1280 × 720 conseillé).' },
       { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
-      { k: 'description', label: 'Description / résumé du message', type: 'textarea', rows: 6 },
+      { k: 'description', label: 'Description', type: 'textarea', rows: 6 },
       { k: 'is_featured', label: 'Mettre à la une', type: 'checkbox' },
       { k: 'is_downloadable', label: 'Autoriser l’écoute hors connexion', type: 'checkbox', def: true },
       { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
     ],
-    validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
+    validate: v => {
+      if (!isCulte(v)) { if (v.category !== 'spots') v.category = 'autre'; v.speaker = null; v.preached_on = null; }
+      return (!v.video_url && !v.audio_url) ? 'Ajoutez la vidéo (lien ou fichier).' : null;
+    },
   },
   worship: {
     table: 'sermons', title: 'Musique', one: 'un chant', icon: '', where: q => q.in('section', ['louange', 'adoration']),
@@ -669,7 +676,11 @@ function collect(fields, vals, validate) {
   for (const f of fields) {
     if (f.k.startsWith('_')) continue;
     let v = vals[f.k];
-    if (!visible(f)) v = f.type === 'checkbox' ? false : (f.def ?? null);
+    if (!visible(f)) {
+      // Deux champs pour la même donnée (ex. catégorie) : on garde celui qui est affiché.
+      if (fields.some(g => g !== f && g.k === f.k && visible(g))) continue;
+      v = f.type === 'checkbox' ? false : (f.def ?? null);
+    }
     if (f.type === 'checkbox') v = !!v;
     else if (f.type === 'links') v = Object.fromEntries(Object.entries(v || {}).filter(([, x]) => x));
     else if (typeof v === 'string') { v = v.trim(); if (v === '') v = null; }

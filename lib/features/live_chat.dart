@@ -25,13 +25,16 @@ class LiveCommentsFeed extends ConsumerWidget {
       return const Align(
         alignment: Alignment.bottomLeft,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(22, 0, 20, 10),
+          padding: EdgeInsets.fromLTRB(22, 14, 20, 6),
           child: Text('Soyez le premier à laisser un commentaire.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
         ),
       );
     }
     // Fondu en haut : l'espace invisible sous la phrase d'accueil.
-    return ShaderMask(
+    // Petite zone (environ deux messages) : la TV et la phrase gardent toute la place.
+    return SizedBox(
+      height: 130,
+      child: ShaderMask(
       blendMode: BlendMode.dstIn,
       shaderCallback: (r) => const LinearGradient(
         begin: Alignment.topCenter,
@@ -41,9 +44,10 @@ class LiveCommentsFeed extends ConsumerWidget {
       ).createShader(r),
       child: ListView.builder(
         reverse: true,
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
         itemCount: comments.length,
         itemBuilder: (_, i) => Padding(padding: const EdgeInsets.only(top: 6), child: _Bubble(comment: comments[i])),
+      ),
       ),
     );
   }

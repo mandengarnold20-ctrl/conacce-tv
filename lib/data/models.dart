@@ -116,7 +116,17 @@ class Sermon {
   bool get hasVideo => videoUrl?.isNotEmpty ?? false;
 
   /// Ce qu'on affiche sous le titre : la catégorie, ou « Louange » pour la musique.
-  String get kindLabel => switch (section) { 'louange' => 'Louange', 'adoration' => 'Adoration', 'audio' => 'Audio', _ => category.label };
+  String get kindLabel => switch (section) {
+        'louange' => 'Louange',
+        'adoration' => 'Adoration',
+        'audio' => 'Audio',
+        'conacce' => category == SermonCategory.spots ? 'Spot Conacce' : 'Conacce',
+        'ciu' => category == SermonCategory.spots ? 'Spot CIU' : 'CIU',
+        _ => category.label,
+      };
+
+  /// Nom de la rubrique vidéo, pour les titres.
+  static String sectionTitle(String section) => switch (section) { 'conacce' => 'Vidéos Conacce', 'ciu' => 'Vidéos CIU', _ => 'Cultes' };
 
   /// Identifiant YouTube si la vidéo est un lien YouTube.
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -158,8 +168,9 @@ class Sermon {
         title: m['title'] as String,
         category: SermonCategory.fromDb(m['category'] as String?),
         description: m['description'] as String?,
-        speaker: m['speaker'] as String?,
-        preachedOn: m['preached_on'] == null ? null : DateTime.parse(m['preached_on'] as String),
+        // Vidéos Conacce et CIU : pas d'orateur ni de date de culte.
+        speaker: (m['section'] ?? 'cultes') == 'cultes' ? m['speaker'] as String? : null,
+        preachedOn: m['preached_on'] == null || (m['section'] ?? 'cultes') != 'cultes' ? null : DateTime.parse(m['preached_on'] as String),
         videoUrl: m['video_url'] as String?,
         audioUrl: m['audio_url'] as String?,
         thumbnailUrl: m['thumbnail_url'] as String?,
