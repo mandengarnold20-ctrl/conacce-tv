@@ -353,8 +353,8 @@ const ENT = {
     validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
   },
   worship: {
-    table: 'sermons', title: 'Louange & adoration', one: 'un chant', icon: '', where: q => q.in('section', ['louange', 'adoration']),
-    intro: 'Les chants de l’onglet « Louange » de l’appli, en deux rubriques séparées : Louange et Adoration. Comme pour les vidéos : collez le lien YouTube ou Facebook, ou envoyez un fichier audio (MP3) pour l’écoute hors connexion.',
+    table: 'sermons', title: 'Musique', one: 'un chant', icon: '', where: q => q.in('section', ['louange', 'adoration']),
+    intro: 'Les chants de l’onglet « Musique » de l’appli, en deux rubriques séparées : Louange et Adoration. Comme pour les vidéos : collez le lien YouTube ou Facebook, ou envoyez un fichier audio (MP3) pour l’écoute hors connexion.',
     select: '*', order: ['created_at', false], empty: 'Aucun chant pour le moment. Cliquez sur « Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
     sub: r => [label(WORSHIP, r.section), r.speaker, fmtDur(r.duration), r.view_count ? r.view_count + ' écoutes' : ''].filter(Boolean).join(' · '),
@@ -373,6 +373,28 @@ const ENT = {
       { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
     ],
     validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez l’audio ou le lien du chant.' : null,
+  },
+  audio: {
+    table: 'sermons', title: 'Audio', one: 'un audio', icon: '', where: q => q.eq('section', 'audio'),
+    intro: 'L’onglet « Audio » de l’appli : messages, enseignements, prières… Envoyez un fichier audio (MP3) pour l’écoute écran éteint et hors connexion, ou collez un lien YouTube / Facebook.',
+    select: '*', order: ['created_at', false], empty: 'Aucun audio pour le moment. Cliquez sur « Ajouter ».',
+    name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
+    sub: r => [r.speaker, fmtDur(r.duration), r.view_count ? r.view_count + ' écoutes' : ''].filter(Boolean).join(' · '),
+    badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    fields: [
+      { k: 'section', label: 'Rubrique', type: 'text', def: 'audio', show: () => false },
+      { k: 'category', label: 'Catégorie', type: 'text', def: 'autre', show: () => false },
+      { k: 'title', label: 'Titre', type: 'text', req: true },
+      { k: 'speaker', label: 'Orateur / auteur', type: 'text' },
+      { k: 'audio_url', label: 'Audio (MP3)', type: 'file', media: 'audio', accept: 'audio/*', bucket: 'media', help: 'Permet l’écoute écran éteint et le téléchargement hors connexion.' },
+      { k: 'video_url', label: 'Ou lien YouTube / Facebook', type: 'file', media: 'video', accept: 'video/mp4,video/*', bucket: 'media', help: 'Collez le lien : il se lit directement dans l’appli.' },
+      { k: 'thumbnail_url', label: 'Image', type: 'image', help: 'Prise automatiquement sur YouTube si vide.' },
+      { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
+      { k: 'description', label: 'Description (facultatif)', type: 'textarea', rows: 5 },
+      { k: 'is_downloadable', label: 'Autoriser le téléchargement hors connexion', type: 'checkbox', def: true },
+      { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
+    ],
+    validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez le fichier audio ou un lien.' : null,
   },
   works: {
     table: 'works', title: 'Œuvres d’Or', one: 'une œuvre', icon: '',
@@ -1082,7 +1104,7 @@ async function showTeam() {
 const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
   ['live', 'Diffusion', 'TV en direct'], ['radio', '', 'Radio Dunamis FM'],
-  ['sermons', 'Contenus', 'Vidéos'], ['worship', '', 'Louange & adoration'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
+  ['sermons', 'Contenus', 'Vidéos'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
   ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],
 ];

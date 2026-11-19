@@ -116,7 +116,7 @@ class Sermon {
   bool get hasVideo => videoUrl?.isNotEmpty ?? false;
 
   /// Ce qu'on affiche sous le titre : la catégorie, ou « Louange » pour la musique.
-  String get kindLabel => switch (section) { 'louange' => 'Louange', 'adoration' => 'Adoration', _ => category.label };
+  String get kindLabel => switch (section) { 'louange' => 'Louange', 'adoration' => 'Adoration', 'audio' => 'Audio', _ => category.label };
 
   /// Identifiant YouTube si la vidéo est un lien YouTube.
   String? get youtubeId => parseYoutubeId(videoUrl);

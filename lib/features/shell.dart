@@ -16,7 +16,7 @@ import 'sermons_screen.dart';
 import 'works_screen.dart';
 import 'worship_screen.dart';
 
-enum AppTab { home, tv, radio, sermons, worship, gallery, works, contact }
+enum AppTab { home, tv, radio, sermons, worship, audio, gallery, works, contact }
 
 final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
@@ -105,7 +105,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), SermonsScreen(), WorshipScreen(), GalleryScreen(), WorksScreen(), ContactScreen(asTab: true)];
+  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), SermonsScreen(), WorshipScreen(), WorshipScreen.audio(), GalleryScreen(), WorksScreen(), ContactScreen(asTab: true)];
 
   @override
   void initState() {
@@ -125,7 +125,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       (badge(Icons.live_tv_rounded), 'TV'),
       (const Icon(Icons.radio_rounded), 'Radio'),
       (const Icon(Icons.video_library_rounded), 'Vidéos'),
-      (const Icon(Icons.music_note_rounded), 'Louange'),
+      (const Icon(Icons.music_note_rounded), 'Musique'),
+      (const Icon(Icons.headphones_rounded), 'Audio'),
       (const Icon(Icons.photo_library_rounded), 'Galerie'),
       (const Icon(Icons.menu_book_rounded), 'Œuvres'),
       (const Icon(Icons.mail_rounded), 'Contact'),
@@ -291,19 +292,20 @@ class ConacceWatermark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
-      // Bien centré, grand, très pâle.
+      // Bien centré au milieu de l'écran, très grand (il peut dépasser un peu des bords), très pâle.
       final shortest = c.maxWidth < c.maxHeight ? c.maxWidth : c.maxHeight;
-      final size = (shortest * .92).clamp(240.0, 760.0).toDouble();
-      return Center(
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Opacity(
-            opacity: .07,
-            child: ColorFiltered(
-              colorFilter: _greyscale,
-              child: Image.asset('assets/images/conacce_chaplains.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
-            ),
+      final size = (shortest * 1.12).clamp(300.0, 900.0).toDouble();
+      return OverflowBox(
+        alignment: Alignment.center,
+        minWidth: size,
+        maxWidth: size,
+        minHeight: size,
+        maxHeight: size,
+        child: Opacity(
+          opacity: .045,
+          child: ColorFiltered(
+            colorFilter: _greyscale,
+            child: Image.asset('assets/images/conacce_chaplains.png', fit: BoxFit.contain, filterQuality: FilterQuality.medium),
           ),
         ),
       );

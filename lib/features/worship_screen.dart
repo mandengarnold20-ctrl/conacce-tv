@@ -11,7 +11,21 @@ import 'sermons_screen.dart';
 /// Louange et adoration : chants publiés comme les vidéos (lien YouTube / Facebook ou fichier),
 /// à écouter en ligne ou à télécharger pour l'écoute hors connexion.
 class WorshipScreen extends ConsumerStatefulWidget {
-  const WorshipScreen({super.key});
+  /// Onglet « Musique » : deux rubriques, Louange et Adoration.
+  const WorshipScreen({super.key})
+      : title = 'Musique',
+        subtitle = 'Louange et adoration, à écouter en ligne ou à télécharger.',
+        sections = const [('louange', 'Louange'), ('adoration', 'Adoration')];
+
+  /// Onglet « Audio » : messages et enseignements en audio.
+  const WorshipScreen.audio({super.key})
+      : title = 'Audio',
+        subtitle = 'Messages et enseignements à écouter en ligne ou à télécharger.',
+        sections = const [('audio', 'Audio')];
+
+  final String title;
+  final String subtitle;
+  final List<(String, String)> sections;
 
   @override
   ConsumerState<WorshipScreen> createState() => _WorshipScreenState();
@@ -19,14 +33,16 @@ class WorshipScreen extends ConsumerStatefulWidget {
 
 class _WorshipScreenState extends ConsumerState<WorshipScreen> {
   bool _offline = false;
-  /// « louange » ou « adoration » : deux rubriques bien séparées.
-  String _section = 'louange';
+  /// Rubrique affichée (« louange », « adoration » ou « audio »).
+  late String _section = widget.sections.first.$1;
 
   @override
   Widget build(BuildContext context) {
     final songs = ref.watch(sermonsProvider((_section, null)));
     final downloads = ref.watch(downloadsProvider).items.where((t) => t.item.section == _section).toList();
-    final label = _section == 'louange' ? 'louange' : 'adoration';
+    final isAudio = _section == 'audio';
+    final label = isAudio ? 'audio' : _section;
+    final what = isAudio ? 'message' : 'chant';
 
     Widget chip(String label, bool selected, VoidCallback onTap) => Padding(
           padding: const EdgeInsets.only(right: 8),
@@ -52,7 +68,7 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
 
     final Widget list = _offline
         ? (downloads.isEmpty
-            ? message('Aucun chant de $label téléchargé.\nOuvrez un chant puis touchez « Télécharger ».')
+            ? message(isAudio ? 'Aucun audio téléchargé.\nOuvrez un audio puis touchez « Télécharger ».' : 'Aucun $what de $label téléchargé.\nOuvrez un $what puis touchez « Télécharger ».')
             : ListView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                 children: [for (final t in downloads) SermonTile(sermon: t.item, offline: t)],
@@ -61,7 +77,7 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => message('Connexion impossible pour le moment.'),
             data: (items) => items.isEmpty
-                ? message('Les chants de $label arrivent bientôt.')
+                ? message(isAudio ? 'Les audios arrivent bientôt.' : 'Les chants de $label arrivent bientôt.')
                 : RefreshIndicator(
                     onRefresh: () => ref.refresh(sermonsProvider((_section, null)).future),
                     child: ListView.builder(
@@ -78,16 +94,19 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
         Padding(
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 18, 20, 4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Louange & adoration', style: AppTheme.title(size: 24, weight: FontWeight.w800)),
+            Text(widget.title, style: AppTheme.title(size: 24, weight: FontWeight.w800)),
             const SizedBox(height: 4),
-            const Text('Chants à écouter en ligne ou à télécharger.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
-            const SizedBox(height: 14),
-            // Deux rubriques séparées : Louange | Adoration
-            Row(children: [
-              Expanded(child: _Tab(label: 'Louange', selected: _section == 'louange', onTap: () => setState(() => _section = 'louange'))),
-              const SizedBox(width: 10),
-              Expanded(child: _Tab(label: 'Adoration', selected: _section == 'adoration', onTap: () => setState(() => _section = 'adoration'))),
-            ]),
+            Text(widget.subtitle, style: const TextStyle(color: AppColors.mist, fontSize: 13)),
+            // Rubriques séparées (Musique : Louange | Adoration)
+            if (widget.sections.length > 1) ...[
+              const SizedBox(height: 14),
+              Row(children: [
+                for (final (i, (key, name)) in widget.sections.indexed) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(child: _Tab(label: name, selected: _section == key, onTap: () => setState(() => _section = key))),
+                ],
+              ]),
+            ],
           ]),
         ),
         if (DownloadsController.supported)
@@ -97,7 +116,7 @@ class _WorshipScreenState extends ConsumerState<WorshipScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(20, 10, 12, 4),
               children: [
-                chip('Tous les chants', !_offline, () => setState(() => _offline = false)),
+                chip(isAudio ? 'Tous les audios' : 'Tous les chants', !_offline, () => setState(() => _offline = false)),
                 chip('Téléchargés', _offline, () => setState(() => _offline = true)),
               ],
             ),
