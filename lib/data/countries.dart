@@ -249,7 +249,7 @@ const kCountries = <(String, String)>[
 
 /// Émoji drapeau d'un code pays (ex. « BJ » → 🇧🇯).
 String countryFlag(String? code) {
-  if (code == null || code.length != 2) return '🌍';
+  if (code == null || code.length != 2) return '';
   final c = code.toUpperCase();
   return String.fromCharCodes([0x1F1E6 + c.codeUnitAt(0) - 65, 0x1F1E6 + c.codeUnitAt(1) - 65]);
 }

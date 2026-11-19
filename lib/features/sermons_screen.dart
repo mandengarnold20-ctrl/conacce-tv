@@ -121,9 +121,9 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 14, 20, 12),
           child: Row(children: [
             // La Conacce et ses projets d'abord, les cultes ensuite.
-            Expanded(child: _SectionTab(label: 'Vidéos Conacce', icon: Icons.smart_display_rounded, selected: !isCultes, onTap: () => _setSection('conacce'))),
+            Expanded(child: _SectionTab(label: 'Vidéos Conacce', selected: !isCultes, onTap: () => _setSection('conacce'))),
             const SizedBox(width: 10),
-            Expanded(child: _SectionTab(label: 'Cultes', icon: Icons.church_rounded, selected: isCultes, onTap: () => _setSection('cultes'))),
+            Expanded(child: _SectionTab(label: 'Cultes', selected: isCultes, onTap: () => _setSection('cultes'))),
           ]),
         ),
         Padding(
@@ -174,10 +174,9 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
 }
 
 class _SectionTab extends StatelessWidget {
-  const _SectionTab({required this.label, required this.icon, required this.selected, required this.onTap});
+  const _SectionTab({required this.label, required this.selected, required this.onTap});
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -193,14 +192,9 @@ class _SectionTab extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: selected ? null : Border.all(color: const Color(0x22FFFFFF)),
         ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: selected ? AppColors.navy : Colors.white),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
-          ),
-        ]),
+        alignment: Alignment.center,
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
       ),
     );
   }

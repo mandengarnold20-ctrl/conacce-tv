@@ -267,6 +267,7 @@ const toLocal = iso => { if (!iso) return ''; const d = new Date(iso); return `$
 const fromLocal = v => v ? new Date(v).toISOString() : null;
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: iso.length > 10 ? 'short' : undefined }) : '';
 const fmtDur = s => s ? `${Math.floor(s / 60)}:${pad(s % 60)}` : '';
+const initial = t => (String(t || '').trim().charAt(0) || '·').toUpperCase();
 const label = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
 let toastTimer;
 function toast(msg, bad) {
@@ -305,8 +306,8 @@ function ytId(u) {
 }
 const ytThumb = u => { const id = ytId(u); return id ? 'https://img.youtube.com/vi/' + id + '/hqdefault.jpg' : null; };
 const isFb = u => /(facebook\.com|fb\.watch)/i.test(String(u || ''));
-// Drapeau émoji à partir du code pays (BJ → 🇧🇯)
-const flag = c => (c && /^[A-Z]{2}$/.test(c)) ? String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '🌍';
+// Drapeau émoji à partir du code pays (BJ › )
+const flag = c => (c && /^[A-Z]{2}$/.test(c)) ? String.fromCodePoint(...[...c].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '';
 const TARGETS = [['none', 'Rien (simple affiche)'], ['live', 'La TV en direct'], ['radio', 'Radio Dunamis FM'], ['sermon', 'Un culte'], ['work', 'Une Œuvre d’Or'], ['url', 'Un lien internet']];
 const TARGET_REF = { sermon: 'sermons', work: 'works' };
 const PLATFORMS = { android: 'Android', ios: 'iPhone', web: 'Site web', desktop: 'Ordinateur', tv: 'TV', autre: 'Autre' };
@@ -318,19 +319,19 @@ async function loadRefs() {
     sb.from('sermons').select('id,title,preached_on').order('created_at', { ascending: false }),
     sb.from('works').select('id,title').order('title'),
   ]);
-  REFS.sermons = (s.data || []).map(r => [r.id, r.title + (r.preached_on ? ' (' + new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR') + ')' : '')]);
+  REFS.sermons = (s.data || []).map(r => [r.id, r.title + (r.preached_on ? ' (' + new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR') +')' : '')]);
   REFS.works = (w.data || []).map(r => [r.id, r.title]);
 }
 
 // ─── Description de chaque rubrique ───
 const ENT = {
   sermons: {
-    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '🎬',
+    table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '',
     intro: 'Cultes et vidéos Conacce. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
-    badges: r => [ytId(r.video_url) ? ['▶ YouTube'] : isFb(r.video_url) ? ['▶ Facebook'] : r.video_url && ['🎬 Vidéo'], r.audio_url && ['🎧 Audio'], r.is_featured && ['★ À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), label(CATS, r.category), r.speaker, r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' ·'),
+    badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
       { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce » ou « Cultes » (onglet Vidéos de l’appli).' },
       { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
@@ -349,12 +350,12 @@ const ENT = {
     validate: v => (!v.video_url && !v.audio_url) ? 'Ajoutez au moins la vidéo ou l’audio du culte.' : null,
   },
   works: {
-    table: 'works', title: 'Œuvres d’Or', one: 'une œuvre', icon: '📖',
+    table: 'works', title: 'Œuvres d’Or', one: 'une œuvre', icon: '',
     intro: 'Les écrits de l’homme de Dieu. Gratuit : envoyez le PDF, il se lit dans l’appli. Payant : indiquez le prix et le lien d’achat.',
     select: '*', order: ['sort_order', true], empty: 'Aucune œuvre pour le moment.',
     name: r => r.title, img: r => r.cover_url,
-    sub: r => [r.pages && r.pages + ' pages', r.year, r.is_free ? 'Gratuit' : (r.price_label || 'Payant')].filter(Boolean).join(' · '),
-    badges: r => [r.pdf_url && ['PDF'], r.is_featured && ['★ À la une', 'green']].filter(Boolean),
+    sub: r => [r.pages && r.pages + ' pages', r.year, r.is_free ? 'Gratuit' : (r.price_label || 'Payant')].filter(Boolean).join(' ·'),
+    badges: r => [r.pdf_url && ['PDF'], r.is_featured && ['À la une', 'green']].filter(Boolean),
     fields: [
       { k: 'title', label: 'Titre', type: 'text', req: true },
       { k: 'subtitle', label: 'Sous-titre', type: 'text' },
@@ -371,11 +372,11 @@ const ENT = {
     ],
   },
   gallery: {
-    table: 'gallery_photos', title: 'Galerie photo', one: 'une photo', icon: '📷',
+    table: 'gallery_photos', title: 'Galerie photo', one: 'une photo', icon: '',
     intro: 'Les photos de la Conacce Chaplains et de la CIU, visibles dans l’onglet « Galerie » de l’appli. Vous pouvez en envoyer plusieurs d’un coup.',
     select: '*', order: ['created_at', false], empty: 'Aucune photo pour le moment. Choisissez l’album puis « Envoyer des photos ».',
     name: r => r.caption || 'Photo sans légende', img: r => r.image_url,
-    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' · '),
+    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' ·'),
     badges: r => [!r.is_published && ['Masquée', 'red']].filter(Boolean),
     bulk: true,
     fields: [
@@ -388,11 +389,11 @@ const ENT = {
     ],
   },
   banners: {
-    table: 'home_banners', title: 'Affiches de l’accueil', one: 'une affiche', icon: '🖼️',
+    table: 'home_banners', title: 'Affiches de l’accueil', one: 'une affiche', icon: '',
     intro: 'Les images qui défilent sur l’accueil : annonces, campagnes, nouveaux cultes…',
     select: '*', order: ['sort_order', true], empty: 'Aucune affiche pour le moment.',
     name: r => r.title, img: r => r.image_url,
-    sub: r => ['Ouvre : ' + label(TARGETS, r.target_type), r.ends_at && 'jusqu’au ' + fmtDate(r.ends_at)].filter(Boolean).join(' · '),
+    sub: r => ['Ouvre : ' + label(TARGETS, r.target_type), r.ends_at && 'jusqu’au ' + fmtDate(r.ends_at)].filter(Boolean).join(' ·'),
     badges: r => [r.is_active ? ['Visible', 'green'] : ['Masquée']],
     fields: [
       { k: 'image_url', label: 'Image (format paysage)', type: 'image', req: true, help: '1600 × 900 conseillé.' },
@@ -457,7 +458,7 @@ function uploader(f, vals, changed, form) {
   const bar = h('div', { class: 'bar' }, h('i'));
   const link = h('input', { type: 'url', placeholder: '…ou collez un lien (https://…)', inputmode: 'url' });
   const input = h('input', { type: 'file', accept: isImg ? 'image/*' : f.accept, hidden: true });
-  const pick = h('button', { type: 'button', class: 'btn', onclick: () => input.click() }, isImg ? '📷 Choisir une image' : '⬆️ Choisir un fichier');
+  const pick = h('button', { type: 'button', class: 'btn', onclick: () => input.click() }, isImg ? 'Choisir une image' : 'Choisir un fichier');
   const clear = h('button', { type: 'button', class: 'btn ghost small', onclick: () => set(null) }, 'Retirer');
   link.value = vals[f.k] || '';
   function draw() {
@@ -466,9 +467,9 @@ function uploader(f, vals, changed, form) {
     clear.classList.toggle('hidden', !u);
     if (!u) return prev.append(h('span', { class: 'muted' }, 'Aucun fichier pour le moment.'));
     if (isImg) prev.append(h('img', { src: u, alt: '' }));
-    else if (/\.m3u8(\?|$)/i.test(u)) prev.append(h('span', { class: 'muted' }, '✔ Lien de diffusion en streaming'));
+    else if (/\.m3u8(\?|$)/i.test(u)) prev.append(h('span', { class: 'muted' }, 'Lien de diffusion en streaming'));
     else if (f.media === 'audio') prev.append(h('audio', { src: u, controls: true, preload: 'none' }));
-    else if (f.media === 'pdf') prev.append(h('a', { href: u, target: '_blank' }, '📄 Ouvrir le PDF'));
+    else if (f.media === 'pdf') prev.append(h('a', { href: u, target: '_blank' }, 'Ouvrir le PDF'));
     else prev.append(h('video', { src: u, controls: true, preload: 'metadata', playsinline: true }));
   }
   function set(u) { vals[f.k] = u || null; link.value = u || ''; draw(); changed(f.k); }
@@ -487,9 +488,9 @@ function uploader(f, vals, changed, form) {
     pick.textContent = 'Envoi en cours…';
     try {
       set(await upload(f.bucket || 'images', file, p => { bar.firstChild.style.width = Math.round(p * 100) + '%'; pick.textContent = `Envoi… ${Math.round(p * 100)} %`; }));
-      toast('Fichier envoyé ✔');
+      toast('Fichier envoyé');
     } catch (e) { toast(e.message, true); }
-    finally { uploading--; pick.disabled = false; wrap.classList.remove('busy'); pick.textContent = isImg ? '📷 Choisir une image' : '⬆️ Choisir un fichier'; }
+    finally { uploading--; pick.disabled = false; wrap.classList.remove('busy'); pick.textContent = isImg ? 'Choisir une image' : 'Choisir un fichier'; }
   });
   draw();
   wrap.append(prev, h('div', { class: 'row' }, pick, clear), bar, link, input);
@@ -514,7 +515,7 @@ function tracksEditor(vals) {
       h('span', {}, `${i + 1}. ${name(id)}`),
       h('button', { type: 'button', title: 'Monter', onclick: () => { if (i) { [vals._tracks[i - 1], vals._tracks[i]] = [vals._tracks[i], vals._tracks[i - 1]]; draw(); } } }, '▲'),
       h('button', { type: 'button', title: 'Descendre', onclick: () => { if (i < vals._tracks.length - 1) { [vals._tracks[i + 1], vals._tracks[i]] = [vals._tracks[i], vals._tracks[i + 1]]; draw(); } } }, '▼'),
-      h('button', { type: 'button', title: 'Retirer', onclick: () => { vals._tracks.splice(i, 1); draw(); } }, '✕'))));
+      h('button', { type: 'button', title: 'Retirer', onclick: () => { vals._tracks.splice(i, 1); draw(); } }, 'Retirer'))));
   }
   add.addEventListener('change', () => { if (add.value && !vals._tracks.includes(add.value)) vals._tracks.push(add.value); add.value = ''; draw(); });
   draw();
@@ -651,7 +652,7 @@ async function openForm(key, row) {
   const esc = e => e.key === 'Escape' && close();
   const overlay = h('div', { class: 'overlay', onclick: e => e.target === overlay && close() },
     h('div', { class: 'drawer', role: 'dialog', 'aria-modal': 'true' },
-      h('header', {}, h('h2', {}, (row ? 'Modifier ' : 'Ajouter ') + E.one), h('button', { class: 'btn ghost small', onclick: close, 'aria-label': 'Fermer' }, '✕')),
+      h('header', {}, h('h2', {}, (row ? 'Modifier ' : 'Ajouter') + E.one), h('button', { class: 'btn ghost small', onclick: close, 'aria-label': 'Fermer' }, 'Retirer')),
       body,
       h('footer', {}, h('button', { class: 'btn ghost', onclick: close }, 'Annuler'), saveBtn)));
   document.addEventListener('keydown', esc);
@@ -677,7 +678,7 @@ async function openForm(key, row) {
         }
       }
       close();
-      toast(row ? 'Modifications enregistrées ✔' : 'Ajouté ✔ — visible dans l’appli');
+      toast(row ? 'Modifications enregistrées.' : 'Ajouté, visible dans l’appli.');
       await loadRefs();
       show(key);
     } catch (e) {
@@ -698,7 +699,7 @@ async function showList(key) {
       h('div', {}, h('h1', {}, E.title), h('p', { class: 'intro' }, E.intro)),
       h('div', { class: 'tools' },
         E.bulk ? bulkBox(key) : null,
-        h('button', { class: 'btn' + (E.bulk ? '' : ' primary'), onclick: () => openForm(key, null) }, '+ Ajouter'))),
+        h('button', { class: 'btn' + (E.bulk ? '' : ' primary'), onclick: () => openForm(key, null) }, 'Ajouter'))),
     search, list);
   const { data, error } = await sb.from(E.table).select(E.select).order(E.order[0], { ascending: E.order[1], nullsFirst: false }).limit(1000);
   if (current !== key) return;
@@ -711,7 +712,7 @@ async function showList(key) {
     for (const r of rows) {
       const img = E.img && E.img(r);
       list.append(h('div', { class: 'item' },
-        h('div', { class: 'thumb', style: E.round ? 'border-radius:50%' : null }, img ? h('img', { src: img, alt: '', loading: 'lazy' }) : (E.icon2 || E.icon)),
+        h('div', { class: 'thumb', style: E.round ? 'border-radius:50%' : null }, img ? h('img', { src: img, alt: '', loading: 'lazy' }) : initial(E.name(r))),
         h('div', { style: 'min-width:0' },
           h('div', { class: 't' }, E.name(r)),
           E.sub ? h('div', { class: 's' }, E.sub(r)) : null,
@@ -743,7 +744,7 @@ async function shrinkImage(file, max = 2000) {
 function bulkBox(key) {
   const album = h('select', {}, ALBUMS.map(([v, l]) => h('option', { value: v }, l)));
   const input = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'hidden' });
-  const btn = h('button', { class: 'btn primary', type: 'button', onclick: () => input.click() }, '📷 Envoyer des photos');
+  const btn = h('button', { class: 'btn primary', type: 'button', onclick: () => input.click() }, 'Envoyer des photos');
   input.addEventListener('change', async () => {
     const files = [...input.files]; input.value = '';
     if (!files.length) return;
@@ -762,7 +763,7 @@ function bulkBox(key) {
       } catch (e) { fail++; console.warn(e); }
     }
     uploading--; btn.disabled = false; status.remove();
-    toast(fail ? `${ok} photo(s) ajoutée(s), ${fail} en échec.` : `${ok} photo(s) ajoutée(s) dans « ${where} » ✔`, !!fail && !ok);
+    toast(fail ? `${ok} photo(s) ajoutée(s), ${fail} en échec.` : `${ok} photo(s) ajoutée(s) dans « ${where} ».`, !!fail && !ok);
     if (current === key) show(key);
   });
   return h('div', { class: 'bulk' }, album, btn, input);
@@ -773,7 +774,7 @@ async function remove(key, r) {
   if (!confirm(`Supprimer définitivement « ${E.name(r)} » ?\nCette action ne peut pas être annulée.`)) return;
   const { error } = await sb.from(E.table).delete().eq('id', r.id);
   if (error) return toast(friendly(error), true);
-  toast('Supprimé ✔');
+  toast('Supprimé');
   await loadRefs();
   show(key);
 }
@@ -785,10 +786,10 @@ async function showDash(days = 30) {
   period.addEventListener('change', () => show('dash', Number(period.value)));
   main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Tableau de bord'), h('p', { class: 'intro' }, 'Fréquentation de Conacce TV (téléphones, tablettes, ordinateurs, site web).')), period),
     h('div', { class: 'quick' },
-      h('button', { class: 'btn primary', onclick: () => { show('sermons'); openForm('sermons', null); } }, '🎬 Publier une vidéo'),
-      h('button', { class: 'btn', onclick: () => show('live') }, '📡 TV en direct'),
-      h('button', { class: 'btn', onclick: () => show('radio') }, '📻 Radio'),
-      h('button', { class: 'btn', onclick: () => { show('works'); openForm('works', null); } }, '📖 Ajouter une œuvre')));
+      h('button', { class: 'btn primary', onclick: () => { show('sermons'); openForm('sermons', null); } }, 'Publier une vidéo'),
+      h('button', { class: 'btn', onclick: () => show('live') }, 'TV en direct'),
+      h('button', { class: 'btn', onclick: () => show('radio') }, 'Radio'),
+      h('button', { class: 'btn', onclick: () => { show('works'); openForm('works', null); } }, 'Ajouter une œuvre')));
   const box = h('div', {}, h('div', { class: 'empty' }, 'Chargement des statistiques…'));
   main.append(box);
   const count = t => sb.from(t).select('*', { count: 'exact', head: true }).then(r => r.count ?? 0);
@@ -829,9 +830,9 @@ async function showDash(days = 30) {
 
 // ─── TV en direct et radio (une seule fiche chacune) ───
 const LIVE_FIELDS = [
-  { k: 'is_live', label: '📡 EN DIRECT MAINTENANT (affiche la TV dans l’appli)', type: 'checkbox' },
+  { k: 'is_live', label: 'EN DIRECT MAINTENANT (affiche la TV dans l’appli)', type: 'checkbox' },
   { k: 'title', label: 'Nom de la chaîne', type: 'text', req: true, def: 'Conacce TV' },
-  { k: 'hls_url', label: 'Lien vidéo du direct (.m3u8)', type: 'url', help: 'Cloudflare Stream : Entrées en direct → votre entrée → Lecture → Manifeste HLS.' },
+  { k: 'hls_url', label: 'Lien vidéo du direct (.m3u8)', type: 'url', help: 'Cloudflare Stream : Entrées en direct › votre entrée › Lecture › Manifeste HLS.' },
   { k: 'speaker', label: 'Bandeau : nom de l’orateur', type: 'text' },
   { k: 'message_title', label: 'Bandeau : titre du message', type: 'text' },
   { k: 'next_live_info', label: 'Prochain direct (texte affiché hors direct)', type: 'text', help: 'Ex : « Culte du dimanche à 9h »' },
@@ -839,7 +840,7 @@ const LIVE_FIELDS = [
   { k: 'offline_image_url', label: 'Image de la carte du direct', type: 'image' },
 ];
 const RADIO_FIELDS = [
-  { k: 'is_on_air', label: '📻 À L’ANTENNE (la radio joue dans l’appli)', type: 'checkbox' },
+  { k: 'is_on_air', label: 'À L’ANTENNE (la radio joue dans l’appli)', type: 'checkbox' },
   { k: 'name', label: 'Nom de la radio', type: 'text', req: true, def: 'Radio Dunamis FM' },
   { k: 'stream_url', label: 'Lien du flux audio', type: 'url', help: 'Lien de diffusion de la radio (mp3, aac ou .m3u8), fourni par votre hébergeur radio.' },
   { k: 'current_show', label: 'Émission en cours', type: 'text' },
@@ -868,18 +869,18 @@ async function showSingle(key, table, fields, title, intro, note, flag, check) {
     const { error } = row ? await sb.from(table).update(payload).eq('id', row.id) : await sb.from(table).insert(payload);
     btn.disabled = false;
     if (error) return toast(friendly(error), true);
-    toast(payload[flag] ? '✔ C’est en ligne dans l’appli !' : 'Enregistré ✔');
+    toast(payload[flag] ? 'C’est en ligne dans l’appli !' : 'Enregistré');
     show(key);
   });
   body.append(btn);
 }
 const showLive = () => showSingle('live', 'live_stream', LIVE_FIELDS, 'TV en direct',
   'Reliez OBS ou vMix à Cloudflare Stream, collez ici le lien .m3u8, puis cochez « En direct ».',
-  [h('b', {}, 'Pour lancer un culte en direct : '), '1) Démarrez la diffusion dans OBS / vMix. 2) Remplissez le bandeau (orateur, message). 3) Cochez « En direct maintenant » et enregistrez. À la fin, décochez et enregistrez. L’enregistrement Cloudflare du direct peut ensuite être publié dans « Cultes ».'],
+  [h('b', {}, 'Pour lancer un culte en direct :'), '1) Démarrez la diffusion dans OBS / vMix. 2) Remplissez le bandeau (orateur, message). 3) Cochez « En direct maintenant » et enregistrez. À la fin, décochez et enregistrez. L’enregistrement Cloudflare du direct peut ensuite être publié dans « Cultes ».'],
   'is_live', p => p.is_live && !p.hls_url ? 'Pour passer en direct, collez d’abord le lien vidéo (.m3u8).' : null);
 const showRadio = () => showSingle('radio', 'radio', RADIO_FIELDS, 'Radio Dunamis FM',
   'Le flux de la radio joue dans l’appli, même écran éteint.',
-  [h('b', {}, 'Mettre la radio à l’antenne : '), 'collez le lien du flux audio, indiquez l’émission en cours, cochez « À l’antenne » et enregistrez.'],
+  [h('b', {}, 'Mettre la radio à l’antenne :'), 'collez le lien du flux audio, indiquez l’émission en cours, cochez « À l’antenne » et enregistrez.'],
   'is_on_air', p => p.is_on_air && !p.stream_url ? 'Collez d’abord le lien du flux audio.' : null);
 
 // ─── Réglages ───
@@ -898,7 +899,7 @@ async function showSettings() {
     const btn = h('button', { class: 'btn' });
     const draw = () => {
       const on = !!(row && row[flag]);
-      state.textContent = on ? '🔴 EN DIRECT' : '⚪ Éteint';
+      state.textContent = on ? 'EN DIRECT' : 'Éteint';
       state.style.color = on ? '#ff5a6e' : 'var(--mist)';
       btn.textContent = on ? 'Éteindre' : 'Allumer';
       btn.className = 'btn ' + (on ? 'danger' : 'primary');
@@ -912,7 +913,7 @@ async function showSettings() {
       btn.disabled = false;
       if (error) return toast(friendly(error), true);
       row[flag] = next; draw();
-      toast(next ? '✔ Allumé : visible dans l’appli' : 'Éteint ✔');
+      toast(next ? 'Allumé : visible dans l’appli' : 'Éteint');
     });
     draw();
     return h('div', { class: 'rank', style: 'align-items:center;gap:12px' },
@@ -920,8 +921,8 @@ async function showSettings() {
   };
   const switches = h('div', { class: 'panel' }, h('h2', {}, 'Allumer / éteindre'),
     h('p', { class: 'intro' }, 'Pendant un culte : démarrez OBS / vMix, puis cliquez sur « Allumer ». À la fin, cliquez sur « Éteindre ».'),
-    switchRow('📡 Conacce TV en direct', 'live_stream', liveRes.data, 'is_live', 'hls_url', 'Collez d’abord le lien vidéo (.m3u8) dans « TV en direct ».'),
-    switchRow('📻 Radio Dunamis FM', 'radio', radioRes.data, 'is_on_air', 'stream_url', 'Collez d’abord le lien du flux audio dans « Radio Dunamis FM ».'));
+    switchRow('Conacce TV en direct', 'live_stream', liveRes.data, 'is_live', 'hls_url', 'Collez d’abord le lien vidéo (.m3u8) dans « TV en direct ».'),
+    switchRow('Radio Dunamis FM', 'radio', radioRes.data, 'is_on_air', 'stream_url', 'Collez d’abord le lien du flux audio dans « Radio Dunamis FM ».'));
   const fields = [
     { k: 'man_of_god_name', label: 'Nom de l’homme de Dieu (affiché dans Œuvres d’Or)', type: 'text' },
     { k: 'donation_url', label: 'Lien de don (page de paiement externe)', type: 'url', help: 'Ajoute le bouton « Soutenir » à la TV en direct. Le don s’ouvre dans le navigateur (règle Apple).' },
@@ -945,7 +946,7 @@ async function showSettings() {
     if (err) return toast(err, true);
     const { error } = await sb.from('app_settings').upsert({ id: 1, ...payload });
     if (error) return toast(friendly(error), true);
-    toast('Enregistré ✔');
+    toast('Enregistré');
   });
   body.append(btn);
 }
@@ -975,7 +976,7 @@ async function showComments() {
         if (!confirm('Supprimer ce message ?')) return;
         const { error } = await sb.from('live_comments').delete().eq('id', c.id);
         if (error) return toast(friendly(error), true);
-        row.remove(); toast('Message supprimé ✔');
+        row.remove(); toast('Message supprimé');
       });
       list.append(row);
     }
@@ -1005,7 +1006,7 @@ async function showInbox() {
     const row = h('div', { class: 'item', style: 'grid-template-columns:52px 1fr auto' + (m.is_read ? ';opacity:.65' : '') },
       h('div', { class: 'thumb', style: 'font-size:30px;display:grid;place-items:center' }, flag(m.country_code)),
       h('div', {},
-        h('div', { class: 't' }, (m.is_read ? '' : '🟡 ') + m.name + ' · ' + (m.country_name || 'Pays inconnu')),
+        h('div', { class: 't' }, (m.is_read ? '' : 'Nouveau ·') + m.name + ' · ' + (m.country_name || 'Pays inconnu')),
         h('div', { class: 's' }, new Date(m.created_at).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }), contact.length ? ' · ' : '', ...contact.flatMap((c, i) => i ? [' · ', c] : [c])),
         h('div', { style: 'white-space:pre-wrap;margin-top:6px' }, m.body)),
       h('div', { class: 'acts' }, read, del));
@@ -1018,7 +1019,7 @@ async function showInbox() {
       if (!confirm('Supprimer ce message ?')) return;
       const { error } = await sb.from('messages').delete().eq('id', m.id);
       if (error) return toast(friendly(error), true);
-      row.remove(); toast('Message supprimé ✔');
+      row.remove(); toast('Message supprimé');
     });
     list.append(row);
   }
@@ -1040,9 +1041,9 @@ async function showTeam() {
       if (u.id === me.id && sel.value !== 'admin' && !confirm('Vous allez perdre votre propre accès à cette page. Continuer ?')) { sel.value = u.role; return; }
       const { error } = await sb.from('app_users').update({ role: sel.value }).eq('id', u.id);
       if (error) { sel.value = u.role; return toast(friendly(error), true); }
-      u.role = sel.value; toast('Rôle mis à jour ✔');
+      u.role = sel.value; toast('Rôle mis à jour');
     });
-    list.append(h('div', { class: 'item' }, h('div', { class: 'thumb', style: 'border-radius:50%' }, '👤'),
+    list.append(h('div', { class: 'item' }, h('div', { class: 'thumb', style: 'border-radius:50%' }, initial(u.display_name)),
       h('div', {}, h('div', { class: 't' }, (u.display_name || 'Sans nom') + (u.id === me.id ? ' (vous)' : '')), h('div', { class: 's' }, 'Inscrit le ' + fmtDate(u.created_at))),
       h('div', { class: 'acts' }, sel)));
   }
@@ -1051,8 +1052,8 @@ async function showTeam() {
 
 // ─── Navigation ───
 const NAV = [
-  ['dash', '📊', 'Tableau de bord'], ['live', '📡', 'TV en direct'], ['comments', '💬', 'Commentaires'], ['inbox', '✉️', 'Messagerie'], ['radio', '📻', 'Radio Dunamis FM'], ['sermons', '🎬', 'Vidéos'], ['gallery', '📷', 'Galerie photo'],
-  ['works', '📖', 'Œuvres d’Or'], ['banners', '🖼️', 'Affiches'], ['settings', '⚙️', 'Réglages'], ['team', '👥', 'Équipe'],
+  ['dash', '', 'Tableau de bord'], ['live', '', 'TV en direct'], ['comments', '', 'Commentaires'], ['inbox', '', 'Messagerie'], ['radio', '', 'Radio Dunamis FM'], ['sermons', '', 'Vidéos'], ['gallery', '', 'Galerie photo'],
+  ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches'], ['settings', '', 'Réglages'], ['team', '', 'Équipe'],
 ];
 let current = null, me = null;
 
@@ -1070,14 +1071,14 @@ function shell(user) {
   root.append(h('div', { class: 'app' },
     h('nav', { class: 'side' },
       h('div', { class: 'brand' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }), h('div', {}, 'ADMINISTRATION')),
-      NAV.map(([k, i, l]) => h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, h('span', {}, i), l)),
+      NAV.map(([k, i, l]) => h('button', { class: 'nav', 'data-k': k, onclick: () => show(k) }, l)),
       h('div', { class: 'spacer' }),
       h('div', { class: 'who' }, userLabel(user.email)),
-      h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, h('span', {}, '🚪'), 'Se déconnecter')),
+      h('button', { class: 'nav', onclick: async () => { await sb.auth.signOut(); location.hash = ''; boot(); } }, 'Se déconnecter')),
     h('div', { class: 'content' },
       h('div', { class: 'topbar' },
         h('b', {}, 'Conacce TV'),
-        h('a', { href: '../', target: '_blank', rel: 'noopener' }, 'Voir l’appli ↗'),
+        h('a', { href: '../', target: '_blank', rel: 'noopener' }, 'Voir l’appli'),
         h('span', { class: 'grow' }),
         h('span', {}, 'Bonjour, ', h('b', {}, userLabel(user.email)))),
       h('main', { id: 'main' }))));

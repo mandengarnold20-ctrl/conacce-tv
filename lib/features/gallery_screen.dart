@@ -13,7 +13,7 @@ import '../data/providers.dart';
 class GalleryScreen extends ConsumerWidget {
   const GalleryScreen({super.key});
 
-  static const _albums = [('conacce', 'Conacce Chaplains', Icons.volunteer_activism_rounded), ('ciu', 'CIU', Icons.school_rounded)];
+  static const _albums = [('conacce', 'Conacce Chaplains'), ('ciu', 'CIU')];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,12 +36,11 @@ class GalleryScreen extends ConsumerWidget {
                 const Text('Nos moments, nos actions et nos rencontres en images.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
                 const SizedBox(height: 16),
                 Row(children: [
-                  for (final (i, (key, label, icon)) in _albums.indexed) ...[
+                  for (final (i, (key, label)) in _albums.indexed) ...[
                     if (i > 0) const SizedBox(width: 10),
                     Expanded(
                       child: _AlbumTab(
                         label: label,
-                        icon: icon,
                         selected: album == key,
                         onTap: () => ref.read(galleryAlbumProvider.notifier).state = key,
                       ),
@@ -83,10 +82,9 @@ class GalleryScreen extends ConsumerWidget {
 }
 
 class _AlbumTab extends StatelessWidget {
-  const _AlbumTab({required this.label, required this.icon, required this.selected, required this.onTap});
+  const _AlbumTab({required this.label, required this.selected, required this.onTap});
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -101,13 +99,8 @@ class _AlbumTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: selected ? null : Border.all(color: const Color(0x22FFFFFF)),
           ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 17, color: selected ? AppColors.navy : Colors.white),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
-            ),
-          ]),
+          alignment: Alignment.center,
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 13, color: selected ? AppColors.navy : Colors.white)),
         ),
       );
 }
@@ -120,11 +113,7 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.photo_library_outlined, color: AppColors.muted, size: 40),
-          const SizedBox(height: 10),
-          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted)),
-        ]),
+        child: Center(child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted))),
       );
 }
 
