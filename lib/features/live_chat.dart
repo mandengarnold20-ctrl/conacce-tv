@@ -12,19 +12,40 @@ import '../core/theme/app_theme.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 
-/// Sous la TV : la phrase d'accueil (qui reste en place), la zone pour écrire,
-/// puis les messages du jour juste en dessous. Les messages de la veille passent en archive.
-class LiveChat extends ConsumerWidget {
-  const LiveChat({super.key});
+/// Fil des messages du jour, entre la phrase d'accueil et la zone pour écrire.
+/// Le plus récent est en bas, juste au-dessus de la zone pour écrire ; les plus anciens
+/// remontent et s'effacent en passant sous la phrase d'accueil.
+class LiveCommentsFeed extends ConsumerWidget {
+  const LiveCommentsFeed({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final comments = ref.watch(liveCommentsProvider).valueOrNull ?? const <LiveComment>[];
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Padding(padding: EdgeInsets.fromLTRB(20, 18, 20, 0), child: WelcomeSlogan()),
-      const Padding(padding: EdgeInsets.fromLTRB(20, 16, 20, 6), child: _Composer()),
-      for (final c in comments) Padding(padding: const EdgeInsets.fromLTRB(20, 6, 20, 0), child: _Bubble(comment: c)),
-    ]);
+    if (comments.isEmpty) {
+      return const Align(
+        alignment: Alignment.bottomLeft,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(22, 0, 20, 10),
+          child: Text('Soyez le premier à laisser un commentaire.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+        ),
+      );
+    }
+    // Fondu en haut : l'espace invisible sous la phrase d'accueil.
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (r) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.transparent, Colors.black],
+        stops: [0, .22],
+      ).createShader(r),
+      child: ListView.builder(
+        reverse: true,
+        padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
+        itemCount: comments.length,
+        itemBuilder: (_, i) => Padding(padding: const EdgeInsets.only(top: 6), child: _Bubble(comment: comments[i])),
+      ),
+    );
   }
 }
 
@@ -163,14 +184,14 @@ class _Swoosh extends CustomPainter {
 }
 
 /// Zone pour écrire un message (le prénom est mémorisé sur l'appareil).
-class _Composer extends StatefulWidget {
-  const _Composer();
+class LiveComposer extends StatefulWidget {
+  const LiveComposer({super.key});
 
   @override
-  State<_Composer> createState() => _ComposerState();
+  State<LiveComposer> createState() => _ComposerState();
 }
 
-class _ComposerState extends State<_Composer> {
+class _ComposerState extends State<LiveComposer> {
   final _name = TextEditingController();
   final _body = TextEditingController();
   bool _sending = false;
