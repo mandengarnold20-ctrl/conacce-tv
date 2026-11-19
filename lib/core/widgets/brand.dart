@@ -16,9 +16,9 @@ class WaveBackground extends StatefulWidget {
   State<WaveBackground> createState() => _WaveBackgroundState();
 }
 
-/// Fond bleu dont les vagues ondulent doucement (cycle lent de 18 s).
+/// Fond bleu dont les vagues ondulent doucement (cycle doux de 12 s).
 class _WaveBackgroundState extends State<WaveBackground> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 18))..repeat();
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 12))..repeat();
 
   @override
   void dispose() {
@@ -38,9 +38,9 @@ class _WaveBackgroundState extends State<WaveBackground> with SingleTickerProvid
               final t = _c.value * 2 * math.pi;
               // Léger balancement de l'image de fond
               return Transform.translate(
-                offset: Offset(math.sin(t) * 14, math.cos(t) * 10),
+                offset: Offset(math.sin(t) * 28, math.cos(t) * 18),
                 child: Transform.scale(
-                  scale: 1.08 + math.sin(t) * 0.02,
+                  scale: 1.12 + math.sin(t) * 0.03,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       color: AppColors.royal,
@@ -88,8 +88,8 @@ class _WavesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final t = v * 2 * math.pi;
     final h = size.height;
-    _wave(canvas, size, h * 0.62, h * 0.035, t, 0.9, const Color(0x220D2389), const Color(0x33080F43));
-    _wave(canvas, size, h * 0.78, h * 0.03, -t + 1.4, 1.2, const Color(0x26080F43), const Color(0x55050A2E));
+    _wave(canvas, size, h * 0.60, h * 0.06, t, 0.9, const Color(0x400D2389), const Color(0x55080F43));
+    _wave(canvas, size, h * 0.78, h * 0.05, -t + 1.4, 1.2, const Color(0x40080F43), const Color(0x77050A2E));
   }
 
   @override
