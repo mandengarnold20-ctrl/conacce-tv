@@ -7,21 +7,93 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 
 /// Fond à vagues bleues (bleu roi en haut → bleu nuit en bas).
-class WaveBackground extends StatelessWidget {
+class WaveBackground extends StatefulWidget {
   const WaveBackground({super.key, required this.child});
 
   final Widget child;
 
   @override
+  State<WaveBackground> createState() => _WaveBackgroundState();
+}
+
+/// Fond bleu dont les vagues ondulent doucement (cycle lent de 18 s).
+class _WaveBackgroundState extends State<WaveBackground> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 18))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.royal,
-        image: DecorationImage(image: AssetImage('assets/images/fond.jpg'), fit: BoxFit.cover),
-      ),
-      child: child,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) {
+              final t = _c.value * 2 * math.pi;
+              // Léger balancement de l'image de fond
+              return Transform.translate(
+                offset: Offset(math.sin(t) * 14, math.cos(t) * 10),
+                child: Transform.scale(
+                  scale: 1.08 + math.sin(t) * 0.02,
+                  child: const DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.royal,
+                      image: DecorationImage(image: AssetImage('assets/images/fond.jpg'), fit: BoxFit.cover),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) => CustomPaint(painter: _WavesPainter(_c.value)),
+          ),
+        ),
+        widget.child,
+      ],
     );
   }
+}
+
+class _WavesPainter extends CustomPainter {
+  _WavesPainter(this.v);
+
+  final double v;
+
+  void _wave(Canvas canvas, Size size, double baseY, double amp, double phase, double length, Color top, Color bottom) {
+    final path = Path()..moveTo(0, size.height);
+    for (double x = 0; x <= size.width + 8; x += 8) {
+      final y = baseY + math.sin(x / size.width * 2 * math.pi * length + phase) * amp;
+      path.lineTo(x, y);
+    }
+    path
+      ..lineTo(size.width, size.height)
+      ..close();
+    final paint = Paint()
+      ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [top, bottom])
+          .createShader(Rect.fromLTWH(0, baseY - amp, size.width, size.height - baseY + amp));
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = v * 2 * math.pi;
+    final h = size.height;
+    _wave(canvas, size, h * 0.62, h * 0.035, t, 0.9, const Color(0x220D2389), const Color(0x33080F43));
+    _wave(canvas, size, h * 0.78, h * 0.03, -t + 1.4, 1.2, const Color(0x26080F43), const Color(0x55050A2E));
+  }
+
+  @override
+  bool shouldRepaint(_WavesPainter old) => old.v != v;
 }
 
 /// Logo Conacce TV traversé par un reflet de lumière toutes les quelques secondes.
