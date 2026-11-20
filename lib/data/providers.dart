@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
@@ -7,9 +10,63 @@ import 'tv_schedule.dart';
 SupabaseClient get _db => Supabase.instance.client;
 
 /// Conacce TV en direct, mis à jour instantanément (temps réel).
+/// Le direct ne passe devant la programmation que si OBS envoie vraiment l'image :
+/// le flux est vérifié toutes les 15 s (un direct « allumé » mais muet ne bloque plus la chaîne).
 final liveStreamProvider = StreamProvider<LiveStream?>((ref) {
-  return _db.from('live_stream').stream(primaryKey: ['id']).map((rows) => rows.isEmpty ? null : LiveStream.fromMap(rows.first));
+  final ctrl = StreamController<LiveStream?>();
+  LiveStream? row;
+  var airing = false;
+  var misses = 0;
+  var busy = false;
+  void emit() {
+    if (ctrl.isClosed) return;
+    final r = row;
+    ctrl.add(r?.withAiring(airing));
+  }
+
+  Future<void> probe() async {
+    final r = row;
+    if (r == null || !r.isLive || r.isLink || (r.hlsUrl?.isEmpty ?? true)) {
+      airing = false;
+      misses = 0;
+      return emit();
+    }
+    if (busy) return;
+    busy = true;
+    final ok = await hlsIsAiring(r.hlsUrl!);
+    busy = false;
+    if (ok) {
+      airing = true;
+      misses = 0;
+    } else if (++misses >= 2 || !airing) {
+      airing = false;
+    }
+    emit();
+  }
+
+  final sub = _db.from('live_stream').stream(primaryKey: ['id']).listen((rows) {
+    row = rows.isEmpty ? null : LiveStream.fromMap(rows.first);
+    emit();
+    probe();
+  }, onError: (Object e, StackTrace st) => ctrl.addError(e, st));
+  final timer = Timer.periodic(const Duration(seconds: 15), (_) => probe());
+  ref.onDispose(() {
+    sub.cancel();
+    timer.cancel();
+    ctrl.close();
+  });
+  return ctrl.stream;
 });
+
+/// Un flux HLS « à l'antenne » renvoie une liste de lecture ; hors antenne, Cloudflare renvoie une réponse vide.
+Future<bool> hlsIsAiring(String url) async {
+  try {
+    final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 8));
+    return r.statusCode == 200 && r.body.contains('#EXT');
+  } catch (_) {
+    return false;
+  }
+}
 
 /// Programmes de la chaîne 24 h/24 (grille), mis à jour instantanément.
 final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {

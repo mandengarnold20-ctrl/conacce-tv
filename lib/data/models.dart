@@ -5,7 +5,7 @@ DateTime? _date(Object? v) => v == null ? null : DateTime.parse(v as String).toL
 
 /// Conacce TV en direct (table live_stream, une seule ligne).
 class LiveStream {
-  const LiveStream({required this.id, required this.title, required this.isLive, this.hlsUrl, this.speaker, this.messageTitle, this.nextLiveInfo, this.nextLiveAt, this.offlineImageUrl});
+  const LiveStream({required this.id, required this.title, required this.isLive, this.hlsUrl, this.speaker, this.messageTitle, this.nextLiveInfo, this.nextLiveAt, this.offlineImageUrl, this.airing = true, this.source = 'obs', this.liveUrl});
 
   final String id;
   final String title;
@@ -17,7 +17,34 @@ class LiveStream {
   final DateTime? nextLiveAt;
   final String? offlineImageUrl;
 
-  bool get canPlay => isLive && (hlsUrl?.isNotEmpty ?? false);
+  /// Vrai seulement si OBS envoie réellement l'image (vérifié sur le flux).
+  final bool airing;
+
+  /// Source du direct : obs (OBS / vMix vers Cloudflare), youtube, facebook ou tiktok (simple lien).
+  final String source;
+  final String? liveUrl;
+
+  bool get isLink => source != 'obs';
+
+  /// Lecteur intégré pour un direct YouTube ou Facebook (TikTok n'autorise pas l'intégration d'un direct).
+  String? get liveEmbedUrl {
+    final url = liveUrl?.trim() ?? '';
+    if (url.isEmpty) return null;
+    if (source == 'youtube') {
+      final id = parseYoutubeId(url);
+      return id == null ? null : 'https://www.youtube.com/embed/$id?autoplay=1&playsinline=1&rel=0&modestbranding=1';
+    }
+    if (source == 'facebook') return 'https://www.facebook.com/plugins/video.php?href=${Uri.encodeComponent(url)}&show_text=false&autoplay=true';
+    return null;
+  }
+
+  bool get canPlay => isLive && (isLink ? (liveUrl?.trim().isNotEmpty ?? false) : airing && (hlsUrl?.isNotEmpty ?? false));
+
+  LiveStream withAiring(bool v) => LiveStream(
+        id: id, title: title, isLive: isLive, hlsUrl: hlsUrl, speaker: speaker, messageTitle: messageTitle,
+        nextLiveInfo: nextLiveInfo, nextLiveAt: nextLiveAt, offlineImageUrl: offlineImageUrl, airing: v,
+        source: source, liveUrl: liveUrl,
+      );
 
   factory LiveStream.fromMap(Map<String, dynamic> m) => LiveStream(
         id: m['id'] as String,
@@ -29,6 +56,8 @@ class LiveStream {
         nextLiveInfo: m['next_live_info'] as String?,
         nextLiveAt: _date(m['next_live_at']),
         offlineImageUrl: m['offline_image_url'] as String?,
+        source: m['source'] as String? ?? 'obs',
+        liveUrl: m['live_url'] as String?,
       );
 }
 

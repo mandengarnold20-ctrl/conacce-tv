@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/analytics.dart';
 import '../core/media/audio_player_service.dart';
+import '../core/media/embed_video.dart';
 import '../core/media/hls_video_player.dart';
 import '../core/media/tv_youtube.dart';
 import '../core/media/web_fullscreen.dart';
@@ -122,6 +123,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         final Widget player;
         if (!onTv) {
           player = const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
+        } else if (onAir && l.isLink) {
+          final embed = l.liveEmbedUrl;
+          player = embed != null
+              ? EmbedVideo(key: ValueKey(embed), embedUrl: embed, sourceUrl: l.liveUrl!)
+              : _ExternalLive(url: l.liveUrl!, source: l.source);
         } else if (onAir) {
           player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView);
         } else if (youtube) {
@@ -204,7 +210,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     ],
                     const SizedBox(height: 16),
                     Row(children: [
-                      if (onAir) ...[
+                      if (onAir && !l.isLink) ...[
                         Expanded(child: _Action(icon: _audioOnly ? Icons.videocam_rounded : Icons.headphones_rounded, label: _audioOnly ? 'Vidéo' : 'Audio seul', onTap: () => _toggleAudio(l))),
                         const SizedBox(width: 10),
                       ],
@@ -224,7 +230,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                         const SizedBox(width: 10),
                       ],
                       // Mini-écran : la TV continue dans une petite fenêtre au-dessus des autres applis.
-                      if (!_audioOnly && !youtube && pipSupported) ...[
+                      if (!_audioOnly && !youtube && !(onAir && l.isLink) && pipSupported) ...[
                         Expanded(child: _Action(icon: Icons.picture_in_picture_alt_rounded, label: 'Mini-écran', onTap: togglePictureInPicture)),
                         const SizedBox(width: 10),
                       ],
@@ -288,6 +294,35 @@ class _Action extends StatelessWidget {
             Icon(icon, color: fg, size: 20),
             const SizedBox(height: 4),
             Text(label, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Direct sur TikTok : TikTok n'autorise pas à intégrer un direct dans une autre appli.
+class _ExternalLive extends StatelessWidget {
+  const _ExternalLive({required this.url, required this.source});
+
+  final String url;
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = {'tiktok': 'TikTok', 'youtube': 'YouTube', 'facebook': 'Facebook'}[source] ?? 'le direct';
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: ColoredBox(
+        color: AppColors.navyDeep,
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('EN DIRECT SUR ${name.toUpperCase()}', style: AppTheme.title(size: 16, weight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              child: Text('Regarder le direct sur $name'),
+            ),
           ]),
         ),
       ),

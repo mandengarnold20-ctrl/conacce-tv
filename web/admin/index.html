@@ -255,7 +255,7 @@
   .rg-mid { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 14px; text-align: center; display: grid; gap: 10px; }
   .rg-clock { font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; letter-spacing: 1px; }
   .rg-k { font-size: 10.5px; letter-spacing: 1.5px; color: #9AA6DA; font-weight: 700; }
-  .rg-count { font-variant-numeric: tabular-nums; font-size: 40px; font-weight: 700; color: var(--rg-on); line-height: 1.05; }
+  .rg-count { font-variant-numeric: tabular-nums; font-size: clamp(26px, 2.6vw, 40px); font-weight: 700; color: var(--rg-on); line-height: 1.05; }
   .rg-count.warn { color: #FF5468; }
   .rg-bar { height: 6px; background: rgba(255,255,255,.08); border-radius: 6px; overflow: hidden; }
   .rg-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #F9CA22, var(--rg-on)); }
@@ -264,6 +264,18 @@
   .rg-ctl .btn { min-height: 46px; font-weight: 700; padding: 6px; }
   .rg-ctl .btn.on { background: var(--rg-on); color: #0B1463; border-color: transparent; }
   .rg-pills { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .rg-live { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08);
+             border-left: 4px solid var(--live); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+  .rg-live > b { letter-spacing: 2px; font-size: 13px; }
+  .rg-live select { width: auto; min-width: 190px; }
+  .rg-live input[type=url] { flex: 1; min-width: 240px; }
+  .rg-live .rg-small { flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
+  .rg-dot { width: 10px; height: 10px; border-radius: 50%; background: #444C7A; display: inline-block; flex: none; }
+  .rg-dot.on { background: var(--live); box-shadow: 0 0 0 4px rgba(255,59,92,.25); }
+  .rg-dot.wait { background: #F9CA22; }
+  .rg-trans { display: grid; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
+  .rg-trans .btn { min-height: 44px; font-weight: 700; }
+  .rg-tbar { width: 100%; min-height: 0; padding: 0; background: none; border: none; accent-color: #F9CA22; height: 26px; cursor: ew-resize; }
   .rg-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .rg-pan { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 360px; position: relative; }
   .rg-pan > header { background: #F9A11B; color: #0B1463; padding: 8px 12px; display: flex; gap: 10px; align-items: center; font-weight: 700; flex-wrap: wrap; }
@@ -1439,11 +1451,27 @@ async function showRegie() {
   const bPause = h('button', { class: 'btn', onclick: () => control('pause') }, 'Pause');
   const bStop = h('button', { class: 'btn', onclick: () => control('stop') }, 'Stop');
   const stateEl = h('div', { class: 'rg-small' }, '');
+  // Mode studio (comme OBS) : « Transition » ou la barre en T envoient l'aperçu à l'antenne.
+  const take = async () => {
+    if (!R.prev) return toast('Choisissez d’abord un programme avec « Aperçu ».', true);
+    airBox.style.transition = 'opacity .4s'; airBox.style.opacity = '0';
+    await airNow(R.prev, true);
+    setTimeout(() => { airBox.style.opacity = '1'; }, 450);
+  };
+  const bTrans = h('button', { class: 'btn primary', onclick: take, title: 'Envoyer l’aperçu à l’antenne' }, 'Transition');
+  const tbar = h('input', { type: 'range', min: 0, max: 100, value: 0, class: 'rg-tbar', 'aria-label': 'Barre de transition' });
+  tbar.addEventListener('input', () => { airBox.style.transition = 'none'; airBox.style.opacity = String(1 - tbar.value / 140); });
+  const tEnd = async () => {
+    const v = Number(tbar.value);
+    if (v >= 95) await take(); else { airBox.style.transition = 'opacity .3s'; airBox.style.opacity = '1'; }
+    tbar.value = 0;
+  };
+  tbar.addEventListener('change', tEnd);
   const mid = h('div', { class: 'rg-mid' },
     h('div', {}, h('div', { class: 'rg-k' }, 'HEURE'), clock),
     h('div', {}, h('div', { class: 'rg-k' }, 'RESTE À L’ANTENNE'), count),
     h('div', { class: 'rg-bar' }, bar), endAt, nextEl,
-    h('div', { class: 'rg-ctl' }, bPlay, bPause, bStop), stateEl);
+    h('div', { class: 'rg-trans' }, bTrans, tbar), h('div', { class: 'rg-ctl' }, bPlay, bPause, bStop), stateEl);
 
   main.append(h('div', { class: 'rg' },
     h('div', { class: 'head' },
@@ -1453,12 +1481,65 @@ async function showRegie() {
       h('div', { class: 'rg-scr' }, h('div', { class: 'lab' }, h('span', {}, 'APERÇU · VISIONNAGE'), h('span', {}, '')), prevBox,
         h('div', { class: 'under' }, prevTitle, prevNow, prevClose)),
       mid, airScr),
+    liveBar(),
     h('div', { class: 'rg-panels' }, playlistPanel(), weekPanel()),
     h('div', { class: 'rg-foot' },
       h('div', { class: 'rg-small' }, 'Un direct lancé depuis OBS passe toujours devant la programmation ; elle reprend toute seule à la fin du direct.'),
       h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
         h('button', { class: 'btn small', onclick: restartLoop }, 'Reprendre la playlist au début'),
         h('button', { class: 'btn small danger', onclick: clearAll }, 'Supprimer toute la programmation')))));
+
+  // ── Barre du direct : OBS / vMix, ou lien d'un direct YouTube, Facebook, TikTok ──
+  const LIVE_SRC = { obs: 'OBS / vMix', youtube: 'YouTube', facebook: 'Facebook', tiktok: 'TikTok' };
+  function liveBar() {
+    const srcSel = h('select', { 'aria-label': 'Source du direct' },
+      h('option', { value: 'obs' }, 'OBS / vMix (flux Cloudflare)'),
+      h('option', { value: 'youtube' }, 'Lien d’un direct YouTube'),
+      h('option', { value: 'facebook' }, 'Lien d’un direct Facebook'),
+      h('option', { value: 'tiktok' }, 'Lien d’un direct TikTok'));
+    const urlIn = h('input', { type: 'url', placeholder: 'Collez le lien du direct (bouton Partager › Copier le lien)' });
+    const btn = h('button', { class: 'btn primary', onclick: toggleLive }, 'Activer le direct');
+    const dot = h('span', { class: 'rg-dot' });
+    const info = h('span', {}, '');
+    srcSel.onchange = () => { R.liveUI.touched = true; drawLive(); };
+    urlIn.oninput = () => { R.liveUI.touched = true; };
+    R.liveUI = { srcSel, urlIn, btn, dot, info, touched: false };
+    return h('div', { class: 'rg-live' }, h('b', {}, 'DIRECT'), srcSel, urlIn, btn, h('div', { class: 'rg-small' }, dot, info));
+  }
+  function drawLive() {
+    const U = R.liveUI; if (!U) return;
+    const d = R.liveRow || {};
+    if (!U.touched) { U.srcSel.value = d.source || 'obs'; U.urlIn.value = d.live_url || ''; }
+    U.urlIn.classList.toggle('hidden', U.srcSel.value === 'obs');
+    const on = !!d.is_live, src = d.source || 'obs';
+    U.btn.textContent = on ? 'Arrêter le direct' : 'Activer le direct';
+    U.btn.className = 'btn ' + (on ? 'danger' : 'primary');
+    let msg, cls;
+    if (!on) { msg = 'Direct éteint : la programmation est à l’antenne.'; cls = ''; }
+    else if (src === 'obs') {
+      msg = R.live ? 'OBS / vMix envoie l’image : le direct est à l’antenne pour tous.' : 'Direct activé : en attente de l’image d’OBS / vMix. La programmation continue tant que rien n’arrive.';
+      cls = R.live ? 'on' : 'wait';
+    } else {
+      msg = 'Direct ' + LIVE_SRC[src] + ' à l’antenne pour tous.' + (src === 'tiktok' ? ' TikTok n’autorise pas l’intégration d’un direct : les spectateurs ont un bouton pour l’ouvrir dans TikTok.' : '');
+      cls = 'on';
+    }
+    U.info.textContent = msg; U.dot.className = 'rg-dot ' + cls;
+  }
+  async function toggleLive() {
+    const d = R.liveRow; if (!d || !d.id) return toast('Réglage du direct introuvable.', true);
+    const U = R.liveUI, src = U.srcSel.value, url = U.urlIn.value.trim();
+    const turnOn = !d.is_live;
+    if (turnOn && src !== 'obs') {
+      const ok = src === 'youtube' ? !!ytId(url) : src === 'facebook' ? /(facebook\.com|fb\.watch)\//i.test(url) : /tiktok\.com\//i.test(url);
+      if (!ok) return toast(src === 'youtube' ? 'Collez le lien de la vidéo du direct YouTube (youtube.com/live/… ou youtu.be/…).' : 'Collez le lien du direct ' + LIVE_SRC[src] + '.', true);
+    }
+    const patch = turnOn ? { is_live: true, source: src, live_url: src === 'obs' ? (d.live_url || null) : url } : { is_live: false };
+    const { error } = await sb.from('live_stream').update(patch).eq('id', d.id);
+    if (error) return toast(friendly(error), true);
+    U.touched = false;
+    toast(turnOn ? (src === 'obs' ? 'Direct activé : il passe à l’antenne dès qu’OBS / vMix envoie l’image.' : 'Direct ' + LIVE_SRC[src] + ' à l’antenne.') : 'Direct arrêté : la programmation reprend.');
+    await loadLive(); tick(true);
+  }
 
   // ── Panneau Playlist ──
   function playlistPanel() {
@@ -1635,10 +1716,13 @@ async function showRegie() {
     for (const o of ups) { const { error } = await sb.from('tv_programs').update({ position: o.pos }).eq('id', o.p.id); if (error) { toast(friendly(error), true); break; } }
     reload();
   }
-  async function airNow(p) {
-    const ok = await confirmBox(`Diffuser « ${p.title} » maintenant, pour tous les spectateurs ? Il passe tout de suite, puis la programmation reprend.`, 'Diffuser maintenant');
-    if (!ok) return;
-    const { error } = await sb.from('tv_programs').insert({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, position: 0,
+  async function airNow(p, direct) {
+    if (R.live) return toast('Un direct est en cours : il passe devant. Arrêtez le direct pour que la transition passe à l’antenne.', true);
+    if (!direct) {
+      const ok = await confirmBox(`Diffuser « ${p.title} » maintenant, pour tous les spectateurs ? Il passe tout de suite, puis la programmation reprend.`, 'Diffuser maintenant');
+      if (!ok) return;
+    }
+    const { error } = await sb.from('tv_programs').insert({ title: p.title.replace(/[\uFFFC\uFFFD\u200B]/g, '').trim(), source: p.source, video_url: p.video_url, duration: p.duration, position: 0,
       start_at: new Date(now() + 2000).toISOString(), repeat_daily: false, repeat_weekly: false, is_active: true });
     if (error) return toast(friendly(error), true);
     if (R.channel.status !== 'playing') await control('play');
@@ -1658,6 +1742,7 @@ async function showRegie() {
     };
   }
   async function insertProgram(row) {
+    if (row.title) row.title = row.title.replace(/[\uFFFC\uFFFD\u200B]/g, '').trim();
     const { error } = await sb.from('tv_programs').insert({ is_active: true, ...row });
     if (error) throw error;
   }
@@ -1743,8 +1828,9 @@ async function showRegie() {
         h('div', { style: 'line-height:1.6' },
           'Pour déposer des vidéos depuis la régie, il faut relier une seule fois votre compte Cloudflare Stream :',
           h('ol', { style: 'margin:8px 0 0;padding-left:20px' },
-            h('li', {}, 'Cloudflare › Mon profil › Jetons d’API › Créer un jeton avec la permission « Stream : Modifier ».'),
-            h('li', {}, 'Supabase › Edge Functions › Secrets : ajoutez CLOUDFLARE_API_TOKEN (le jeton) et CLOUDFLARE_ACCOUNT_ID (l’identifiant de compte affiché dans Cloudflare › Stream).')),
+            h('li', {}, h('a', { href: 'https://dash.cloudflare.com/profile/api-tokens', target: '_blank', rel: 'noopener' }, 'Cloudflare › Jetons d’API'), ' : « Créer un jeton » › modèle personnalisé › permission « Compte › Stream › Modifier ». Copiez le jeton.'),
+            h('li', {}, 'Dans Cloudflare › Stream, copiez l’« ID de compte » (Account ID).'),
+            h('li', {}, h('a', { href: 'https://supabase.com/dashboard/project/nidvzxeyqasvspmtdfcu/functions/secrets', target: '_blank', rel: 'noopener' }, 'Supabase › Edge Functions › Secrets'), ' : ajoutez CLOUDFLARE_API_TOKEN (le jeton) et CLOUDFLARE_ACCOUNT_ID (l’ID de compte).')),
           h('p', { class: 'rg-small' }, 'En attendant, collez des liens YouTube : ils marchent tout de suite.')),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => m.remove() }, 'Compris'))));
     document.body.append(m);
@@ -1781,7 +1867,13 @@ async function showRegie() {
 
   // ── Écran antenne : suit exactement la grille, comme chez les spectateurs ──
   function airTarget(t) {
-    if (R.live && R.live.is_live && R.live.hls_url) return { kind: 'hls', key: 'live:' + R.live.hls_url, url: R.live.hls_url, live: true, title: 'Direct OBS en cours' };
+    if (R.live) {
+      const src = R.live.source || 'obs', url = (R.live.live_url || '').trim();
+      if (src === 'youtube') return { kind: 'embed', key: 'live:' + url + R.mute, url: 'https://www.youtube.com/embed/' + ytId(url) + '?autoplay=1&playsinline=1&rel=0&mute=' + (R.mute ? 1 : 0), live: true, title: 'Direct YouTube en cours' };
+      if (src === 'facebook') return { kind: 'embed', key: 'live:' + url + R.mute, url: 'https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=false&autoplay=true&mute=' + (R.mute ? 1 : 0), live: true, title: 'Direct Facebook en cours' };
+      if (src === 'tiktok') return { kind: 'none', key: 'live:tiktok', live: true, title: 'Direct TikTok en cours', msg: ['DIRECT TIKTOK', 'TikTok n’autorise pas l’intégration d’un direct : les spectateurs ont un bouton pour l’ouvrir dans TikTok.'] };
+      return { kind: 'hls', key: 'live:' + R.live.hls_url, url: R.live.hls_url, live: true, title: 'Direct OBS / vMix en cours' };
+    }
     const S = R.sched;
     if (!S || S.empty) return { kind: 'none', key: 'empty', msg: ['AUCUN PROGRAMME', 'Ajoutez des vidéos à la playlist ou au plan de la semaine.'] };
     if (R.channel.status === 'stopped') return { kind: 'none', key: 'stopped', msg: ['CHAÎNE ARRÊTÉE', 'Les spectateurs voient l’écran d’attente. Touchez « Play » pour reprendre.'] };
@@ -1798,6 +1890,10 @@ async function showRegie() {
     const host = airBox.firstChild; host.textContent = '';
     if (T.kind === 'none') { host.append(h('div', { class: 'msg' }, h('div', {}, h('b', {}, T.msg[0]), T.msg[1]))); return; }
     const pos = () => T.sl ? (now() - T.sl.start) / 1000 : 0;
+    if (T.kind === 'embed') {
+      host.append(h('iframe', { src: T.url, allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true }));
+      return;
+    }
     if (T.kind === 'yt') {
       const div = h('div'); host.append(div);
       loadYt().then(() => {
@@ -1842,11 +1938,11 @@ async function showRegie() {
       } catch (e) {}
     }
     // Compte à rebours, fin, à suivre.
-    const st = R.live && R.live.is_live && R.live.hls_url ? 'live' : R.channel.status;
+    const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
-    airLabel.textContent = { live: 'DIRECT OBS', playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
+    airLabel.textContent = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
     bPlay.classList.toggle('on', st === 'playing'); bPause.classList.toggle('on', st === 'paused'); bStop.classList.toggle('on', st === 'stopped');
-    stateEl.textContent = { live: 'Un direct OBS est en cours : il passe devant la programmation.', playing: 'La chaîne tourne pour tous les spectateurs.', paused: 'En pause : « Play » reprend là où la playlist s’était arrêtée.', stopped: 'Arrêtée : « Play » relance la playlist depuis le début.' }[st];
+    stateEl.textContent = R.liveIdle && st !== 'live' ? 'Le direct est marqué allumé, mais OBS n’envoie aucune image : la programmation passe à l’antenne.' : { live: 'Un direct est en cours : il passe devant la programmation. « Arrêter le direct » pour reprendre la programmation.', playing: 'La chaîne tourne pour tous les spectateurs.', paused: 'En pause : « Play » reprend là où la playlist s’était arrêtée.', stopped: 'Arrêtée : « Play » relance la playlist depuis le début.' }[st];
     if (T.sl) {
       const left = T.sl.end - t, total = T.sl.end - T.sl.start;
       count.textContent = hms(left); count.classList.toggle('warn', left < 10000);
@@ -1856,9 +1952,9 @@ async function showRegie() {
       nextEl.textContent = nx ? `À suivre à ${hm(T.sl.end)} : ${nx.p.title}` : '';
       airTitle.textContent = T.title;
     } else {
-      count.textContent = T.live ? 'DIRECT' : '--:--:--'; count.classList.remove('warn');
+      count.textContent = T.live ? 'EN DIRECT' : '--:--:--'; count.classList.remove('warn');
       bar.style.width = T.live ? '100%' : '0';
-      endAt.textContent = T.live ? 'Direct OBS : pas de fin programmée.' : ''; nextEl.textContent = '';
+      endAt.textContent = T.live ? 'Direct : pas de fin programmée.' : ''; nextEl.textContent = '';
       airTitle.textContent = T.live ? T.title : '';
     }
     // Programme à l'antenne surligné dans les listes.
@@ -1888,8 +1984,20 @@ async function showRegie() {
     }
   }
   async function loadLive() {
-    const { data } = await sb.from('live_stream').select('is_live,hls_url').limit(1).maybeSingle();
-    R.live = data || null;
+    const { data } = await sb.from('live_stream').select('*').limit(1).maybeSingle();
+    R.liveRow = data || null;
+    await probeLive();
+  }
+  // Le direct ne passe devant que si OBS envoie vraiment l'image (sinon Cloudflare répond vide).
+  async function probeLive() {
+    const d = R.liveRow; let on = false;
+    if (d && d.is_live && (d.source || 'obs') !== 'obs') on = !!(d.live_url || '').trim();
+    else if (d && d.is_live && d.hls_url) {
+      try { const r = await fetch(d.hls_url, { cache: 'no-store' }); on = r.status === 200 && (await r.text()).includes('#EXT'); } catch (e) {}
+    }
+    R.live = on ? d : null;
+    R.liveIdle = !!(d && d.is_live && !on);
+    drawLive();
   }
   try {
     const sent = Date.now(); const { data } = await sb.rpc('tv_now'); const got = Date.now();
@@ -1900,13 +2008,14 @@ async function showRegie() {
   applyVol();
   const timer = setInterval(tick, 250);
   const readyTimer = setInterval(checkReady, 30000);
+  const liveTimer = setInterval(probeLive, 15000);
   const rt = sb.channel('regie-' + Date.now())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_programs' }, () => reload())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_channel' }, p => { if (p.new && p.new.id) { R.channel = p.new; draw(); } })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive().then(() => tick(true)))
     .subscribe();
   window.__leave = () => {
-    R.alive = false; clearInterval(timer); clearInterval(readyTimer);
+    R.alive = false; clearInterval(timer); clearInterval(readyTimer); clearInterval(liveTimer);
     try { sb.removeChannel(rt); } catch (e) {}
     if (R.air.destroy) try { R.air.destroy(); } catch (e) {}
     if (prevBox.__destroy) try { prevBox.__destroy(); } catch (e) {}
