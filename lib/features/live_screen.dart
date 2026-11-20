@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/analytics.dart';
 import '../core/media/audio_player_service.dart';
 import '../core/media/hls_video_player.dart';
+import '../core/media/tv_youtube.dart';
 import '../core/media/web_fullscreen.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
@@ -14,6 +17,7 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
+import '../data/tv_schedule.dart';
 import 'live_chat.dart';
 import 'shell.dart';
 
@@ -29,6 +33,31 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool _audioOnly = false;
   // Même lecteur en mode normal et en grand écran : la vidéo continue sans coupure.
   final _playerKey = GlobalKey();
+  final _tvKey = GlobalKey();
+
+  // Chaîne programmée : on change de programme pile à l'heure prévue.
+  Duration _clock = Duration.zero;
+  DateTime? _slotEnd;
+  bool _muted = false;
+  Timer? _ticker;
+
+  DateTime _now() => DateTime.now().add(_clock);
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      final end = _slotEnd;
+      if ((end != null && !_now().isBefore(end)) || tvYoutubeMuted != _muted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
 
   /// Prévient la coque de l'appli qu'il faut cacher (ou réafficher) les menus.
   void _syncImmersive(bool value) {
@@ -54,21 +83,45 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Widget build(BuildContext context) {
     final live = ref.watch(liveStreamProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
+    final programs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
+    _clock = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
+    _muted = tvYoutubeMuted;
     // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
     final onTv = ref.watch(currentTabProvider) == AppTab.tv;
     final size = MediaQuery.sizeOf(context);
     final landscape = size.width > size.height && size.shortestSide < 600;
+    // Smart TV / ordinateur (1920×1080) : la TV prend toute la largeur de l'écran.
+    final bigScreen = size.width >= 1280 && size.width > size.height;
     return live.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, __) => const Center(child: Text('Connexion impossible pour le moment.', style: TextStyle(color: AppColors.muted))),
-      data: (l) {
-        final canPlay = l != null && l.canPlay;
+      data: (live) {
+        // Un vrai direct (OBS) passe devant la programmation ; sinon, la chaîne 24 h/24.
+        final onAir = live != null && live.canPlay;
+        final schedule = TvSchedule(programs);
+        final now = _now();
+        final slot = onAir ? null : schedule.at(now);
+        _slotEnd = slot?.end;
+        final canPlay = onAir || slot != null;
         final immersive = canPlay && onTv && landscape && !_audioOnly;
         _syncImmersive(immersive);
-        if (l == null || !l.canPlay) return _Offline(live: l);
-        final Widget player = onTv
-            ? HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView)
-            : const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
+        if (!canPlay) return _Offline(live: live);
+        final next = slot == null ? null : schedule.after(slot);
+        final youtube = slot != null && slot.program.isYoutube;
+        // Ce qui s'affiche sous la TV : le direct, ou le programme en cours.
+        final LiveStream l = onAir
+            ? live!
+            : LiveStream(id: 'tv', title: live?.title ?? 'Conacce TV', isLive: false, messageTitle: slot!.program.title);
+        final Widget player;
+        if (!onTv) {
+          player = const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
+        } else if (onAir) {
+          player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView);
+        } else if (youtube) {
+          player = TvYoutubeSurface(key: _tvKey, videoId: slot!.program.youtubeId!, slotKey: slot.key, position: () => slot!.positionAt(_now()));
+        } else {
+          player = HlsVideoPlayer(key: ValueKey(slot!.key), url: slot.program.fileUrl, isLive: true, startAt: () => slot!.positionAt(_now()));
+        }
         // Téléphone tourné : la vidéo occupe tout l'écran.
         if (immersive) return ColoredBox(color: Colors.black, child: Center(child: player));
         // La TV toujours entière en haut ; la page défile, rien n'est coupé.
@@ -77,7 +130,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: 110),
           children: [
             MaxWidth(
-              maxWidth: 1000,
+              maxWidth: bigScreen ? size.width : 1000,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Stack(children: [
                   if (_audioOnly)
@@ -94,7 +147,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     )
                   else
                     player,
-                  if (!_audioOnly && (l.speaker != null || l.messageTitle != null))
+                  if (onAir && !_audioOnly && (l.speaker != null || l.messageTitle != null))
                     Positioned(
                       left: 12,
                       bottom: 44,
@@ -131,17 +184,43 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     ]),
                     if (l.messageTitle != null) ...[
                       const SizedBox(height: 4),
-                      Text(l.messageTitle!, style: const TextStyle(color: AppColors.mist, fontSize: 13)),
+                      Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
+                    ],
+                    if (next != null && next.program.title.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'À suivre · ${DateFormat('HH:mm', 'fr_FR').format(next.start.toLocal())} · ${next.program.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
                     ],
                     const SizedBox(height: 16),
                     Row(children: [
-                      Expanded(child: _Action(icon: _audioOnly ? Icons.videocam_rounded : Icons.headphones_rounded, label: _audioOnly ? 'Vidéo' : 'Audio seul', onTap: () => _toggleAudio(l))),
-                      // Mini-écran : la TV continue dans une petite fenêtre au-dessus des autres applis.
-                      if (!_audioOnly && pipSupported) ...[
+                      if (onAir) ...[
+                        Expanded(child: _Action(icon: _audioOnly ? Icons.videocam_rounded : Icons.headphones_rounded, label: _audioOnly ? 'Vidéo' : 'Audio seul', onTap: () => _toggleAudio(l))),
                         const SizedBox(width: 10),
-                        Expanded(child: _Action(icon: Icons.picture_in_picture_alt_rounded, label: 'Mini-écran', onTap: togglePictureInPicture)),
                       ],
-                      const SizedBox(width: 10),
+                      // Le navigateur a coupé le son au démarrage : un toucher suffit pour l'activer.
+                      if (youtube && _muted) ...[
+                        Expanded(
+                          child: _Action(
+                            icon: Icons.volume_up_rounded,
+                            label: 'Activer le son',
+                            sun: true,
+                            onTap: () {
+                              tvYoutubeUnmute();
+                              setState(() => _muted = false);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      // Mini-écran : la TV continue dans une petite fenêtre au-dessus des autres applis.
+                      if (!_audioOnly && !youtube && pipSupported) ...[
+                        Expanded(child: _Action(icon: Icons.picture_in_picture_alt_rounded, label: 'Mini-écran', onTap: togglePictureInPicture)),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: _Action(
                           icon: Icons.share_rounded,

@@ -73,6 +73,77 @@
   </script>
   <!-- Plein écran de la vidéo avec le lecteur du téléphone (appelé par le bouton ⛶) -->
   <script>
+  // ─── Chaîne programmée 24 h/24 (liens YouTube) ───
+  // Lecteur sans boutons, calé sur l'horaire du serveur. La vidéo suivante se prépare
+  // par-dessus, invisible, et n'apparaît que lorsqu'elle joue déjà : pas de chargement à l'écran.
+  (function () {
+    var api = null, host = null, queued = null, cur = null;
+    window.conacceTvMuted = false;
+    function loadApi() {
+      if (api) return api;
+      api = new Promise(function (res) {
+        if (window.YT && YT.Player) return res();
+        var prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = function () { if (prev) prev(); res(); };
+        var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+      });
+      return api;
+    }
+    function destroy(e) {
+      if (!e) return;
+      try { if (e.player && e.player.destroy) e.player.destroy(); } catch (x) {}
+      if (e.wrap && e.wrap.parentNode) e.wrap.parentNode.removeChild(e.wrap);
+    }
+    window.conacceTvHost = function (el) {
+      host = el;
+      if (queued) { var q = queued; queued = null; window.conacceTvPlay(q[0], q[1], q[2]); }
+    };
+    window.conacceTvPlay = function (id, start, key) {
+      if (!host) { queued = [id, start, key]; return; }
+      var h = host, t0 = performance.now();
+      loadApi().then(function () {
+        if (h !== host) return;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;transition:opacity .35s;background:#000';
+        var el = document.createElement('div'); wrap.appendChild(el); h.appendChild(wrap);
+        var entry = { key: key, wrap: wrap, player: null, shown: false }, previous = cur;
+        cur = entry;
+        function expected() { return start + (performance.now() - t0) / 1000; }
+        function reveal() {
+          if (entry.shown || cur !== entry) return;
+          entry.shown = true; wrap.style.opacity = '1';
+          if (previous) { var old = previous; previous = null; setTimeout(function () { destroy(old); }, 400); }
+        }
+        entry.player = new YT.Player(el, {
+          width: '100%', height: '100%', videoId: id,
+          playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0, start: Math.floor(start), origin: location.origin },
+          events: {
+            onReady: function (e) { if (window.conacceTvMuted) e.target.mute(); e.target.playVideo(); },
+            onAutoplayBlocked: function (e) { window.conacceTvMuted = true; e.target.mute(); e.target.playVideo(); },
+            onStateChange: function (e) {
+              if (e.data === 1) {
+                // Même image partout : on rattrape un éventuel retard de chargement.
+                var gap = e.target.getCurrentTime() - expected();
+                if (Math.abs(gap) > 2.5) e.target.seekTo(expected(), true);
+                reveal();
+              } else if (e.data === 0) {
+                wrap.style.opacity = '0';  // fin de vidéo : écran noir propre jusqu'au programme suivant
+              }
+            }
+          }
+        });
+        setTimeout(reveal, 7000);
+      });
+    };
+    window.conacceTvStop = function (key) {
+      if (!cur || (key && cur.key !== key)) return;
+      destroy(cur); cur = null;
+    };
+    window.conacceTvUnmute = function () {
+      window.conacceTvMuted = false;
+      try { if (cur && cur.player) { cur.player.unMute(); cur.player.setVolume(100); cur.player.playVideo(); } } catch (x) {}
+    };
+  })();
   // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre
   // pendant qu'on utilise d'autres applis.
   function conacceVideo() {

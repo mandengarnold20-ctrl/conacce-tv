@@ -269,6 +269,8 @@ const toLocal = iso => { if (!iso) return ''; const d = new Date(iso); return `$
 const fromLocal = v => v ? new Date(v).toISOString() : null;
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: iso.length > 10 ? 'short' : undefined }) : '';
 const fmtDur = s => s ? `${Math.floor(s / 60)}:${pad(s % 60)}` : '';
+const fmtHms = s => { s = Math.round(Number(s) || 0); if (!s) return ''; const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60; return hh ? `${hh}:${pad(mm)}:${pad(ss)}` : `${mm}:${pad(ss)}`; };
+const parseHms = t => { const p = String(t || '').trim().split(':').map(x => x.trim()); if (!p[0] || p.some(x => !/^\d+$/.test(x))) return null; return p.reduce((a, x) => a * 60 + Number(x), 0) || null; };
 const initial = t => (String(t || '').trim().charAt(0) || '·').toUpperCase();
 const label = (opts, v) => (opts.find(o => o[0] === v) || [v, v])[1];
 let toastTimer;
@@ -291,6 +293,54 @@ function friendly(err) {
   if (/rate limit|too many/i.test(m)) return 'Trop d’e-mails envoyés pour le moment. Connectez-vous plutôt avec un mot de passe, ou réessayez dans une heure.';
   if (/Failed to fetch|NetworkError/i.test(m)) return 'Pas de connexion internet.';
   return 'Erreur : ' + m;
+}
+
+// ─── Programmation TV : durée trouvée automatiquement ───
+let ytApi = null;
+function loadYt() {
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    if (window.YT && YT.Player) return res();
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); res(); };
+    document.head.append(h('script', { src: 'https://www.youtube.com/iframe_api' }));
+  });
+  return ytApi;
+}
+async function ytDuration(id) {
+  await loadYt();
+  return new Promise(res => {
+    const box = h('div', { style: 'position:fixed;left:-9999px;top:0;width:320px;height:180px' }, h('div'));
+    document.body.append(box);
+    let done = false, p;
+    const end = v => { if (done) return; done = true; try { p.destroy(); } catch (e) {} box.remove(); res(v); };
+    const poll = (n) => { const d = p && p.getDuration ? p.getDuration() : 0; if (d > 0) return end(Math.round(d)); if (n > 20) return end(null); setTimeout(() => poll(n + 1), 400); };
+    p = new YT.Player(box.firstChild, { width: 320, height: 180, videoId: id, playerVars: { mute: 1, playsinline: 1 },
+      events: { onReady: e => { e.target.mute(); poll(0); }, onError: () => end(null) } });
+    setTimeout(() => end(null), 15000);
+  });
+}
+function streamUrl(u) {
+  u = String(u || '').trim();
+  try { const x = new URL(u); if (/\.(m3u8|mp4|mpd)$/.test(x.pathname)) return u; } catch (e) {}
+  const id = (u.match(/[0-9a-f]{32}/) || [])[0];
+  if (!id) return null;
+  let host = 'videodelivery.net'; try { const x = new URL(u); if (/cloudflarestream\.com$/.test(x.hostname)) host = x.hostname; } catch (e) {}
+  return `https://${host}/${id}/manifest/video.m3u8`;
+}
+async function hlsDuration(url) {
+  const get = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); return r.text(); };
+  let text = await get(url), base = url;
+  const variant = text.split('\n').map(l => l.trim()).find((l, i, a) => l && !l.startsWith('#') && /#EXT-X-STREAM-INF/.test(a[i - 1] || ''));
+  if (variant) { base = new URL(variant, url).href; text = await get(base); }
+  const total = [...text.matchAll(/#EXTINF:([\d.]+)/g)].reduce((a, m) => a + Number(m[1]), 0);
+  return total > 0 ? Math.round(total) : null;
+}
+async function detectDuration(v) {
+  try {
+    if ((v.source || 'youtube') === 'youtube') { const id = ytId(v.video_url); return id ? await ytDuration(id) : null; }
+    const u = streamUrl(v.video_url); return u ? await hlsDuration(u) : null;
+  } catch (e) { return null; }
 }
 
 // ─── Listes de choix ───
@@ -357,6 +407,31 @@ const ENT = {
     validate: v => {
       if (!isCulte(v)) { if (v.category !== 'spots') v.category = 'autre'; v.speaker = null; v.preached_on = null; }
       return (!v.video_url && !v.audio_url) ? 'Ajoutez la vidéo (lien ou fichier).' : null;
+    },
+  },
+  tv: {
+    table: 'tv_programs', title: 'Programmation TV', one: 'un programme', icon: '',
+    intro: 'La chaîne Conacce TV tourne 24 h/24, ordinateur éteint. Les programmes sans heure passent l’un après l’autre, en boucle, dans l’ordre indiqué. Un programme avec une heure de passage devient un rendez-vous : il passe à cette heure-là (et chaque jour si vous cochez la case). Quand vous lancez un vrai direct avec OBS, il passe devant la programmation, qui reprend ensuite toute seule.',
+    select: '*', order: ['position', true], empty: 'Aucun programme. Cliquez sur « Ajouter » pour construire la grille.',
+    name: r => r.title, img: r => r.source === 'youtube' ? ytThumb(r.video_url) : null,
+    sub: r => [fmtHms(r.duration), r.start_at ? (r.repeat_daily ? 'Chaque jour à ' + new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 'Le ' + fmtDate(r.start_at)) : 'Boucle, n° ' + r.position].filter(Boolean).join(' · '),
+    badges: r => [[r.source === 'youtube' ? 'Lien YouTube' : 'Vidéo téléversée'], r.start_at && ['Rendez-vous', 'green'], !r.is_active && ['Désactivé', 'red']].filter(Boolean),
+    fields: [
+      { k: 'title', label: 'Titre du programme', type: 'text', req: true, help: 'Affiché sous la TV : « En ce moment » et « À suivre ».' },
+      { k: 'source', label: 'Source', type: 'select', opts: [['youtube', 'Lien YouTube'], ['file', 'Vidéo téléversée (Cloudflare Stream)']], def: 'youtube' },
+      { k: 'video_url', label: 'Lien de la vidéo', type: 'text', req: true, help: 'YouTube : collez le lien de la vidéo. Vidéo téléversée : envoyez-la dans Cloudflare (Stream › Téléverser, même plus de 2 Go, en 1920×1080), puis collez ici son lien ou son identifiant.' },
+      { k: 'duration', label: 'Durée', type: 'duration', req: true, help: 'Touchez « Trouver la durée » : elle se remplit seule. La durée exacte permet d’enchaîner les vidéos sans trou.' },
+      { k: 'position', label: 'Ordre dans la boucle', type: 'number', help: '1 passe en premier, puis 2, 3… Laissez vide pour mettre le programme à la fin.' },
+      { k: 'start_at', label: 'Heure de passage (facultatif)', type: 'datetime', help: 'Vide : le programme tourne dans la boucle. Rempli : rendez-vous à cette heure-là (heure de votre ordinateur).' },
+      { k: 'repeat_daily', label: 'Rendez-vous : repasser chaque jour à la même heure', type: 'checkbox' },
+      { k: 'is_active', label: 'Actif (passe à l’antenne)', type: 'checkbox', def: true },
+    ],
+    validate: v => {
+      if (v.source === 'youtube' && !ytId(v.video_url)) return 'Ce lien YouTube n’est pas reconnu.';
+      if (v.source === 'file' && !streamUrl(v.video_url)) return 'Collez le lien ou l’identifiant de la vidéo Cloudflare Stream.';
+      if (!v.duration || v.duration < 1) return 'Indiquez la durée (ou touchez « Trouver la durée »).';
+      if (!v.start_at) v.repeat_daily = false;
+      return null;
     },
   },
   worship: {
@@ -637,6 +712,22 @@ function renderFields(fields, vals, container) {
       case 'image': case 'file':
         ctl = uploader(f, vals, changed, container);
         break;
+      case 'duration': {
+        const inp = h('input', { type: 'text', name: f.k, placeholder: 'ex. 1:25:30', inputmode: 'numeric', style: 'flex:1' });
+        inp.value = fmtHms(vals[f.k]);
+        inp.addEventListener('input', () => { vals[f.k] = parseHms(inp.value); });
+        const btn = h('button', { type: 'button', class: 'btn small' }, 'Trouver la durée');
+        btn.addEventListener('click', async () => {
+          if (!vals.video_url) return toast('Collez d’abord le lien de la vidéo.', true);
+          btn.disabled = true; btn.textContent = 'Recherche…';
+          const d = await detectDuration(vals);
+          btn.disabled = false; btn.textContent = 'Trouver la durée';
+          if (d) { vals[f.k] = d; inp.value = fmtHms(d); toast('Durée trouvée : ' + fmtHms(d)); }
+          else toast('Durée introuvable : saisissez-la à la main (heures:minutes:secondes).', true);
+        });
+        ctl = h('div', { style: 'display:flex;gap:8px;align-items:center' }, inp, btn);
+        break;
+      }
       case 'links': {
         ctl = h('div', { class: 'grid2' });
         vals[f.k] = { ...(vals[f.k] || {}) };
@@ -1132,9 +1223,17 @@ ENT.featured = {
   fields: ENT.sermons.fields.map(f => f.k === 'is_featured' ? { ...f, def: true } : f),
 };
 
+ENT.tv.check = async (v, row) => {
+  if (v.position == null) {
+    const { data } = await sb.from('tv_programs').select('position').order('position', { ascending: false }).limit(1);
+    v.position = ((data && data[0] && data[0].position) || 0) + 1;
+  }
+  return null;
+};
+
 const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
-  ['live', 'Diffusion', 'TV en direct'], ['radio', '', 'Radio Dunamis FM'],
+  ['live', 'Diffusion', 'TV en direct'], ['tv', '', 'Programmation TV'], ['radio', '', 'Radio Dunamis FM'],
   ['sermons', 'Contenus', 'Vidéos'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
   ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],

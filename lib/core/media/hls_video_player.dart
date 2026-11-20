@@ -23,6 +23,7 @@ class HlsVideoPlayer extends StatefulWidget {
     this.autoPlay = true,
     this.isFile = false,
     this.onStarted,
+    this.startAt,
   });
 
   final String url;
@@ -32,6 +33,9 @@ class HlsVideoPlayer extends StatefulWidget {
   final VoidCallback? onStarted;
   final bool isLive;
   final bool autoPlay;
+
+  /// Chaîne programmée : position où la vidéo doit être en ce moment (même image pour tout le monde).
+  final Duration Function()? startAt;
 
   @override
   State<HlsVideoPlayer> createState() => _HlsVideoPlayerState();
@@ -100,6 +104,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     if (progressing) {
       _stalledTicks = 0;
       if (_stalled) setState(() => _stalled = false);
+      // Chaîne programmée : si la vidéo a pris du retard (connexion lente), on la recale sur l'horaire.
+      final expected = widget.startAt?.call();
+      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 6) && expected < v.duration) {
+        video.seekTo(expected);
+      }
       return;
     }
     final manualPause = !v.isPlaying && !v.isBuffering && !v.isCompleted;
@@ -154,6 +163,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     try {
       await video.initialize();
       if (!mounted || _video != video) return;
+      final start = widget.startAt?.call();
+      if (start != null && start > const Duration(seconds: 1) && start < video.value.duration) {
+        await video.seekTo(start);
+        if (!mounted || _video != video) return;
+      }
       _chewie = ChewieController(
         videoPlayerController: video,
         autoPlay: widget.autoPlay,

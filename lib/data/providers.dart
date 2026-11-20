@@ -2,12 +2,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models.dart';
+import 'tv_schedule.dart';
 
 SupabaseClient get _db => Supabase.instance.client;
 
 /// Conacce TV en direct, mis à jour instantanément (temps réel).
 final liveStreamProvider = StreamProvider<LiveStream?>((ref) {
   return _db.from('live_stream').stream(primaryKey: ['id']).map((rows) => rows.isEmpty ? null : LiveStream.fromMap(rows.first));
+});
+
+/// Programmes de la chaîne 24 h/24 (grille), mis à jour instantanément.
+final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
+  return _db.from('tv_programs').stream(primaryKey: ['id']).map(
+        (rows) => rows.where((r) => r['is_active'] != false).map(TvProgram.fromMap).toList(),
+      );
+});
+
+/// Écart entre l'horloge du téléphone et celle du serveur : la grille se calcule sur l'heure du serveur,
+/// pour que Londres et l'Afrique voient exactement la même chose.
+final serverClockOffsetProvider = FutureProvider<Duration>((ref) async {
+  try {
+    final sent = DateTime.now();
+    final res = await _db.rpc('tv_now');
+    final received = DateTime.now();
+    final server = DateTime.parse(res as String);
+    final local = sent.add(received.difference(sent) ~/ 2);
+    return server.difference(local);
+  } catch (_) {
+    return Duration.zero;
+  }
 });
 
 /// Radio Dunamis FM, mise à jour instantanément.
