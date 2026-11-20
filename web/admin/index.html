@@ -235,6 +235,78 @@
     .item .thumb { width: 46px; height: 46px; }
     h1 { font-size: 20px; }
   }
+  /* ─── Régie TV (inspirée des logiciels de diffusion) ─── */
+  main.wide { max-width: 1680px; }
+  .rg { --rg-bg: #0A0F2E; --rg-panel: #10173F; --rg-row: #141C4A; --rg-on: #FD7A13; }
+  .rg-top { display: grid; grid-template-columns: 1fr 260px 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
+  .rg-scr { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px; }
+  .rg-scr .lab { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: 1.5px; font-weight: 700; color: #9AA6DA; margin-bottom: 8px; }
+  .rg-scr.air .lab b { color: #fff; background: var(--live); padding: 2px 8px; border-radius: 3px; }
+  .rg-scr.air.paused .lab b { background: #F9CA22; color: #0B1463; }
+  .rg-scr.air.stopped .lab b { background: #444C7A; }
+  .rg-box { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 4px; overflow: hidden; }
+  .rg-box > .host, .rg-box > .host > *, .rg-box iframe, .rg-box video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .rg-box .msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: #9AA6DA; font-size: 13px; letter-spacing: 1px; }
+  .rg-box .msg b { display: block; color: #fff; font-size: 15px; margin-bottom: 4px; letter-spacing: 2px; }
+  .rg-box.air-frame { outline: 3px solid var(--live); outline-offset: -3px; }
+  .rg-scr .under { display: flex; gap: 8px; align-items: center; margin-top: 8px; min-height: 32px; flex-wrap: wrap; }
+  .rg-scr .under .ttl { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rg-scr input[type=range] { width: 140px; min-height: 0; padding: 0; accent-color: var(--rg-on); background: none; border: none; }
+  .rg-mid { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 14px; text-align: center; display: grid; gap: 10px; }
+  .rg-clock { font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; letter-spacing: 1px; }
+  .rg-k { font-size: 10.5px; letter-spacing: 1.5px; color: #9AA6DA; font-weight: 700; }
+  .rg-count { font-variant-numeric: tabular-nums; font-size: 40px; font-weight: 700; color: var(--rg-on); line-height: 1.05; }
+  .rg-count.warn { color: #FF5468; }
+  .rg-bar { height: 6px; background: rgba(255,255,255,.08); border-radius: 6px; overflow: hidden; }
+  .rg-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #F9CA22, var(--rg-on)); }
+  .rg-small { font-size: 12.5px; color: #C9D2F5; line-height: 1.45; }
+  .rg-ctl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .rg-ctl .btn { min-height: 46px; font-weight: 700; padding: 6px; }
+  .rg-ctl .btn.on { background: var(--rg-on); color: #0B1463; border-color: transparent; }
+  .rg-pills { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .rg-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rg-pan { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 360px; position: relative; }
+  .rg-pan > header { background: #F9A11B; color: #0B1463; padding: 8px 12px; display: flex; gap: 10px; align-items: center; font-weight: 700; flex-wrap: wrap; }
+  .rg-pan > header .grow { flex: 1; }
+  .rg-pan > header .meta { font-weight: 500; font-size: 12.5px; }
+  .rg-pan.week > header { background: #6E7BC4; color: #fff; }
+  .rg-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .rg-tools input[type=time] { width: 120px; }
+  .rg-tools label.inl { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .rg-days { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid rgba(255,255,255,.06); }
+  .rg-days button { font: inherit; font-size: 12px; background: none; border: none; color: #C9D2F5; padding: 8px 2px; cursor: pointer; border-bottom: 3px solid transparent; }
+  .rg-days button small { display: block; font-size: 10.5px; color: #8C97CC; }
+  .rg-days button.on { color: #fff; font-weight: 700; border-bottom-color: var(--rg-on); background: rgba(255,255,255,.04); }
+  .rg-rows { flex: 1; overflow-y: auto; max-height: 520px; }
+  .rg-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 62px auto; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
+  .rg-row .t small { display: block; font-size: 11.5px; opacity: .75; overflow: hidden; text-overflow: ellipsis; }
+  .rg-row:nth-child(even) { background: rgba(255,255,255,.02); }
+  .rg-row .n { color: #9AA6DA; font-variant-numeric: tabular-nums; }
+  .rg-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rg-row .d { font-variant-numeric: tabular-nums; color: #C9D2F5; text-align: right; }
+  .rg-row .a { display: flex; gap: 4px; }
+  .rg-row .a button { font: inherit; font-size: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: #E0E6FF; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .rg-row .a button:hover { border-color: #F9CA22; }
+  .rg-row .a button.x { color: #FF8A9B; }
+  .rg-row .a button.off { opacity: .25; cursor: default; }
+  .rg-row.onair { background: var(--rg-on) !important; color: #0B1463; font-weight: 600; }
+  .rg-row.onair .n, .rg-row.onair .d { color: #0B1463; }
+  .rg-row.sel { box-shadow: inset 3px 0 0 #F9CA22; }
+  .rg-row input[type=time] { min-height: 28px; padding: 2px 6px; width: 92px; font-size: 12.5px; }
+  .rg-drop { padding: 18px; text-align: center; color: #8C97CC; font-size: 12.5px; letter-spacing: 1px; border-top: 1px dashed rgba(255,255,255,.12); }
+  .rg-pan.drag::after { content: 'Déposez les vidéos ici'; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(253,122,19,.18);
+                        border: 2px dashed var(--rg-on); font-weight: 700; font-size: 16px; color: #fff; pointer-events: none; }
+  .rg-ups { display: grid; gap: 4px; padding: 0 12px; }
+  .rg-ups:empty { display: none; }
+  .rg-ups div { font-size: 12px; color: #C9D2F5; display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+  .rg-ups div i { flex: 1; height: 5px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; position: relative; }
+  .rg-ups div i::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--rg-on); }
+  .rg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .modal { position: fixed; inset: 0; background: rgba(5,0,10,.7); z-index: 60; display: grid; place-items: center; padding: 16px; }
+  .modal > div { width: min(560px, 100%); background: #0A1250; border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 12px; }
+  .modal .row { display: flex; gap: 8px; justify-content: flex-end; }
+  @media (max-width: 1100px) { .rg-top { grid-template-columns: 1fr 1fr; } .rg-mid { grid-column: 1 / -1; grid-row: 2; } .rg-panels { grid-template-columns: 1fr; } }
+  @media (max-width: 700px) { .rg-top { grid-template-columns: 1fr; } .rg-row { grid-template-columns: 56px 1fr 54px; } .rg-row .a { grid-column: 1 / -1; justify-content: flex-end; } }
 </style>
 </head>
 <body>
@@ -307,14 +379,15 @@ function loadYt() {
   });
   return ytApi;
 }
-async function ytDuration(id) {
+async function ytDuration(id) { const r = await ytInfo(id); return r ? r.duration : null; }
+async function ytInfo(id) {
   await loadYt();
   return new Promise(res => {
     const box = h('div', { style: 'position:fixed;left:-9999px;top:0;width:320px;height:180px' }, h('div'));
     document.body.append(box);
     let done = false, p;
     const end = v => { if (done) return; done = true; try { p.destroy(); } catch (e) {} box.remove(); res(v); };
-    const poll = (n) => { const d = p && p.getDuration ? p.getDuration() : 0; if (d > 0) return end(Math.round(d)); if (n > 20) return end(null); setTimeout(() => poll(n + 1), 400); };
+    const poll = (n) => { const d = p && p.getDuration ? p.getDuration() : 0; if (d > 0) { let title = ''; try { title = p.getVideoData().title || ''; } catch (e) {} return end({ duration: Math.round(d), title }); } if (n > 20) return end(null); setTimeout(() => poll(n + 1), 400); };
     p = new YT.Player(box.firstChild, { width: 320, height: 180, videoId: id, playerVars: { mute: 1, playsinline: 1 },
       events: { onReady: e => { e.target.mute(); poll(0); }, onError: () => end(null) } });
     setTimeout(() => end(null), 15000);
@@ -424,13 +497,15 @@ const ENT = {
       { k: 'position', label: 'Ordre dans la boucle', type: 'number', help: '1 passe en premier, puis 2, 3… Laissez vide pour mettre le programme à la fin.' },
       { k: 'start_at', label: 'Heure de passage (facultatif)', type: 'datetime', help: 'Vide : le programme tourne dans la boucle. Rempli : rendez-vous à cette heure-là (heure de votre ordinateur).' },
       { k: 'repeat_daily', label: 'Rendez-vous : repasser chaque jour à la même heure', type: 'checkbox' },
+      { k: 'repeat_weekly', label: 'Rendez-vous : repasser chaque semaine, même jour, même heure', type: 'checkbox' },
       { k: 'is_active', label: 'Actif (passe à l’antenne)', type: 'checkbox', def: true },
     ],
     validate: v => {
       if (v.source === 'youtube' && !ytId(v.video_url)) return 'Ce lien YouTube n’est pas reconnu.';
       if (v.source === 'file' && !streamUrl(v.video_url)) return 'Collez le lien ou l’identifiant de la vidéo Cloudflare Stream.';
       if (!v.duration || v.duration < 1) return 'Indiquez la durée (ou touchez « Trouver la durée »).';
-      if (!v.start_at) v.repeat_daily = false;
+      if (!v.start_at) { v.repeat_daily = false; v.repeat_weekly = false; }
+      if (v.repeat_daily) v.repeat_weekly = false;
       return null;
     },
   },
@@ -1231,9 +1306,616 @@ ENT.tv.check = async (v, row) => {
   return null;
 };
 
+// ─── Régie TV : deux écrans, compte à rebours, playlist en boucle, plan de la semaine ───
+const RG_DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const RG_DAYS_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+const DAY_MS = 86400000;
+let hlsLib = null;
+function loadHls() {
+  if (hlsLib) return hlsLib;
+  hlsLib = new Promise(res => {
+    if (window.Hls) return res();
+    const s = h('script', { src: 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js' });
+    s.onload = () => res(); s.onerror = () => res();
+    document.head.append(s);
+  });
+  return hlsLib;
+}
+const hms = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s % 3600 / 60))}:${pad(s % 60)}`; };
+const hm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const hmsOf = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const dayIdx = t => (new Date(t).getDay() + 6) % 7; // 0 = lundi
+const startOfDay = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const timeOfDay = t => t - startOfDay(t);
+
+// La grille : exactement le même calcul que l'appli (heure du serveur, boucle + rendez-vous).
+function tvSchedule(programs, anchorMs) {
+  const ok = programs.filter(p => p.is_active !== false && p.duration > 0);
+  const fixed = ok.filter(p => p.start_at);
+  const loop = ok.filter(p => !p.start_at).sort((a, b) => (a.position - b.position) || (a.id < b.id ? -1 : 1));
+  const around = t => {
+    const out = [];
+    for (const p of fixed) {
+      const s = Date.parse(p.start_at), d = p.duration * 1000;
+      const step = p.repeat_daily ? DAY_MS : p.repeat_weekly ? 7 * DAY_MS : 0;
+      if (!step) { out.push({ p, start: s, end: s + d }); continue; }
+      const k = Math.trunc((t - s) / step);
+      for (const n of [k - 1, k, k + 1]) { if (n < 0) continue; const st = s + n * step; out.push({ p, start: st, end: st + d }); }
+    }
+    return out;
+  };
+  const nextFixed = t => { let b = null; for (const sl of around(t)) if (sl.start > t && (!b || sl.start < b.start)) b = sl; return b; };
+  const at = t => {
+    let cur = null;
+    for (const sl of around(t)) if (t >= sl.start && t < sl.end && (!cur || sl.start > cur.start)) cur = sl;
+    if (cur) return cur;
+    if (!loop.length) return null;
+    const total = loop.reduce((a, p) => a + p.duration * 1000, 0);
+    let x = ((t - anchorMs) % total + total) % total;
+    for (const p of loop) {
+      const d = p.duration * 1000;
+      if (x < d) { const start = t - x; let end = start + d; const n = nextFixed(t); if (n && n.start < end) end = n.start; return { p, start, end }; }
+      x -= d;
+    }
+    return null;
+  };
+  return { at, after: sl => at(sl.end + 500), loop, fixed, empty: !ok.length };
+}
+
+// Envoi direct vers Cloudflare Stream (protocole tus, par morceaux de 64 Mo, reprise automatique).
+function tusPatch(url, blob, offset, onProg) {
+  return new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open('PATCH', url);
+    x.setRequestHeader('Tus-Resumable', '1.0.0');
+    x.setRequestHeader('Upload-Offset', String(offset));
+    x.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+    x.upload.onprogress = e => onProg(e.loaded);
+    x.onload = () => x.status >= 200 && x.status < 300 ? res(Number(x.getResponseHeader('Upload-Offset')) || offset + blob.size) : rej(new Error('HTTP ' + x.status));
+    x.onerror = () => rej(new Error('réseau'));
+    x.send(blob);
+  });
+}
+async function tusUpload(url, file, onProg) {
+  const CH = 64 * 1024 * 1024; let off = 0, fails = 0;
+  while (off < file.size) {
+    try {
+      const base = off;
+      off = await tusPatch(url, file.slice(off, off + CH), off, l => onProg((base + l) / file.size));
+      fails = 0; onProg(off / file.size);
+    } catch (e) {
+      if (++fails > 6) throw e;
+      await new Promise(r => setTimeout(r, 2000 * fails));
+      try { const r = await fetch(url, { method: 'HEAD', headers: { 'Tus-Resumable': '1.0.0' } }); const o = Number(r.headers.get('Upload-Offset')); if (o >= 0 && !isNaN(o) && r.headers.get('Upload-Offset') !== null) off = o; } catch (_) {}
+    }
+  }
+}
+async function manifestReady(url) {
+  try { const r = await fetch(url, { cache: 'no-store' }); return r.ok; } catch (e) { return false; }
+}
+
+function confirmBox(msg, okLabel, danger) {
+  return new Promise(res => {
+    const close = v => { m.remove(); res(v); };
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && close(false) },
+      h('div', {}, h('div', { style: 'line-height:1.6' }, msg),
+        h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => close(false) }, 'Annuler'),
+          h('button', { class: 'btn ' + (danger ? 'danger' : 'primary'), onclick: () => close(true) }, okLabel))));
+    document.body.append(m);
+  });
+}
+
+async function showRegie() {
+  const main = $('#main');
+  const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+  const R = {
+    programs: [], channel: { status: 'playing', anchor: '2026-01-01T00:00:00Z' }, live: null, offset: 0,
+    day: dayIdx(Date.now()), weekly: true, mute: store('rg_mute') !== '0', vol: Number(store('rg_vol') || 80),
+    air: { key: null }, prev: null, ready: {}, alive: true, timeEdited: false,
+  };
+  const now = () => Date.now() + R.offset;
+
+  // ── Écrans ──
+  const prevBox = h('div', { class: 'rg-box' }, h('div', { class: 'msg' }, h('div', {}, h('b', {}, 'APERÇU'), 'Touchez « Aperçu » sur un programme pour le visionner ici, sans toucher à l’antenne.')));
+  const prevTitle = h('div', { class: 'ttl muted' }, 'Rien en aperçu');
+  const prevNow = h('button', { class: 'btn small hidden', onclick: () => R.prev && airNow(R.prev) }, 'Diffuser maintenant');
+  const prevClose = h('button', { class: 'btn small ghost hidden', onclick: () => setPreview(null) }, 'Fermer');
+  const airBox = h('div', { class: 'rg-box air-frame' }, h('div', { class: 'host' }));
+  const airLabel = h('b', {}, 'À L’ANTENNE');
+  const airScr = h('div', { class: 'rg-scr air' },
+    h('div', { class: 'lab' }, h('span', {}, 'ANTENNE · CE QUE VOIENT LES SPECTATEURS'), airLabel), airBox);
+  const airTitle = h('div', { class: 'ttl' }, '');
+  const muteBtn = h('button', { class: 'btn small', onclick: () => { R.mute = !R.mute; store('rg_mute', R.mute ? '1' : '0'); applyVol(); } }, '');
+  const volIn = h('input', { type: 'range', min: 0, max: 100, value: R.vol, 'aria-label': 'Volume', oninput: () => { R.vol = Number(volIn.value); store('rg_vol', String(R.vol)); if (R.vol > 0 && R.mute) R.mute = false; applyVol(); } });
+  airScr.append(h('div', { class: 'under' }, airTitle, muteBtn, h('span', { class: 'rg-small' }, 'Volume'), volIn));
+
+  // ── Centre : horloge, compte à rebours, commandes ──
+  const clock = h('div', { class: 'rg-clock' }, '--:--:--');
+  const count = h('div', { class: 'rg-count' }, '--:--:--');
+  const bar = h('i');
+  const endAt = h('div', { class: 'rg-small' }, '');
+  const nextEl = h('div', { class: 'rg-small' }, '');
+  const bPlay = h('button', { class: 'btn', onclick: () => control('play') }, 'Play');
+  const bPause = h('button', { class: 'btn', onclick: () => control('pause') }, 'Pause');
+  const bStop = h('button', { class: 'btn', onclick: () => control('stop') }, 'Stop');
+  const stateEl = h('div', { class: 'rg-small' }, '');
+  const mid = h('div', { class: 'rg-mid' },
+    h('div', {}, h('div', { class: 'rg-k' }, 'HEURE'), clock),
+    h('div', {}, h('div', { class: 'rg-k' }, 'RESTE À L’ANTENNE'), count),
+    h('div', { class: 'rg-bar' }, bar), endAt, nextEl,
+    h('div', { class: 'rg-ctl' }, bPlay, bPause, bStop), stateEl);
+
+  main.append(h('div', { class: 'rg' },
+    h('div', { class: 'head' },
+      h('div', {}, h('h1', {}, 'Régie TV'),
+        h('p', { class: 'intro' }, 'Déposez vos vidéos ou collez vos liens YouTube : ils se programment tout seuls, à la suite, à partir de l’heure de votre ordinateur. La chaîne tourne 24 h/24, même ordinateur éteint, et tout le monde voit la même image au même moment.'))),
+    h('div', { class: 'rg-top' },
+      h('div', { class: 'rg-scr' }, h('div', { class: 'lab' }, h('span', {}, 'APERÇU · VISIONNAGE'), h('span', {}, '')), prevBox,
+        h('div', { class: 'under' }, prevTitle, prevNow, prevClose)),
+      mid, airScr),
+    h('div', { class: 'rg-panels' }, playlistPanel(), weekPanel()),
+    h('div', { class: 'rg-foot' },
+      h('div', { class: 'rg-small' }, 'Un direct lancé depuis OBS passe toujours devant la programmation ; elle reprend toute seule à la fin du direct.'),
+      h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+        h('button', { class: 'btn small', onclick: restartLoop }, 'Reprendre la playlist au début'),
+        h('button', { class: 'btn small danger', onclick: clearAll }, 'Supprimer toute la programmation')))));
+
+  // ── Panneau Playlist ──
+  function playlistPanel() {
+    const rows = h('div', { class: 'rg-rows' });
+    const meta = h('span', { class: 'meta' }, '');
+    const ups = h('div', { class: 'rg-ups' });
+    const pan = h('div', { class: 'rg-pan' },
+      h('header', {}, h('span', {}, 'PLAYLIST EN BOUCLE'), meta, h('span', { class: 'grow' })),
+      h('div', { class: 'rg-tools' },
+        h('button', { class: 'btn small primary', onclick: () => pickFiles('loop') }, 'Ajouter des vidéos'),
+        h('button', { class: 'btn small', onclick: () => askLinks('loop') }, 'Coller des liens YouTube'),
+        h('span', { class: 'rg-small' }, 'Tourne sans fin quand rien n’est prévu dans le plan de la semaine.')),
+      ups, rows, h('div', { class: 'rg-drop' }, 'GLISSEZ-DÉPOSEZ VOS VIDÉOS ICI (PLUSIEURS À LA FOIS)'));
+    dropZone(pan, 'loop');
+    R.loopUI = { rows, meta, ups };
+    return pan;
+  }
+
+  // ── Panneau Plan de la semaine ──
+  function weekPanel() {
+    const rows = h('div', { class: 'rg-rows' });
+    const meta = h('span', { class: 'meta' }, '');
+    const ups = h('div', { class: 'rg-ups' });
+    const days = h('div', { class: 'rg-days' });
+    const timeIn = h('input', { type: 'time', 'aria-label': 'Heure de début', oninput: () => { R.timeEdited = true; } });
+    const weekly = h('input', { type: 'checkbox', checked: true, onchange: () => { R.weekly = weekly.checked; } });
+    const pan = h('div', { class: 'rg-pan week' },
+      h('header', {}, h('span', {}, 'PLAN DE LA SEMAINE'), meta, h('span', { class: 'grow' })),
+      days,
+      h('div', { class: 'rg-tools' },
+        h('label', { class: 'inl' }, 'Début à', timeIn),
+        h('label', { class: 'inl' }, weekly, 'Chaque semaine'),
+        h('button', { class: 'btn small primary', onclick: () => pickFiles('week') }, 'Ajouter des vidéos'),
+        h('button', { class: 'btn small', onclick: () => askLinks('week') }, 'Coller des liens YouTube')),
+      ups, rows, h('div', { class: 'rg-drop' }, 'GLISSEZ-DÉPOSEZ VOS VIDÉOS ICI : ELLES S’ENCHAÎNENT À PARTIR DE L’HEURE INDIQUÉE'));
+    dropZone(pan, 'week');
+    R.weekUI = { rows, meta, ups, days, timeIn };
+    return pan;
+  }
+
+  function dropZone(pan, where) {
+    let n = 0;
+    pan.addEventListener('dragenter', e => { if (![...(e.dataTransfer?.types || [])].includes('Files')) return; e.preventDefault(); n++; pan.classList.add('drag'); });
+    pan.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) e.preventDefault(); });
+    pan.addEventListener('dragleave', () => { if (--n <= 0) { n = 0; pan.classList.remove('drag'); } });
+    pan.addEventListener('drop', e => {
+      e.preventDefault(); n = 0; pan.classList.remove('drag');
+      const files = [...(e.dataTransfer?.files || [])].filter(f => /^video\//.test(f.type) || /\.(mp4|mov|mkv|m4v|webm|avi|mxf|ts)$/i.test(f.name));
+      if (!files.length) return toast('Déposez des fichiers vidéo (MP4, MOV…).', true);
+      addFiles(where, files);
+    });
+  }
+
+  // ── Jours de la semaine (le prochain lundi, mardi… à partir d'aujourd'hui) ──
+  const dayStart = i => { const t0 = startOfDay(now()); return t0 + ((i - dayIdx(now()) + 7) % 7) * DAY_MS; };
+  function dayItems(i) {
+    const s0 = dayStart(i), s1 = s0 + DAY_MS, out = [];
+    for (const p of R.programs) {
+      if (!p.start_at) continue;
+      const s = Date.parse(p.start_at);
+      let at = null;
+      if (p.repeat_daily) at = s0 + timeOfDay(s);
+      else if (p.repeat_weekly) { if (dayIdx(s) === i) at = s0 + timeOfDay(s); }
+      else if (s >= s0 && s < s1) at = s;
+      if (at != null) out.push({ p, at, end: at + p.duration * 1000 });
+    }
+    return out.sort((a, b) => a.at - b.at);
+  }
+  function suggestStart(i) {
+    const items = dayItems(i), s0 = dayStart(i);
+    let base;
+    if (i === dayIdx(now()) && s0 === startOfDay(now())) base = Math.ceil((now() + 30000) / 60000) * 60000;
+    else base = s0 + Math.ceil(timeOfDay(now()) / 300000) * 300000;
+    const lastEnd = items.reduce((a, x) => Math.max(a, x.end), 0);
+    return Math.max(base, Math.ceil(lastEnd / 1000) * 1000);
+  }
+  function chosenStart() {
+    const v = R.weekUI.timeIn.value;
+    if (!R.timeEdited || !/^\d\d:\d\d$/.test(v)) return suggestStart(R.day);
+    const [a, b] = v.split(':').map(Number);
+    return dayStart(R.day) + (a * 60 + b) * 60000;
+  }
+
+  // ── Affichage des listes ──
+  function draw() {
+    R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor));
+    const loop = R.sched.loop;
+    const L = R.loopUI; L.rows.textContent = '';
+    L.meta.textContent = `${loop.length} programme${loop.length > 1 ? 's' : ''} · ${fmtHms(loop.reduce((a, p) => a + p.duration, 0)) || '0:00'}`;
+    if (!loop.length) L.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Playlist vide. Ajoutez des vidéos ou des liens YouTube.'));
+    loop.forEach((p, k) => L.rows.append(row(p, String(k + 1).padStart(2, '0'), [
+      ['Aperçu', () => setPreview(p)],
+      ['▲', () => k > 0 && move(loop, k, -1), k > 0 ? '' : 'off', 'Monter'],
+      ['▼', () => k < loop.length - 1 && move(loop, k, 1), k < loop.length - 1 ? '' : 'off', 'Descendre'],
+      ['Modifier', () => openForm('tv', p)],
+      ['Retirer', () => removeOne(p), 'x'],
+    ])));
+    const W = R.weekUI; W.days.textContent = '';
+    RG_DAYS.forEach((d, i) => {
+      const n = dayItems(i).length;
+      W.days.append(h('button', { class: i === R.day ? 'on' : '', onclick: () => { R.day = i; R.timeEdited = false; draw(); } },
+        d + (n ? ` (${n})` : ''), h('small', {}, new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }))));
+    });
+    const items = dayItems(R.day);
+    W.meta.textContent = `${RG_DAYS_LONG[R.day]} · ${items.length} programme${items.length > 1 ? 's' : ''}`;
+    if (!R.timeEdited) W.timeIn.value = hm(suggestStart(R.day));
+    W.rows.textContent = '';
+    if (!items.length) W.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, `Rien de prévu ${RG_DAYS_LONG[R.day]} : la playlist en boucle passe toute la journée.`));
+    for (const it of items) {
+      const p = it.p;
+      const r = row(p, hm(it.at), [
+        ['Aperçu', () => setPreview(p)],
+        ['Heure', () => editTime(r, p, it)],
+        ['Modifier', () => openForm('tv', p)],
+        ['Retirer', () => removeOne(p), 'x'],
+      ], p.repeat_daily ? 'chaque jour' : p.repeat_weekly ? 'chaque semaine' : 'une fois', it.at);
+      W.rows.append(r);
+    }
+    tick(true);
+  }
+  function row(p, num, acts, note, at) {
+    const st = p.source === 'file' ? (R.ready[p.id] === false ? ' · en préparation chez Cloudflare' : '') : '';
+    return h('div', { class: 'rg-row' + (R.prev && R.prev.id === p.id ? ' sel' : ''), 'data-id': p.id, 'data-at': at || '' },
+      h('span', { class: 'n' }, num),
+      h('span', { class: 't', title: p.title }, p.title, h('small', {},
+        (p.source === 'youtube' ? 'YouTube' : 'Vidéo téléversée') + (note ? ' · ' + note : '') + st)),
+      h('span', { class: 'd' }, fmtHms(p.duration)),
+      h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t }, l))));
+  }
+
+  function editTime(r, p, it) {
+    const inp = h('input', { type: 'time', value: hm(it.at) });
+    const cell = r.querySelector('.n'); cell.textContent = ''; cell.append(inp); inp.focus();
+    let done = false;
+    const save = async () => {
+      if (done) return; done = true;
+      if (!/^\d\d:\d\d$/.test(inp.value) || inp.value === hm(it.at)) return draw();
+      const [a, b] = inp.value.split(':').map(Number);
+      const base = p.repeat_daily || p.repeat_weekly ? Date.parse(p.start_at) : it.at;
+      const t = startOfDay(base) + (a * 60 + b) * 60000;
+      const { error } = await sb.from('tv_programs').update({ start_at: new Date(t).toISOString() }).eq('id', p.id);
+      if (error) toast(friendly(error), true); else toast('Heure changée : ' + inp.value);
+      reload();
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') { done = true; draw(); } });
+    inp.addEventListener('blur', save);
+  }
+
+  // ── Actions ──
+  async function control(action) {
+    const { data, error } = await sb.rpc('tv_control', { action });
+    if (error) return toast(friendly(error), true);
+    R.channel = Array.isArray(data) ? data[0] : data;
+    toast({ play: 'La chaîne est à l’antenne.', pause: 'Chaîne en pause : « Nous revenons dans un instant ».', stop: 'Chaîne arrêtée.', restart: 'La playlist reprend au premier programme.', clear: 'Programmation supprimée.' }[action]);
+    if (action === 'clear') await reload(); else draw();
+  }
+  async function restartLoop() {
+    if (await confirmBox('La playlist en boucle va reprendre au premier programme, tout de suite, pour tous les spectateurs.', 'Reprendre au début')) control('restart');
+  }
+  async function clearAll() {
+    if (!R.programs.length) return toast('La programmation est déjà vide.');
+    if (await confirmBox(`Supprimer toute la programmation (${R.programs.length} programme${R.programs.length > 1 ? 's' : ''}, playlist et plan de la semaine) ? Les spectateurs voient l’écran d’attente jusqu’à ce que vous ajoutiez de nouveaux programmes. Cette action est définitive. Les vidéos restent dans votre compte Cloudflare.`, 'Tout supprimer', true)) control('clear');
+  }
+  async function removeOne(p) {
+    const { error } = await sb.from('tv_programs').delete().eq('id', p.id);
+    if (error) return toast(friendly(error), true);
+    if (R.prev && R.prev.id === p.id) setPreview(null);
+    toast('« ' + p.title + ' » retiré de la programmation.');
+    reload();
+  }
+  async function move(loop, k, dir) {
+    const list = loop.slice(); const [x] = list.splice(k, 1); list.splice(k + dir, 0, x);
+    const ups = list.map((p, i) => ({ p, pos: i + 1 })).filter(o => o.p.position !== o.pos);
+    for (const o of ups) { const { error } = await sb.from('tv_programs').update({ position: o.pos }).eq('id', o.p.id); if (error) { toast(friendly(error), true); break; } }
+    reload();
+  }
+  async function airNow(p) {
+    const ok = await confirmBox(`Diffuser « ${p.title} » maintenant, pour tous les spectateurs ? Il passe tout de suite, puis la programmation reprend.`, 'Diffuser maintenant');
+    if (!ok) return;
+    const { error } = await sb.from('tv_programs').insert({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, position: 0,
+      start_at: new Date(now() + 2000).toISOString(), repeat_daily: false, repeat_weekly: false, is_active: true });
+    if (error) return toast(friendly(error), true);
+    if (R.channel.status !== 'playing') await control('play');
+    toast('« ' + p.title + ' » passe à l’antenne.');
+    reload();
+  }
+
+  // Ajout : position en fin de playlist, ou heures qui s'enchaînent dans le plan de la semaine.
+  function slotPlanner(where) {
+    let pos = R.programs.filter(p => !p.start_at).reduce((a, p) => Math.max(a, p.position || 0), 0);
+    let t = where === 'week' ? chosenStart() : 0;
+    const weekly = R.weekly;
+    return dur => {
+      if (where === 'loop') return { position: ++pos, start_at: null, repeat_daily: false, repeat_weekly: false };
+      const st = t; t += dur * 1000;
+      return { position: 0, start_at: new Date(st).toISOString(), repeat_daily: false, repeat_weekly: weekly };
+    };
+  }
+  async function insertProgram(row) {
+    const { error } = await sb.from('tv_programs').insert({ is_active: true, ...row });
+    if (error) throw error;
+  }
+
+  function askLinks(where) {
+    const ta = h('textarea', { rows: 7, placeholder: 'https://youtu.be/…\nhttps://www.youtube.com/watch?v=…' });
+    const go = h('button', { class: 'btn primary' }, 'Programmer');
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
+      h('div', {}, h('h2', {}, where === 'loop' ? 'Ajouter à la playlist en boucle' : `Ajouter au plan : ${RG_DAYS_LONG[R.day]} à partir de ${hm(chosenStart())}`),
+        h('div', { class: 'rg-small' }, 'Collez un ou plusieurs liens YouTube, un par ligne. Le titre et la durée sont trouvés automatiquement, puis les vidéos s’enchaînent.'),
+        ta, h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Annuler'), go)));
+    document.body.append(m); ta.focus();
+    go.onclick = async () => {
+      const ids = ta.value.split(/[\s,]+/).map(ytId).filter(Boolean);
+      if (!ids.length) return toast('Aucun lien YouTube reconnu.', true);
+      m.remove();
+      const plan = slotPlanner(where); const UI = where === 'loop' ? R.loopUI : R.weekUI;
+      let okN = 0;
+      for (const [i, id] of ids.entries()) {
+        const line = h('div', {}, h('span', {}, `Lien ${i + 1}/${ids.length} : recherche du titre et de la durée…`)); UI.ups.append(line);
+        const info = await ytInfo(id);
+        if (!info || !info.duration) { line.textContent = `Lien ${i + 1} : vidéo introuvable ou privée (youtu.be/${id}).`; line.className = 'bad'; continue; }
+        try {
+          await insertProgram({ title: info.title || 'Vidéo YouTube', source: 'youtube', video_url: 'https://youtu.be/' + id, duration: info.duration, ...plan(info.duration) });
+          okN++; line.remove();
+        } catch (e) { line.textContent = friendly(e); line.className = 'bad'; }
+      }
+      if (okN) toast(`${okN} vidéo${okN > 1 ? 's' : ''} programmée${okN > 1 ? 's' : ''}.`);
+      R.timeEdited = false; reload();
+    };
+  }
+
+  function pickFiles(where) {
+    const inp = h('input', { type: 'file', accept: 'video/*,.mkv,.mov,.mxf', multiple: true, class: 'hidden' });
+    inp.onchange = () => { if (inp.files.length) addFiles(where, [...inp.files]); inp.remove(); };
+    document.body.append(inp); inp.click();
+  }
+
+  async function addFiles(where, files) {
+    const UI = where === 'loop' ? R.loopUI : R.weekUI;
+    // 1. Durées lues sur l'ordinateur, puis heures de passage réservées dans l'ordre de dépôt.
+    const plan = slotPlanner(where);
+    const jobs = [];
+    for (const f of files) {
+      const duration = await readDuration(f);
+      jobs.push({ f, duration, title: f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim(), slot: duration ? plan(duration) : null });
+    }
+    // 2. Envoi direct vers Cloudflare Stream, une vidéo après l'autre.
+    let okN = 0;
+    for (const [i, j] of jobs.entries()) {
+      const pc = h('i'); const txt = h('span', {}, `${i + 1}/${jobs.length} · ${j.title} · préparation…`);
+      const line = h('div', {}, txt, pc); UI.ups.append(line);
+      const setP = x => { pc.style.setProperty('--p', Math.round(x * 100) + '%'); txt.textContent = `${i + 1}/${jobs.length} · ${j.title} · ${Math.round(x * 100)} %`; };
+      try {
+        const { data, error } = await sb.functions.invoke('tv-upload', { body: { size: j.f.size, name: j.f.name, duration: j.duration || 0 } });
+        if (error) {
+          let why = ''; try { why = (await error.context.json()).error; } catch (_) {}
+          if (why === 'not_configured' || /Failed to send|not found|404/i.test(String(error.message) + why) || !why) { line.remove(); uploadHelp(); return; }
+          throw new Error(why === 'forbidden' ? 'Réservé aux administrateurs' : 'Cloudflare a refusé l’envoi (' + why + ')');
+        }
+        uploading++;
+        try { await tusUpload(data.url, j.f, setP); } finally { uploading--; }
+        const url = `https://videodelivery.net/${data.uid}/manifest/video.m3u8`;
+        let duration = j.duration, slot = j.slot;
+        if (!duration) {
+          // Format illisible par le navigateur : on attend que Cloudflare l'ait préparé pour connaître sa durée.
+          txt.textContent = `${i + 1}/${jobs.length} · ${j.title} · envoyée, Cloudflare la prépare…`;
+          for (let k = 0; k < 120 && R.alive && !duration; k++) { await new Promise(r => setTimeout(r, 15000)); if (await manifestReady(url)) duration = await hlsDuration(url).catch(() => null); }
+          if (!duration) throw new Error('durée inconnue : ajoutez-la avec « Modifier »');
+          slot = where === 'loop' ? plan(duration) : slotPlanner(where)(duration);
+        }
+        await insertProgram({ title: j.title, source: 'file', video_url: url, duration, ...slot });
+        okN++; line.remove();
+      } catch (e) { txt.textContent = `${j.title} : ${e.message || e}`; line.className = 'bad'; }
+    }
+    if (okN) toast(`${okN} vidéo${okN > 1 ? 's' : ''} envoyée${okN > 1 ? 's' : ''} et programmée${okN > 1 ? 's' : ''}.`);
+    R.timeEdited = false; reload();
+  }
+
+  function uploadHelp() {
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
+      h('div', {}, h('h2', {}, 'Envoi de fichiers pas encore activé'),
+        h('div', { style: 'line-height:1.6' },
+          'Pour déposer des vidéos depuis la régie, il faut relier une seule fois votre compte Cloudflare Stream :',
+          h('ol', { style: 'margin:8px 0 0;padding-left:20px' },
+            h('li', {}, 'Cloudflare › Mon profil › Jetons d’API › Créer un jeton avec la permission « Stream : Modifier ».'),
+            h('li', {}, 'Supabase › Edge Functions › Secrets : ajoutez CLOUDFLARE_API_TOKEN (le jeton) et CLOUDFLARE_ACCOUNT_ID (l’identifiant de compte affiché dans Cloudflare › Stream).')),
+          h('p', { class: 'rg-small' }, 'En attendant, collez des liens YouTube : ils marchent tout de suite.')),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => m.remove() }, 'Compris'))));
+    document.body.append(m);
+  }
+
+  // ── Écran d'aperçu ──
+  async function setPreview(p) {
+    R.prev = p;
+    const old = prevBox.__destroy; prevBox.__destroy = null; if (old) old();
+    prevBox.textContent = '';
+    prevNow.classList.toggle('hidden', !p); prevClose.classList.toggle('hidden', !p);
+    document.querySelectorAll('.rg-row').forEach(r => r.classList.toggle('sel', !!p && r.dataset.id === p.id));
+    if (!p) { prevTitle.textContent = 'Rien en aperçu'; prevBox.append(h('div', { class: 'msg' }, h('div', {}, h('b', {}, 'APERÇU'), 'Touchez « Aperçu » sur un programme pour le visionner ici.'))); return; }
+    prevTitle.textContent = p.title + ' · ' + fmtHms(p.duration);
+    const host = h('div', { class: 'host' }); prevBox.append(host);
+    if (p.source === 'youtube') {
+      await loadYt(); if (R.prev !== p) return;
+      const div = h('div'); host.append(div);
+      const pl = new YT.Player(div, { width: '100%', height: '100%', videoId: ytId(p.video_url), playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, origin: location.origin } });
+      prevBox.__destroy = () => { try { pl.destroy(); } catch (e) {} };
+    } else {
+      const v = h('video', { controls: true, autoplay: true, playsinline: true }); host.append(v);
+      prevBox.__destroy = attachHls(v, streamUrl(p.video_url));
+    }
+  }
+  function attachHls(v, url) {
+    let hls = null;
+    loadHls().then(() => {
+      if (window.Hls && Hls.isSupported()) { hls = new Hls(); hls.loadSource(url); hls.attachMedia(v); }
+      else v.src = url;
+    });
+    return () => { try { hls && hls.destroy(); } catch (e) {} v.removeAttribute('src'); v.load(); };
+  }
+
+  // ── Écran antenne : suit exactement la grille, comme chez les spectateurs ──
+  function airTarget(t) {
+    if (R.live && R.live.is_live && R.live.hls_url) return { kind: 'hls', key: 'live:' + R.live.hls_url, url: R.live.hls_url, live: true, title: 'Direct OBS en cours' };
+    const S = R.sched;
+    if (!S || S.empty) return { kind: 'none', key: 'empty', msg: ['AUCUN PROGRAMME', 'Ajoutez des vidéos à la playlist ou au plan de la semaine.'] };
+    if (R.channel.status === 'stopped') return { kind: 'none', key: 'stopped', msg: ['CHAÎNE ARRÊTÉE', 'Les spectateurs voient l’écran d’attente. Touchez « Play » pour reprendre.'] };
+    if (R.channel.status === 'paused') return { kind: 'none', key: 'paused', msg: ['EN PAUSE', 'Les spectateurs voient « Nous revenons dans un instant ».'] };
+    const sl = S.at(t);
+    if (!sl) return { kind: 'none', key: 'nothing', msg: ['RIEN À L’ANTENNE', 'Ajoutez des vidéos à la playlist en boucle pour combler les trous.'] };
+    const p = sl.p, key = p.id + '@' + sl.start;
+    return p.source === 'youtube' ? { kind: 'yt', key, id: ytId(p.video_url), sl, title: p.title } : { kind: 'hls', key, url: streamUrl(p.video_url), sl, title: p.title };
+  }
+  function mountAir(T) {
+    const A = R.air;
+    if (A.destroy) { try { A.destroy(); } catch (e) {} }
+    R.air = { key: T.key, T };
+    const host = airBox.firstChild; host.textContent = '';
+    if (T.kind === 'none') { host.append(h('div', { class: 'msg' }, h('div', {}, h('b', {}, T.msg[0]), T.msg[1]))); return; }
+    const pos = () => T.sl ? (now() - T.sl.start) / 1000 : 0;
+    if (T.kind === 'yt') {
+      const div = h('div'); host.append(div);
+      loadYt().then(() => {
+        if (R.air.key !== T.key) return;
+        const pl = new YT.Player(div, { width: '100%', height: '100%', videoId: T.id,
+          playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0, start: Math.floor(pos()), mute: R.mute ? 1 : 0, origin: location.origin },
+          events: { onReady: e => { if (R.air.key !== T.key) return; R.air.yt = pl; applyVol(); e.target.seekTo(pos(), true); e.target.playVideo(); } } });
+        if (R.air.key !== T.key) { try { pl.destroy(); } catch (e) {} return; }
+        R.air.destroy = () => { try { pl.destroy(); } catch (e) {} };
+      });
+    } else {
+      const v = h('video', { autoplay: true, playsinline: true }); v.muted = R.mute; host.append(v);
+      R.air.video = v;
+      const stop = attachHls(v, T.url);
+      if (!T.live) v.addEventListener('loadedmetadata', () => { try { v.currentTime = pos(); } catch (e) {} v.play().catch(() => {}); }, { once: true });
+      R.air.destroy = stop;
+      applyVol();
+    }
+  }
+  function applyVol() {
+    muteBtn.textContent = R.mute ? 'Son coupé · activer' : 'Son activé · couper';
+    muteBtn.classList.toggle('primary', R.mute);
+    volIn.value = R.vol;
+    const A = R.air;
+    if (A.yt) { try { R.mute ? A.yt.mute() : A.yt.unMute(); A.yt.setVolume(R.vol); } catch (e) {} }
+    if (A.video) { A.video.muted = R.mute; A.video.volume = R.vol / 100; if (!R.mute) A.video.play().catch(() => {}); }
+  }
+  let lastSync = 0;
+  function tick(force) {
+    if (!R.alive) return;
+    const t = now();
+    clock.textContent = hmsOf(t);
+    const T = airTarget(t);
+    if (force === true || T.key !== R.air.key) { if (T.key !== R.air.key) mountAir(T); }
+    // Rattrapage : l'écran antenne reste calé sur la grille.
+    if (T.sl && t - lastSync > 4000) {
+      lastSync = t;
+      const want = (t - T.sl.start) / 1000;
+      try {
+        if (R.air.yt && R.air.yt.getPlayerState && R.air.yt.getPlayerState() === 1 && Math.abs(R.air.yt.getCurrentTime() - want) > 3) R.air.yt.seekTo(want, true);
+        if (R.air.video && R.air.video.readyState > 1 && Math.abs(R.air.video.currentTime - want) > 4) R.air.video.currentTime = want;
+      } catch (e) {}
+    }
+    // Compte à rebours, fin, à suivre.
+    const st = R.live && R.live.is_live && R.live.hls_url ? 'live' : R.channel.status;
+    airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
+    airLabel.textContent = { live: 'DIRECT OBS', playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
+    bPlay.classList.toggle('on', st === 'playing'); bPause.classList.toggle('on', st === 'paused'); bStop.classList.toggle('on', st === 'stopped');
+    stateEl.textContent = { live: 'Un direct OBS est en cours : il passe devant la programmation.', playing: 'La chaîne tourne pour tous les spectateurs.', paused: 'En pause : « Play » reprend là où la playlist s’était arrêtée.', stopped: 'Arrêtée : « Play » relance la playlist depuis le début.' }[st];
+    if (T.sl) {
+      const left = T.sl.end - t, total = T.sl.end - T.sl.start;
+      count.textContent = hms(left); count.classList.toggle('warn', left < 10000);
+      bar.style.width = Math.min(100, Math.max(0, (t - T.sl.start) / total * 100)) + '%';
+      endAt.textContent = `${T.title} · fin à ${hmsOf(T.sl.end)}`;
+      const nx = R.sched.after(T.sl);
+      nextEl.textContent = nx ? `À suivre à ${hm(T.sl.end)} : ${nx.p.title}` : '';
+      airTitle.textContent = T.title;
+    } else {
+      count.textContent = T.live ? 'DIRECT' : '--:--:--'; count.classList.remove('warn');
+      bar.style.width = T.live ? '100%' : '0';
+      endAt.textContent = T.live ? 'Direct OBS : pas de fin programmée.' : ''; nextEl.textContent = '';
+      airTitle.textContent = T.live ? T.title : '';
+    }
+    // Programme à l'antenne surligné dans les listes.
+    const onId = T.sl ? T.sl.p.id : null;
+    document.querySelectorAll('.rg-row').forEach(r => r.classList.toggle('onair', !!onId && r.dataset.id === onId && (!r.dataset.at || Math.abs(Number(r.dataset.at) - T.sl.start) < 60000 || !T.sl.p.start_at)));
+  }
+
+  // ── Données ──
+  async function reload() {
+    const [pr, ch] = await Promise.all([
+      sb.from('tv_programs').select('*').order('position').order('created_at'),
+      sb.from('tv_channel').select('*').eq('id', 1).maybeSingle(),
+    ]);
+    if (!R.alive) return;
+    if (pr.error) return toast(friendly(pr.error), true);
+    R.programs = pr.data || [];
+    if (ch.data) R.channel = ch.data;
+    else if (ch.error && /tv_channel|relation/.test(ch.error.message)) toast('Base pas encore à jour (migration v10).', true);
+    draw();
+    checkReady();
+  }
+  async function checkReady() {
+    for (const p of R.programs) {
+      if (p.source !== 'file' || R.ready[p.id] === true) continue;
+      const ok = await manifestReady(streamUrl(p.video_url));
+      if (R.ready[p.id] !== ok) { R.ready[p.id] = ok; if (R.alive) draw(); }
+    }
+  }
+  async function loadLive() {
+    const { data } = await sb.from('live_stream').select('is_live,hls_url').limit(1).maybeSingle();
+    R.live = data || null;
+  }
+  try {
+    const sent = Date.now(); const { data } = await sb.rpc('tv_now'); const got = Date.now();
+    if (data) R.offset = Date.parse(data) - (sent + (got - sent) / 2);
+  } catch (e) {}
+  await loadLive();
+  await reload();
+  applyVol();
+  const timer = setInterval(tick, 250);
+  const readyTimer = setInterval(checkReady, 30000);
+  const rt = sb.channel('regie-' + Date.now())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_programs' }, () => reload())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_channel' }, p => { if (p.new && p.new.id) { R.channel = p.new; draw(); } })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive())
+    .subscribe();
+  window.__leave = () => {
+    R.alive = false; clearInterval(timer); clearInterval(readyTimer);
+    try { sb.removeChannel(rt); } catch (e) {}
+    if (R.air.destroy) try { R.air.destroy(); } catch (e) {}
+    if (prevBox.__destroy) try { prevBox.__destroy(); } catch (e) {}
+  };
+}
+
 const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
-  ['live', 'Diffusion', 'TV en direct'], ['tv', '', 'Programmation TV'], ['radio', '', 'Radio Dunamis FM'],
+  ['live', 'Diffusion', 'TV en direct'], ['regie', '', 'Régie TV (programmation)'], ['radio', '', 'Radio Dunamis FM'],
   ['sermons', 'Contenus', 'Vidéos'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
   ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],
@@ -1241,12 +1923,15 @@ const NAV = [
 let current = null, me = null;
 
 function show(key, arg) {
+  if (key === 'tv') key = 'regie';
+  if (window.__leave) { try { window.__leave(); } catch (e) {} window.__leave = null; }
   current = key;
   history.replaceState(null, '', '#' + key);
   document.querySelectorAll('button.nav').forEach(b => b.classList.toggle('on', b.dataset.k === key));
   const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
+  main.classList.toggle('wide', key === 'regie');
   if (ENT[key]) return showList(key);
-  ({ dash: showDash, live: showLive, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
+  ({ regie: showRegie, dash: showDash, live: showLive, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
 }
 
 function shell(user) {

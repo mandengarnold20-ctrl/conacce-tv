@@ -84,6 +84,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final live = ref.watch(liveStreamProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
     final programs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
+    final channel = ref.watch(tvChannelProvider).valueOrNull ?? const TvChannel();
     _clock = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
     _muted = tvYoutubeMuted;
     // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
@@ -98,9 +99,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       data: (live) {
         // Un vrai direct (OBS) passe devant la programmation ; sinon, la chaîne 24 h/24.
         final onAir = live != null && live.canPlay;
-        final schedule = TvSchedule(programs);
+        final schedule = TvSchedule(programs, anchor: channel.anchor);
         final now = _now();
-        final slot = onAir ? null : schedule.at(now);
+        // Régie : chaîne arrêtée = écran d'attente ; en pause = « Nous revenons dans un instant ».
+        if (!onAir && channel.isPaused && !schedule.isEmpty) {
+          _slotEnd = null;
+          _syncImmersive(false);
+          return const _Paused();
+        }
+        final slot = onAir || channel.isStopped ? null : schedule.at(now);
         _slotEnd = slot?.end;
         final canPlay = onAir || slot != null;
         final immersive = canPlay && onTv && landscape && !_audioOnly;
@@ -281,6 +288,34 @@ class _Action extends StatelessWidget {
             Icon(icon, color: fg, size: 20),
             const SizedBox(height: 4),
             Text(label, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// La régie a mis la chaîne en pause.
+class _Paused extends StatelessWidget {
+  const _Paused();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 110),
+        child: MaxWidth(
+          maxWidth: 520,
+          child: Column(children: [
+            const LogoShine(width: 260, radius: 6),
+            const SizedBox(height: 24),
+            Text('Nous revenons dans un instant', style: AppTheme.title(size: 18, weight: FontWeight.w800), textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            const Text(
+              'Conacce TV reprend très bientôt. Restez avec nous !',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.mist, height: 1.5),
+            ),
           ]),
         ),
       ),

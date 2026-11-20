@@ -11,6 +11,7 @@ class TvProgram {
     required this.position,
     this.startAt,
     this.repeatDaily = false,
+    this.repeatWeekly = false,
   });
 
   final String id;
@@ -25,6 +26,7 @@ class TvProgram {
   /// Rendez-vous à heure fixe ; null = le programme tourne dans la boucle.
   final DateTime? startAt;
   final bool repeatDaily;
+  final bool repeatWeekly;
 
   bool get isFixed => startAt != null;
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -51,6 +53,7 @@ class TvProgram {
         position: (m['position'] as num?)?.toInt() ?? 0,
         startAt: m['start_at'] == null ? null : DateTime.parse(m['start_at'] as String).toUtc(),
         repeatDaily: m['repeat_daily'] as bool? ?? false,
+        repeatWeekly: m['repeat_weekly'] as bool? ?? false,
       );
 }
 
@@ -75,8 +78,9 @@ class TvSlot {
 /// La grille de la chaîne : boucle continue + rendez-vous à heure fixe.
 /// Calcul identique sur tous les téléphones, à partir de l'heure du serveur.
 class TvSchedule {
-  TvSchedule(List<TvProgram> programs)
-      : fixed = programs.where((p) => p.isFixed && p.duration > Duration.zero).toList(),
+  TvSchedule(List<TvProgram> programs, {DateTime? anchor})
+      : anchor = anchor ?? defaultAnchor,
+        fixed = programs.where((p) => p.isFixed && p.duration > Duration.zero).toList(),
         loop = (programs.where((p) => !p.isFixed && p.duration > Duration.zero).toList()
           ..sort((a, b) => a.position != b.position ? a.position.compareTo(b.position) : a.id.compareTo(b.id)));
 
@@ -84,7 +88,9 @@ class TvSchedule {
   final List<TvProgram> loop;
 
   /// Point de départ commun de la boucle (le même pour tout le monde).
-  static final DateTime anchor = DateTime.utc(2026, 1, 1);
+  /// Réglé par la régie : « Play » après « Stop » fait repartir la playlist du n° 1.
+  final DateTime anchor;
+  static final DateTime defaultAnchor = DateTime.utc(2026, 1, 1);
 
   bool get isEmpty => fixed.isEmpty && loop.isEmpty;
 
@@ -92,16 +98,25 @@ class TvSchedule {
   Iterable<TvSlot> _fixedAround(DateTime now) sync* {
     for (final p in fixed) {
       final s = p.startAt!;
-      if (!p.repeatDaily) {
-        yield TvSlot(p, s, s.add(p.duration));
+      if (p.repeatDaily) {
+        final days = now.difference(s).inDays;
+        for (final d in [days - 1, days, days + 1]) {
+          if (d < 0) continue;
+          final start = s.add(Duration(days: d));
+          yield TvSlot(p, start, start.add(p.duration));
+        }
         continue;
       }
-      final days = now.difference(s).inDays;
-      for (final d in [days - 1, days, days + 1]) {
-        if (d < 0) continue;
-        final start = s.add(Duration(days: d));
-        yield TvSlot(p, start, start.add(p.duration));
+      if (p.repeatWeekly) {
+        final weeks = now.difference(s).inDays ~/ 7;
+        for (final w in [weeks - 1, weeks, weeks + 1]) {
+          if (w < 0) continue;
+          final start = s.add(Duration(days: 7 * w));
+          yield TvSlot(p, start, start.add(p.duration));
+        }
+        continue;
       }
+      yield TvSlot(p, s, s.add(p.duration));
     }
   }
 
@@ -148,4 +163,23 @@ class TvSchedule {
 
   /// Le programme suivant (pour « À suivre »).
   TvSlot? after(TvSlot slot) => at(slot.end.add(const Duration(milliseconds: 500)));
+}
+
+/// État de la chaîne, piloté par la régie : à l'antenne, en pause ou arrêtée.
+class TvChannel {
+  const TvChannel({this.status = 'playing', DateTime? anchor, this.pausedAt}) : _anchor = anchor;
+
+  final String status;
+  final DateTime? _anchor;
+  final DateTime? pausedAt;
+
+  DateTime get anchor => _anchor ?? TvSchedule.defaultAnchor;
+  bool get isPaused => status == 'paused';
+  bool get isStopped => status == 'stopped';
+
+  factory TvChannel.fromMap(Map<String, dynamic> m) => TvChannel(
+        status: m['status'] as String? ?? 'playing',
+        anchor: m['anchor'] == null ? null : DateTime.parse(m['anchor'] as String).toUtc(),
+        pausedAt: m['paused_at'] == null ? null : DateTime.parse(m['paused_at'] as String).toUtc(),
+      );
 }

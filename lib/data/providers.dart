@@ -18,6 +18,13 @@ final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
       );
 });
 
+/// État de la chaîne (régie) : à l'antenne, en pause ou arrêtée.
+final tvChannelProvider = StreamProvider<TvChannel>((ref) {
+  return _db.from('tv_channel').stream(primaryKey: ['id']).map(
+        (rows) => rows.isEmpty ? const TvChannel() : TvChannel.fromMap(rows.first),
+      );
+});
+
 /// Écart entre l'horloge du téléphone et celle du serveur : la grille se calcule sur l'heure du serveur,
 /// pour que Londres et l'Afrique voient exactement la même chose.
 final serverClockOffsetProvider = FutureProvider<Duration>((ref) async {
