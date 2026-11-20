@@ -73,6 +73,32 @@
   </script>
   <!-- Plein écran de la vidéo avec le lecteur du téléphone (appelé par le bouton ⛶) -->
   <script>
+  // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre
+  // pendant qu'on utilise d'autres applis.
+  function conacceVideo() {
+    var vs = document.querySelectorAll('video'), best = null;
+    for (var i = 0; i < vs.length; i++) { var v = vs[i]; if (!best || (!v.paused && best.paused) || v.clientWidth > best.clientWidth) best = v; }
+    return best;
+  }
+  window.conaccePipSupported = function () {
+    return !!(document.pictureInPictureEnabled || (window.HTMLVideoElement && HTMLVideoElement.prototype.webkitSetPresentationMode));
+  };
+  window.conaccePip = function () {
+    try {
+      if (document.pictureInPictureElement) { document.exitPictureInPicture(); return; }
+      var v = conacceVideo(); if (!v) return;
+      if (v.webkitSupportsPresentationMode && typeof v.webkitSetPresentationMode === 'function') {
+        v.webkitSetPresentationMode(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+        return;
+      }
+      if (v.requestPictureInPicture) v.requestPictureInPicture().catch(function () {});
+    } catch (e) {}
+  };
+  // Quand on quitte l'appli pendant la TV, le navigateur peut passer seul en mini-écran.
+  new MutationObserver(function () {
+    var vs = document.querySelectorAll('video:not([autopictureinpicture])');
+    for (var i = 0; i < vs.length; i++) { vs[i].setAttribute('autopictureinpicture', ''); try { vs[i].autoPictureInPicture = true; } catch (e) {} }
+  }).observe(document.documentElement, { childList: true, subtree: true });
   window.conacceFullscreen = function () {
     var v = document.querySelector('video');
     if (!v) return;

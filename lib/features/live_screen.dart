@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/analytics.dart';
 import '../core/media/audio_player_service.dart';
 import '../core/media/hls_video_player.dart';
+import '../core/media/web_fullscreen.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/brand.dart';
@@ -135,6 +136,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     const SizedBox(height: 16),
                     Row(children: [
                       Expanded(child: _Action(icon: _audioOnly ? Icons.videocam_rounded : Icons.headphones_rounded, label: _audioOnly ? 'Vidéo' : 'Audio seul', onTap: () => _toggleAudio(l))),
+                      // Mini-écran : la TV continue dans une petite fenêtre au-dessus des autres applis.
+                      if (!_audioOnly && pipSupported) ...[
+                        const SizedBox(width: 10),
+                        Expanded(child: _Action(icon: Icons.picture_in_picture_alt_rounded, label: 'Mini-écran', onTap: togglePictureInPicture)),
+                      ],
                       const SizedBox(width: 10),
                       Expanded(
                         child: _Action(

@@ -337,7 +337,7 @@ const ENT = {
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
     sub: r => [label(SECTIONS, r.section || 'cultes'), isCulte(r) ? label(CATS, r.category) : label(VCATS, r.category === 'spots' ? 'spots' : 'autre'), isCulte(r) && r.speaker, isCulte(r) && r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
-    badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['À la une', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
+    badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['Grand écran', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
       { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce », « Vidéos CIU » ou « Cultes » (onglet Vidéos de l’appli).' },
       { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
@@ -350,7 +350,7 @@ const ENT = {
       { k: 'thumbnail_url', label: 'Miniature', type: 'image', help: 'Image paysage (1280 × 720 conseillé).' },
       { k: 'duration', label: 'Durée (en secondes)', type: 'number', help: 'Remplie automatiquement quand vous envoyez un fichier.' },
       { k: 'description', label: 'Description', type: 'textarea', rows: 6 },
-      { k: 'is_featured', label: 'Mettre à la une', type: 'checkbox' },
+      { k: 'is_featured', label: 'Afficher sur le grand écran de l’accueil', type: 'checkbox', help: '7 vidéos au maximum, toutes rubriques confondues (Conacce, CIU, cultes). Voir le menu « Grand écran de l’accueil ».' },
       { k: 'is_downloadable', label: 'Autoriser l’écoute hors connexion', type: 'checkbox', def: true },
       { k: 'is_published', label: 'Publié (visible dans l’appli)', type: 'checkbox', def: true },
     ],
@@ -724,6 +724,8 @@ async function openForm(key, row) {
     if (err) return toast(err, true);
     saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement…';
     try {
+      const why = E.check && await E.check(payload, row);
+      if (why) { toast(why, true); saveBtn.disabled = false; saveBtn.textContent = row ? 'Enregistrer' : 'Ajouter'; return; }
       const q = row ? sb.from(E.table).update(payload).eq('id', row.id) : sb.from(E.table).insert(payload);
       const { data, error } = await q.select('id').single();
       if (error) throw error;
@@ -1112,10 +1114,28 @@ async function showTeam() {
 
 // ─── Navigation ───
 // Menu rangé par thèmes : [clé, titre de groupe ou '', libellé]
+const MAX_FEATURED = 7;
+ENT.sermons.check = async (v, row) => {
+  if (!v.is_featured) return null;
+  let q = sb.from('sermons').select('id', { count: 'exact', head: true }).eq('is_featured', true);
+  if (row) q = q.neq('id', row.id);
+  const { count, error } = await q;
+  if (error) return null;
+  return count >= MAX_FEATURED ? `Le grand écran a déjà ${MAX_FEATURED} vidéos. Décochez-en une (menu « Grand écran de l’accueil ») avant d’en ajouter une autre.` : null;
+};
+ENT.featured = {
+  ...ENT.sermons,
+  title: 'Grand écran de l’accueil', one: 'une vidéo',
+  where: q => q.eq('is_featured', true).in('section', ['cultes', 'conacce', 'ciu']),
+  intro: `Les vidéos qui défilent sur le grand écran en haut de l’accueil : ${MAX_FEATURED} au maximum, choisies parmi toutes les vidéos (Conacce, CIU, cultes). Pour en ajouter une : ouvrez-la dans « Vidéos » et cochez « Afficher sur le grand écran de l’accueil ». Pour en retirer une : ouvrez-la ici et décochez la case. Sans aucun choix, l’appli montre les ${MAX_FEATURED} dernières vidéos Conacce.`,
+  empty: 'Aucune vidéo choisie : l’appli montre les dernières vidéos Conacce.',
+  fields: ENT.sermons.fields.map(f => f.k === 'is_featured' ? { ...f, def: true } : f),
+};
+
 const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
   ['live', 'Diffusion', 'TV en direct'], ['radio', '', 'Radio Dunamis FM'],
-  ['sermons', 'Contenus', 'Vidéos'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
+  ['sermons', 'Contenus', 'Vidéos'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
   ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],
 ];

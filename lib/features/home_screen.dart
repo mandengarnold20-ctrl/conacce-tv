@@ -42,7 +42,7 @@ class HomeScreen extends ConsumerWidget {
     final live = ref.watch(liveStreamProvider).valueOrNull;
     final radio = ref.watch(radioProvider).valueOrNull;
     final banners = ref.watch(bannersProvider).valueOrNull ?? const [];
-    final conacce = ref.watch(sermonsProvider(('conacce', null)));
+    final conacce = ref.watch(featuredVideosProvider);
     final sermons = ref.watch(sermonsProvider(('cultes', null)));
     final works = ref.watch(worksProvider).valueOrNull ?? const [];
 
@@ -50,6 +50,7 @@ class HomeScreen extends ConsumerWidget {
       onRefresh: () async {
         ref.invalidate(bannersProvider);
         ref.invalidate(sermonsProvider);
+        ref.invalidate(featuredVideosProvider);
         ref.invalidate(worksProvider);
         await ref.read(sermonsProvider(('conacce', null)).future).catchError((_) => <Sermon>[]);
       },
@@ -88,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
                         padding: EdgeInsets.symmetric(horizontal: 20),
                         child: _FeaturedPlaceholder('Les vidéos de la Conacce apparaîtront ici.'),
                       )
-                    : _ConacceCarousel(items: list.take(7).toList()),
+                    : _ConacceCarousel(items: list),
               ),
               // Petits écrans : les vidéos des cultes
               if ((sermons.valueOrNull?.length ?? 0) > 0) ...[

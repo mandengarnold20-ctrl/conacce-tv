@@ -30,6 +30,22 @@ final sermonsProvider = FutureProvider.family<List<Sermon>, (String, SermonCateg
   return rows.map(Sermon.fromMap).toList();
 });
 
+/// Grand écran de l'accueil : les vidéos choisies dans l'admin (« Grand écran de l'accueil »),
+/// 7 au maximum, toutes rubriques confondues. Sans choix, les 7 dernières vidéos Conacce.
+final featuredVideosProvider = FutureProvider<List<Sermon>>((ref) async {
+  final picked = await _db
+      .from('sermons')
+      .select()
+      .eq('is_published', true)
+      .eq('is_featured', true)
+      .inFilter('section', ['conacce', 'ciu', 'cultes'])
+      .order('created_at', ascending: false)
+      .limit(7);
+  if (picked.isNotEmpty) return picked.map(Sermon.fromMap).toList();
+  final latest = await _db.from('sermons').select().eq('is_published', true).eq('section', 'conacce').order('created_at', ascending: false).limit(7);
+  return latest.map(Sermon.fromMap).toList();
+});
+
 /// Recherche dans les cultes (titre, orateur, description).
 Future<List<Sermon>> searchSermons(String query, {String section = 'cultes'}) async {
   final q = query.replaceAll(RegExp(r'[%,()]'), ' ').trim();
