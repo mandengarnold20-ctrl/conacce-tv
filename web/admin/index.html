@@ -474,6 +474,68 @@
   .rg-pan { container: pan / inline-size; }
   @container pan (max-width: 620px) { .rg-row { grid-template-columns: 42px 56px minmax(0, 1fr) 50px; } .rg-row .a { grid-column: 3 / -1; justify-content: flex-start; } }
   @media (max-width: 760px) { .st-rail { flex: 1 1 100%; max-width: none; } .st-nav.sub { display: none; } }
+
+  /* Étape 2 : disposition maquette + habillage + écriture plus légère */
+  .st { font-size: 12.5px; font-weight: 400; }
+  .st b, .st strong, .st h2, .st h3, .st legend { font-weight: 600; }
+  .st h2 { font-size: 14px; }
+  .st .btn { font-weight: 500; } .st .btn.primary, .st .btn.sun-btn { font-weight: 600; }
+  .st-nav { font-weight: 400; } .st-nav.on { font-weight: 600; } .st-me b, .st-pill, .rg-k, .rg-scr .lab, .tl-b b { font-weight: 600; }
+  .st-clock { font-weight: 500; font-size: 16px; } .rg-count { font-weight: 600; font-size: clamp(24px, 2.2vw, 32px); }
+  .rg-row .t { font-weight: 500; } .rg-row .t small { font-weight: 400; } .st-days button, .st-chip { font-weight: 500; }
+  .rg-pan > header { font-weight: 600; font-size: 12.5px; } .rg-pan { min-height: 0; }
+  .rg-scr .under .ttl { font-weight: 500; } .st-alert { font-size: 12px; }
+  .st-duo { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+  @container (max-width: 960px) { .st-duo { grid-template-columns: 1fr; } }
+  .st-tabs { display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: #080D2B; }
+  .st-tabs button { flex: 1 1 0; font: inherit; font-size: 12.5px; font-weight: 500; min-height: 32px; border: none; border-radius: 8px; background: none; color: #C9D2F5; cursor: pointer; }
+  .st-tabs button.on { background: #F9CA22; color: #0B1463; font-weight: 600; }
+  .st-alerts.col { flex-direction: column; } .st-alerts.col .st-alert { flex: none; }
+  .rg-live { border: none; padding: 4px 0; background: none; }
+  .hb-pane { display: grid; gap: 10px; }
+  .hb { border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 6px 12px 12px; margin: 0; display: grid; gap: 8px; min-width: 0; }
+  .hb legend { padding: 0 6px; font-size: 13px; }
+  .hb-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .hb-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+  .hb-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: center; }
+  .hb-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .hb-range { display: grid; gap: 2px; font-size: 12px; color: #C9D2F5; } .st .hb-range input { width: 100%; }
+  .hb-sw { display: flex; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; } .st .hb-sw input { width: 17px; height: 17px; min-height: 0; padding: 0; }
+  .hb-field { display: grid; gap: 4px; font-size: 12px; color: #C9D2F5; } .st .hb-field textarea { min-height: 52px; }
+  .hb-logo { height: 24px; border-radius: 3px; }
+  .hb-swatch { width: 26px; height: 26px; border-radius: 6px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; padding: 0; } .hb-swatch.on { border-color: #F9CA22; box-shadow: 0 0 0 2px rgba(249,202,34,.35); }
+  .hb-sub { font-size: 12px; color: #9AA6DA; }
+  .hb-msgs { display: grid; gap: 6px; } .hb-msg { display: grid; grid-template-columns: minmax(0, 1fr) 100px 100px 32px; gap: 6px; align-items: center; }
+  .st .hb-msg input, .st .hb-num input { min-height: 32px; padding: 4px 8px; }
+  .hb-num { display: grid; gap: 3px; font-size: 11.5px; color: #C9D2F5; } .st .hb-num input { width: 64px; }
+  .hb-sample { padding: 8px 10px; border-radius: 8px; background: #080D2B; font-size: 15px; }
+  .st .hb select { width: auto; min-width: 170px; }
+  @container (max-width: 560px) { .hb-2, .hb-3 { grid-template-columns: 1fr; } .hb-msg { grid-template-columns: 1fr 1fr; } }
+  .ov { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; --k: .6; }
+  .ov-logo { position: absolute; border-radius: calc(3px * var(--k)); }
+  .ov-band { position: absolute; left: 50%; transform: translate(-50%, 170%); opacity: 0; min-width: calc(150px * var(--k)); max-width: calc(330px * var(--k)); border-radius: calc(5px * var(--k)); overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: transform .65s cubic-bezier(.2,.8,.2,1), opacity .45s; text-align: center; }
+  .ov-band.on { transform: translate(-50%, 0); opacity: 1; }
+  .ov-band.a-fade { transform: translate(-50%, 0); transition: opacity .7s; }
+  .ov-band.a-open { transform: translate(-50%, 0) scale(.2); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
+  .ov-band.a-open.on { transform: translate(-50%, 0) scale(1); }
+  .ov-artist { padding: calc(5px * var(--k)) calc(12px * var(--k)); font-size: calc(14px * var(--k)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov-song { background: #fff; padding: calc(3px * var(--k)) calc(12px * var(--k)); font-size: calc(10.5px * var(--k)); font-weight: 600; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov-tick { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: rgba(11,20,99,.92); color: #fff; line-height: 1; }
+  .ov-tick.th-blanc { background: #fff; color: #0B1463; } .ov-tick.th-noir { background: rgba(0,0,0,.85); color: #F9CA22; }
+  .ov-info { display: flex; align-items: center; padding: 0 .45em; font-weight: 800; color: #0B1463; font-size: .42em; }
+  .ov-wrap { flex: 1; overflow: hidden; display: flex; align-items: center; }
+  .ov-track { display: flex; white-space: nowrap; font-size: .52em; font-weight: 500; animation: ovt 20s linear infinite; }
+  @keyframes ovt { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--cycle, 300px))); } }
+
+  /* Logo officiel + reflet lumineux (comme dans l'appli) */
+  .logo-shine { position: relative; display: inline-block; overflow: hidden; border-radius: 5px; line-height: 0; }
+  .logo-shine img { display: block; width: 100%; height: auto; }
+  .st-brand .logo-shine { width: 118px; }
+  .ov-logo.logo-shine { position: absolute; }
+  .hb-logo.logo-shine { width: 110px; height: auto; }
+  .logo-shine::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-160%); animation: logoshine 6s ease-in-out infinite; pointer-events: none; }
+  @keyframes logoshine { 0%, 70% { transform: translateX(-160%); } 100% { transform: translateX(160%); } }
+  @media (prefers-reduced-motion: reduce) { .logo-shine::after { animation: none; display: none; } }
 </style>
 </head>
 <body>
@@ -659,6 +721,10 @@ const ENT = {
     badges: r => [[r.source === 'youtube' ? 'Lien YouTube' : 'Vidéo téléversée'], r.start_at && ['Rendez-vous', 'green'], !r.is_active && ['Désactivé', 'red']].filter(Boolean),
     fields: [
       { k: 'title', label: 'Titre du programme', type: 'text', req: true, help: 'Affiché sous la TV : « En ce moment » et « À suivre ».' },
+      { k: 'kind', label: 'Type', type: 'select', opts: [['clip', 'Clip musical'], ['emission', 'Émission'], ['habillage', 'Habillage (jingle, spot)']], def: 'clip' },
+      { k: 'artist', label: 'Artiste (bande artiste)', type: 'text', help: 'Ex. : ORO ft. Tope Alabi. Affiché en haut de la bande, sur le dégradé jaune-orange.' },
+      { k: 'song', label: 'Titre de la chanson (bande artiste)', type: 'text', help: 'Affiché sous l’artiste, sur fond blanc.' },
+      { k: 'show_band', label: 'Afficher la bande artiste sur ce programme', type: 'checkbox', def: true },
       { k: 'source', label: 'Source', type: 'select', opts: [['youtube', 'Lien YouTube'], ['file', 'Vidéo téléversée (Cloudflare Stream)']], def: 'youtube' },
       { k: 'video_url', label: 'Lien de la vidéo', type: 'text', req: true, help: 'YouTube : collez le lien de la vidéo. Vidéo téléversée : envoyez-la dans Cloudflare (Stream › Téléverser, même plus de 2 Go, en 1920×1080), puis collez ici son lien ou son identifiant.' },
       { k: 'duration', label: 'Durée', type: 'duration', req: true, help: 'Touchez « Trouver la durée » : elle se remplit seule. La durée exacte permet d’enchaîner les vidéos sans trou.' },
@@ -1600,15 +1666,15 @@ function studioFrame(active) {
   const nav = (k, ic, l) => h('button', { class: 'st-nav' + (active === k ? ' on' : ''), onclick: () => show(k) }, icon(ic), l);
   const root = h('div', { class: 'st' },
     h('header', { class: 'st-top' },
-      h('div', { class: 'st-brand' }, h('span', { class: 'st-logo' }, h('span', {}, 'Conacce'), h('span', { class: 'sun' }, 'tv')), h('small', {}, 'RÉGIE')),
+      h('div', { class: 'st-brand' }, h('span', { class: 'logo-shine' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' })), h('small', {}, 'RÉGIE')),
       pill, clock, h('span', { class: 'grow' }), saved, bell,
       h('div', { class: 'st-me' }, h('span', { class: 'sun' }, initial(myName)), h('span', {}, h('b', {}, myName), h('small', {}, ROLE_LABEL[ROLE] || ''))),
       h('button', { class: 'st-out', 'aria-label': 'Se déconnecter', title: 'Se déconnecter', onclick: async () => { if (window.__leave) { try { window.__leave(); } catch (e) {} window.__leave = null; } await sb.auth.signOut(); me = null; ROLE = null; location.hash = ''; boot(); } }, icon('out', 18))),
     h('div', { class: 'st-body' },
       h('nav', { class: 'st-rail', 'aria-label': 'Sections de la régie' },
         nav('regie', 'studio', 'Studio'),
-        active === 'regie' ? [['#directs', 'Direct'], ['#grille', 'Grille du jour'], ['#programmes', 'Programmes']].map(([id, l]) =>
-          h('button', { class: 'st-nav sub', onclick: () => { const el = $(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, l)) : null,
+        active === 'regie' ? [['#grille', 'Grille du jour'], ['#programmes', 'Programmes'], ['#habillage', 'Habillage'], ['#directs', 'Directs'], ['#alertes', 'Alertes']].map(([id, l]) =>
+          h('button', { class: 'st-nav sub', onclick: () => { if (window.__regieShow) window.__regieShow(id); } }, l)) : null,
         can.admin ? nav('team', 'team', 'Équipe et sauvegarde') : null,
         can.admin ? nav('dash', 'admin', 'Administration') : null,
         h('span', { class: 'grow' }), reserve),
@@ -1699,32 +1765,234 @@ async function showRegie() {
       h('span', {}, h('i', { class: 'hatch' }), 'Playlist en boucle'),
       h('span', {}, h('i', { class: 'gap' }), 'Trou : écran d’attente')));
 
-  // ── Programmes : recherche + playlist + semaine ──
-  const qIn = h('input', { type: 'search', placeholder: 'Rechercher un titre…', 'aria-label': 'Rechercher un programme', oninput: () => { R.q = qIn.value; draw(); } });
+  // ── Programmes (onglets Playlist / Plan du jour) ──
+  const qIn = h('input', { type: 'search', placeholder: 'Rechercher un titre, un artiste…', 'aria-label': 'Rechercher un programme', oninput: () => { R.q = qIn.value; draw(); } });
   const chips = h('div', { class: 'st-chips' });
   const drawChips = () => {
     chips.textContent = '';
-    for (const [k, l] of [['all', 'Tout'], ['youtube', 'YouTube'], ['file', 'Vidéos envoyées']])
+    for (const [k, l] of [['all', 'Tout'], ['clip', 'Clips'], ['emission', 'Émissions'], ['habillage', 'Habillage']])
       chips.append(h('button', { class: 'st-chip' + (R.kind === k ? ' on' : ''), 'aria-pressed': R.kind === k ? 'true' : 'false', onclick: () => { R.kind = k; drawChips(); draw(); } }, l));
   };
   drawChips();
+  R.ptab = 'loop';
+  const loopPan = playlistPanel(), weekPan = weekPanel();
+  const ptabs = h('div', { class: 'st-tabs', role: 'tablist', 'aria-label': 'Programmes' });
+  const drawPtabs = () => {
+    ptabs.textContent = '';
+    for (const [k, l] of [['loop', 'Playlist en boucle'], ['week', 'Plan du jour']])
+      ptabs.append(h('button', { role: 'tab', class: R.ptab === k ? 'on' : '', 'aria-selected': String(R.ptab === k), onclick: () => { R.ptab = k; drawPtabs(); } }, l));
+    loopPan.classList.toggle('hidden', R.ptab !== 'loop'); weekPan.classList.toggle('hidden', R.ptab !== 'week');
+  };
+  drawPtabs();
   const progSec = h('section', { class: 'st-card', id: 'programmes', 'aria-label': 'Programmes' },
-    h('div', { class: 'st-card-head' }, h('h2', {}, 'Programmes'), h('span', { class: 'grow' }),
-      h('label', { class: 'st-search' }, icon('search', 16), qIn), chips),
-    h('div', { class: 'rg-panels' }, playlistPanel(), weekPanel()),
+    h('div', { class: 'st-card-head' }, h('h2', {}, 'Programmes'), h('span', { class: 'grow' }), h('label', { class: 'st-search' }, icon('search', 15), qIn)),
+    ptabs, chips, loopPan, weekPan,
     h('div', { class: 'rg-foot' },
-      h('div', { class: 'rg-small' }, 'Un direct passe toujours devant la programmation ; elle reprend toute seule à la fin du direct.'),
-      can.program ? h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+      h('div', { class: 'rg-small' }, 'Un direct passe toujours devant la programmation, qui reprend toute seule à la fin.'),
+      can.program ? h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
         h('button', { class: 'btn small', onclick: restartLoop }, 'Reprendre la playlist au début'),
-        can.admin ? h('button', { class: 'btn small danger', onclick: clearAll }, 'Supprimer toute la programmation') : null) : null));
+        can.admin ? h('button', { class: 'btn small danger', onclick: clearAll }, 'Tout supprimer') : null) : null));
+
+  // ── Panneau de droite : Habillage / Directs / Alertes ──
+  R.rtab = 'hab';
+  const alertsFull = h('div', { class: 'st-alerts col', role: 'status' });
+  const habPane = h('div', { class: 'hb-pane' }), livePane = h('div', {}, liveBar()), alertPane = h('div', {}, alertsFull);
+  const rtabs = h('div', { class: 'st-tabs', role: 'tablist', 'aria-label': 'Réglages' });
+  const drawRtabs = () => {
+    rtabs.textContent = '';
+    for (const [k, l] of [['hab', 'Habillage'], ['live', 'Directs'], ['alerts', 'Alertes']])
+      rtabs.append(h('button', { role: 'tab', class: R.rtab === k ? 'on' : '', 'aria-selected': String(R.rtab === k), onclick: () => { R.rtab = k; drawRtabs(); } }, l));
+    habPane.classList.toggle('hidden', R.rtab !== 'hab'); livePane.classList.toggle('hidden', R.rtab !== 'live'); alertPane.classList.toggle('hidden', R.rtab !== 'alerts');
+  };
+  drawRtabs();
+  const sideSec = h('section', { class: 'st-card', id: 'habillage', 'aria-label': 'Habillage, directs et alertes' }, rtabs, habPane, livePane, alertPane);
+  window.__regieShow = id => {
+    if (id === '#directs') { R.rtab = 'live'; drawRtabs(); id = '#habillage'; }
+    else if (id === '#habillage') { R.rtab = 'hab'; drawRtabs(); }
+    else if (id === '#alertes') { R.rtab = 'alerts'; drawRtabs(); id = '#habillage'; }
+    const el = $(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   main.append(alerts,
     h('div', { class: 'rg-top' },
       h('section', { class: 'rg-scr', 'aria-label': 'Aperçu' }, h('div', { class: 'lab' }, h('span', {}, 'APERÇU'), prevState), prevBox,
         h('div', { class: 'under' }, prevTitle, can.program ? prevNow : null, prevClose)),
       mid, airScr),
-    liveBar(), gridSec, progSec);
-  if (!can.program) main.append(h('p', { class: 'rg-small', style: 'text-align:center' }, 'Votre rôle : ' + ROLE_LABEL[ROLE] + '. Vous lancez et arrêtez les directs ; la grille est en lecture seule.'));
+    gridSec, h('div', { class: 'st-duo' }, progSec, sideSec));
+  if (!can.program) main.append(h('p', { class: 'rg-small', style: 'text-align:center' }, 'Votre rôle : ' + ROLE_LABEL[ROLE] + '. Vous lancez et arrêtez les directs ; la grille et l’habillage sont en lecture seule.'));
+
+  // ── Habillage : réglages enregistrés en ligne, visibles par tous en quelques secondes ──
+  const LOGO_DEFAULT = '../assets/assets/images/logo.png';
+  const FONTS = ['Poppins', 'Montserrat', 'Inter', 'Raleway', 'Oswald', 'Bebas Neue', 'Anton', 'Playfair Display'];
+  const BR_DEF = { logo: { show: true, corner: 'hd', size: 100, opacity: 90, url: null }, ticker: { show: true, text: '', speed: 3, theme: 'nuit', messages: [] }, band: { show: true, anim: 'slide', at: 15, dur: 8, end: 30 }, font: { name: 'Poppins', url: null } };
+  const normBrand = c => { const o = JSON.parse(JSON.stringify(BR_DEF)); for (const k of Object.keys(o)) Object.assign(o[k], (c && c[k]) || {}); if (!Array.isArray(o.ticker.messages)) o.ticker.messages = []; return o; };
+  R.brand = normBrand(null);
+  let brandEdit = 0, brandTimer = null;
+  function saveBrand() {
+    brandEdit = Date.now(); clearTimeout(brandTimer);
+    brandTimer = setTimeout(async () => {
+      const { error } = await sb.from('tv_branding').update({ config: R.brand }).eq('id', 1);
+      if (error) toast(/tv_branding/.test(error.message) ? 'Base pas encore à jour (migration v13).' : friendly(error), true);
+    }, 600);
+  }
+  async function loadBrand() {
+    const { data } = await sb.from('tv_branding').select('config').eq('id', 1).maybeSingle();
+    if (data) R.brand = normBrand(data.config);
+    buildHab();
+  }
+  function pickFile(accept, cb) {
+    const i = h('input', { type: 'file', accept, class: 'hidden' });
+    i.onchange = () => { if (i.files[0]) cb(i.files[0]); i.remove(); };
+    document.body.append(i); i.click();
+  }
+  const loadedFonts = {};
+  function brandFamily() {
+    const f = R.brand.font;
+    if (f.url) {
+      const fam = 'ConacceFont' + Math.abs([...f.url].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
+      if (!loadedFonts[fam]) { loadedFonts[fam] = 1; new FontFace(fam, `url("${f.url}")`).load().then(ff => document.fonts.add(ff)).catch(() => {}); }
+      return `"${fam}", Poppins, sans-serif`;
+    }
+    if (!loadedFonts[f.name] && f.name !== 'Poppins' && f.name !== 'Inter') {
+      loadedFonts[f.name] = 1;
+      document.head.append(h('link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.name).replace(/%20/g, '+') + '&display=swap' }));
+    }
+    return `"${f.name}", Poppins, sans-serif`;
+  }
+  function buildHab() {
+    const B = R.brand, ro = !can.program;
+    habPane.textContent = '';
+    const sw = (on, label, set) => h('label', { class: 'hb-sw' }, h('input', { type: 'checkbox', checked: on, disabled: ro, onchange: e => { set(e.target.checked); saveBrand(); } }), label);
+    const pills = (opts, val, set) => h('div', { class: 'hb-pills' }, opts.map(([k, l]) => h('button', { class: 'st-chip' + (val === k ? ' on' : ''), 'aria-pressed': String(val === k), disabled: ro, onclick: () => { set(k); saveBrand(); buildHab(); } }, l)));
+    const range = (label, min, max, val, fmt, set) => {
+      const out = h('b', {}, fmt(val));
+      const inp = h('input', { type: 'range', min, max, value: val, disabled: ro, 'aria-label': label, oninput: () => { out.textContent = fmt(+inp.value); set(+inp.value); saveBrand(); } });
+      return h('label', { class: 'hb-range' }, h('span', {}, label + ' · ', out), inp);
+    };
+    const num = (label, val, set, suffix) => h('label', { class: 'hb-num' }, h('span', {}, label),
+      h('span', { class: 'hb-row' }, h('input', { type: 'number', min: 0, max: 3600, value: val, disabled: ro, onchange: e => { set(Math.max(0, Math.round(+e.target.value || 0))); saveBrand(); } }), suffix));
+    // Logo
+    const logoBtns = can.admin ? h('div', { class: 'hb-row' },
+      h('button', { class: 'btn small', onclick: () => pickFile('image/png,image/webp,image/jpeg,image/svg+xml', async f => {
+        toast('Envoi du logo…');
+        try { B.logo.url = await upload('images', f, () => {}); saveBrand(); buildHab(); toast('Logo changé : il apparaît chez tous les spectateurs.'); } catch (e) { toast(e.message || String(e), true); }
+      }) }, 'Changer le logo'),
+      B.logo.url ? h('button', { class: 'btn small ghost', onclick: () => { B.logo.url = null; saveBrand(); buildHab(); } }, 'Revenir au logo d’origine') : null) : null;
+    // Messages programmés du bandeau
+    const msgs = h('div', { class: 'hb-msgs' });
+    B.ticker.messages.forEach((m, i) => {
+      const upd = (k, v) => { m[k] = v; saveBrand(); };
+      msgs.append(h('div', { class: 'hb-msg' },
+        h('input', { type: 'text', value: m.text || '', placeholder: 'Ex. : Direct ce soir à 20 h', 'aria-label': 'Message programmé', disabled: ro, oninput: e => upd('text', e.target.value) }),
+        h('input', { type: 'time', value: m.from || '', 'aria-label': 'De', disabled: ro, onchange: e => upd('from', e.target.value) }),
+        h('input', { type: 'time', value: m.to || '', 'aria-label': 'À', disabled: ro, onchange: e => upd('to', e.target.value) }),
+        h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer ce message', disabled: ro, onclick: () => { B.ticker.messages.splice(i, 1); saveBrand(); buildHab(); } }, '✕')));
+    });
+    const themes = [['nuit', '#0B1463', 'Fond bleu nuit'], ['blanc', '#FFFFFF', 'Fond blanc'], ['noir', '#000000', 'Fond noir']];
+    const fontSel = h('select', { 'aria-label': 'Police de l’habillage', disabled: ro, onchange: e => { B.font = { name: e.target.value, url: null }; saveBrand(); buildHab(); } },
+      FONTS.map(n => h('option', { value: n }, n)), B.font.url ? h('option', { value: B.font.name }, B.font.name + ' (importée)') : null);
+    fontSel.value = B.font.name;
+    habPane.append(
+      h('fieldset', { class: 'hb' }, h('legend', {}, 'Logo'),
+        h('div', { class: 'hb-row' }, sw(B.logo.show, 'Afficher le logo', v => { B.logo.show = v; }), h('span', { class: 'grow' }), h('span', { class: 'logo-shine hb-logo' }, h('img', { src: B.logo.url || LOGO_DEFAULT, alt: 'Logo actuel' }))),
+        pills([['hg', 'Haut gauche'], ['hd', 'Haut droite'], ['bg', 'Bas gauche'], ['bd', 'Bas droite']], B.logo.corner, v => { B.logo.corner = v; }),
+        h('div', { class: 'hb-2' },
+          range('Taille', 40, 200, B.logo.size, v => v + ' %', v => { B.logo.size = v; }),
+          range('Opacité', 10, 100, B.logo.opacity, v => v + ' %', v => { B.logo.opacity = v; })),
+        logoBtns),
+      h('fieldset', { class: 'hb' }, h('legend', {}, 'Bandeau d’infos'),
+        sw(B.ticker.show, 'Afficher le bandeau', v => { B.ticker.show = v; }),
+        h('label', { class: 'hb-field' }, 'Message en continu',
+          h('textarea', { rows: 2, disabled: ro, placeholder: 'Ex. : Merci de suivre Conacce TV · Soutenez la chaîne', oninput: e => { B.ticker.text = e.target.value; saveBrand(); } }, B.ticker.text)),
+        h('div', { class: 'hb-2' },
+          range('Vitesse', 1, 5, B.ticker.speed, v => ['', 'très lente', 'lente', 'normale', 'rapide', 'très rapide'][v], v => { B.ticker.speed = v; }),
+          h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Fond'),
+            themes.map(([k, c, l]) => h('button', { class: 'hb-swatch' + (B.ticker.theme === k ? ' on' : ''), style: 'background:' + c, 'aria-label': l, 'aria-pressed': String(B.ticker.theme === k), disabled: ro, onclick: () => { B.ticker.theme = k; saveBrand(); buildHab(); } })))),
+        h('div', { class: 'hb-sub' }, 'Messages programmés (heure du Bénin : de… à…)'), msgs,
+        ro ? null : h('button', { class: 'btn small ghost', onclick: () => { B.ticker.messages.push({ text: '', from: '18:00', to: '21:00' }); saveBrand(); buildHab(); } }, '+ Ajouter un message programmé')),
+      h('fieldset', { class: 'hb' }, h('legend', {}, 'Bande artiste et titre'),
+        sw(B.band.show, 'Afficher la bande sur les clips', v => { B.band.show = v; }),
+        pills([['slide', 'Glissement'], ['fade', 'Fondu'], ['open', 'Déploiement']], B.band.anim, v => { B.band.anim = v; }),
+        h('div', { class: 'hb-3' },
+          num('Apparition (s après le début)', B.band.at, v => { B.band.at = v; }, ''),
+          num('Durée à l’écran (s)', B.band.dur, v => { B.band.dur = Math.max(2, v); }, ''),
+          num('2ᵉ passage (s avant la fin)', B.band.end, v => { B.band.end = v; }, '')),
+        h('div', { class: 'rg-small' }, 'Renseignez l’artiste et le titre dans « Modifier » de chaque clip. 2ᵉ passage à 0 : un seul passage.')),
+      h('fieldset', { class: 'hb' }, h('legend', {}, 'Police'),
+        h('div', { class: 'hb-row' }, fontSel,
+          can.admin ? h('button', { class: 'btn small', onclick: () => pickFile('.ttf,.otf,.woff,.woff2', async f => {
+            toast('Envoi de la police…');
+            try { const url = await upload('media', f, () => {}); B.font = { name: f.name.replace(/\.[^.]+$/, ''), url }; saveBrand(); buildHab(); toast('Police importée.'); } catch (e) { toast(e.message || String(e), true); }
+          }) }, 'Importer une police') : null),
+        h('div', { class: 'hb-sample', style: 'font-family:' + brandFamily() }, h('b', {}, 'ORO ft. Tope Alabi'), ' · Merci de suivre Conacce TV')));
+  }
+
+  // ── Habillage dessiné sur l'écran Antenne (comme dans l'appli) ──
+  const ovLogoImg = h('img', { alt: '' });
+  const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
+  const ovArtist = h('div', { class: 'ov-artist sun' }), ovSong = h('div', { class: 'ov-song' });
+  const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
+  const ovTrack = h('div', { class: 'ov-track' });
+  const ovTick = h('div', { class: 'ov-tick hidden' }, h('span', { class: 'ov-info sun' }, 'INFO'), h('div', { class: 'ov-wrap' }, ovTrack));
+  const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBand, ovTick);
+  airBox.append(ov);
+  function tickerText(B, t) {
+    if (!B.ticker.show) return '';
+    const d = new Date(t + 3600e3), m = d.getUTCHours() * 60 + d.getUTCMinutes();
+    const mm = s => /^\d{1,2}:\d{2}$/.test(s || '') ? Number(s.split(':')[0]) * 60 + Number(s.split(':')[1]) : null;
+    const parts = [];
+    if ((B.ticker.text || '').trim()) parts.push(B.ticker.text.trim());
+    for (const x of B.ticker.messages) {
+      const a = mm(x.from), b = mm(x.to);
+      const on = a == null || b == null ? true : a <= b ? m >= a && m < b : m >= a || m < b;
+      if (on && (x.text || '').trim()) parts.push(x.text.trim());
+    }
+    return parts.join('   •   ');
+  }
+  function drawOverlay(t, T) {
+    const B = R.brand, w = airBox.clientWidth || 400, k = w / 640;
+    ov.classList.toggle('hidden', T.kind === 'none');
+    ov.style.setProperty('--k', k.toFixed(3));
+    ov.style.fontFamily = brandFamily();
+    const text = tickerText(B, t), th = text ? Math.max(16, 22 * k) : 0, mg = 10 * k;
+    // Logo
+    const src = B.logo.url || LOGO_DEFAULT;
+    if (ovLogoImg.getAttribute('src') !== src) ovLogoImg.src = src;
+    ovLogo.classList.toggle('hidden', !B.logo.show);
+    const top = B.logo.corner[0] === 'h', left = B.logo.corner[1] === 'g';
+    Object.assign(ovLogo.style, { width: (w * 0.17 * B.logo.size / 100) + 'px', opacity: B.logo.opacity / 100,
+      top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
+    // Bandeau
+    ovTick.classList.toggle('hidden', !text);
+    ovTick.className = 'ov-tick th-' + B.ticker.theme + (text ? '' : ' hidden');
+    ovTick.style.height = th + 'px'; ovTick.style.fontSize = th + 'px';
+    const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + B.font.name + B.font.url;
+    if (text && ovTrack.__k !== tkey) {
+      ovTrack.__k = tkey; ovTrack.textContent = '';
+      const gap = th * 3;
+      for (let i = 0; i < 8; i++) ovTrack.append(h('span', { style: `padding-right:${gap}px` }, text));
+      requestAnimationFrame(() => {
+        const cycle = ovTrack.firstChild ? ovTrack.firstChild.getBoundingClientRect().width : 300;
+        const pps = [0, 30, 45, 65, 90, 125][B.ticker.speed] * (th / 22);
+        ovTrack.style.setProperty('--cycle', cycle + 'px');
+        ovTrack.style.animationDuration = Math.max(2, cycle / pps) + 's';
+      });
+    }
+    // Bande artiste
+    const p = T.sl && T.sl.p;
+    const has = !!(B.band.show && p && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
+    let on = false;
+    if (has) {
+      const pos = (t - T.sl.start) / 1000, total = p.duration;
+      const win = a => pos >= a && pos < a + B.band.dur;
+      on = win(B.band.at) || (B.band.end > 0 && total > B.band.end + B.band.at + B.band.dur && win(total - B.band.end));
+      if (ovArtist.textContent !== (p.artist || '').trim()) ovArtist.textContent = (p.artist || '').trim();
+      if (ovSong.textContent !== (p.song || '').trim()) ovSong.textContent = (p.song || '').trim();
+      ovArtist.classList.toggle('hidden', !(p.artist || '').trim()); ovSong.classList.toggle('hidden', !(p.song || '').trim());
+    }
+    ovBand.className = 'ov-band a-' + B.band.anim + (on ? ' on' : '') + (has ? '' : ' hidden');
+    ovBand.style.bottom = (th + 14 * k) + 'px';
+  }
 
   // ── Barre du direct ──
   function liveBar() {
@@ -1900,7 +2168,7 @@ async function showRegie() {
   }
 
   // ── Affichage des listes ──
-  const match = p => (R.kind === 'all' || p.source === R.kind) && (!R.q.trim() || norm(p.title).includes(norm(R.q.trim())));
+  const match = p => (R.kind === 'all' || (p.kind || 'clip') === R.kind) && (!R.q.trim() || norm(p.title + ' ' + (p.artist || '') + ' ' + (p.song || '')).includes(norm(R.q.trim())));
   function draw() {
     R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor));
     const loop = R.sched.loop;
@@ -1948,7 +2216,7 @@ async function showRegie() {
       h('span', { class: 'n' }, num),
       h('span', { class: 'th' }, th ? h('img', { src: th, alt: '', loading: 'lazy', onerror: e => e.target.remove() }) : null),
       h('span', { class: 't', title: p.title }, p.title, h('small', {},
-        (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') + st)),
+        (p.artist ? p.artist + ' · ' : '') + (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') + st)),
       h('span', { class: 'd' }, fmtHms(p.duration)),
       h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t ? t + ' : ' + p.title : null }, l))));
   }
@@ -1971,11 +2239,14 @@ async function showRegie() {
     const uniq = new Map(); for (const p of R.programs) uniq.set(p.video_url, p.duration);
     const total = [...uniq.values()].reduce((a, d) => a + d, 0);
     if (!S.empty && total < 24 * 3600) out.push(['info', `${fmtLong(total)} de programmes différents. Objectif : 24 h, pour éviter que la boucle se répète trop souvent.`]);
-    alerts.textContent = '';
+    alerts.textContent = ''; alertsFull.textContent = '';
     const serious = out.filter(a => a[0] !== 'info').length;
     if (!out.length) out.push(['ok', 'Tout va bien : la chaîne tourne sans trou.']);
-    for (const [k, msg, link] of out) alerts.append(h('div', { class: 'st-alert ' + k }, icon(k === 'ok' ? 'ok' : k === 'info' ? 'info' : 'warn'), h('span', {}, msg),
-      link ? h('a', { href: link, onclick: e => { e.preventDefault(); $(link).scrollIntoView({ behavior: 'smooth' }); } }, 'Voir') : null));
+    const item = ([k, msg, link]) => h('div', { class: 'st-alert ' + k }, icon(k === 'ok' ? 'ok' : k === 'info' ? 'info' : 'warn', 16), h('span', {}, msg),
+      link ? h('a', { href: link, onclick: e => { e.preventDefault(); window.__regieShow(link); } }, 'Voir') : null);
+    const top = out.filter(a => a[0] !== 'info');
+    for (const a of (top.length ? top : [['ok', 'Tout va bien : la chaîne tourne sans trou.' + (out.some(a => a[0] === 'info') ? ' Conseils dans l’onglet « Alertes ».' : ''), out.some(a => a[0] === 'info') ? '#alertes' : null]])) alerts.append(item(a));
+    for (const a of out) alertsFull.append(item(a));
     F.bellN.textContent = String(serious); F.bellN.classList.toggle('hidden', !serious);
     F.bell.setAttribute('aria-label', serious ? `Alertes : ${serious}` : 'Aucune alerte');
     F.reserve.classList.remove('hidden'); F.reserve.textContent = '';
@@ -2249,6 +2520,7 @@ async function showRegie() {
         if (R.air.video && R.air.video.readyState > 3 && !R.air.video.paused && Math.abs(R.air.video.currentTime - want) > 10) R.air.video.currentTime = want;
       } catch (e) {}
     }
+    drawOverlay(t, T);
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
     const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
@@ -2320,6 +2592,7 @@ async function showRegie() {
     if (data) R.offset = Date.parse(data) - (sent + (got - sent) / 2);
   } catch (e) {}
   await loadLive();
+  await loadBrand();
   await reload();
   applyVol();
   const timer = setInterval(tick, 250);
@@ -2329,6 +2602,7 @@ async function showRegie() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_programs' }, () => reload())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_channel' }, p => { if (p.new && p.new.id) { R.channel = p.new; draw(); } })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive().then(() => tick(true)))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_branding' }, p => { if (Date.now() - brandEdit > 4000 && p.new && p.new.config) { R.brand = normBrand(p.new.config); buildHab(); } })
     .subscribe();
   const frameLeave = window.__leave;
   window.__leave = () => {

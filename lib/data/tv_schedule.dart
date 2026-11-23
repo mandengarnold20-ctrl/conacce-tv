@@ -12,6 +12,9 @@ class TvProgram {
     this.startAt,
     this.repeatDaily = false,
     this.repeatWeekly = false,
+    this.artist,
+    this.song,
+    this.showBand = true,
   });
 
   final String id;
@@ -27,6 +30,12 @@ class TvProgram {
   final DateTime? startAt;
   final bool repeatDaily;
   final bool repeatWeekly;
+
+  /// Bande artiste / titre (habillage) : affichée si l'artiste ou le titre est renseigné.
+  final String? artist;
+  final String? song;
+  final bool showBand;
+  bool get hasBand => showBand && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
 
   bool get isFixed => startAt != null;
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -54,6 +63,9 @@ class TvProgram {
         startAt: m['start_at'] == null ? null : DateTime.parse(m['start_at'] as String).toUtc(),
         repeatDaily: m['repeat_daily'] as bool? ?? false,
         repeatWeekly: m['repeat_weekly'] as bool? ?? false,
+        artist: m['artist'] as String?,
+        song: m['song'] as String?,
+        showBand: m['show_band'] as bool? ?? true,
       );
 }
 

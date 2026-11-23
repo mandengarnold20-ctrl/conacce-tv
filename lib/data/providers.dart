@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'branding.dart';
 import 'models.dart';
 import 'tv_schedule.dart';
 
@@ -76,6 +77,13 @@ final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
 });
 
 /// État de la chaîne (régie) : à l'antenne, en pause ou arrêtée.
+/// Habillage de la chaîne (logo, bandeau, bande artiste), mis à jour en direct par la régie.
+final brandingProvider = StreamProvider<Branding>((ref) {
+  return _db.from('tv_branding').stream(primaryKey: ['id']).map(
+        (rows) => rows.isEmpty ? const Branding() : Branding.fromConfig(rows.first['config'] as Map<String, dynamic>?),
+      );
+});
+
 final tvChannelProvider = StreamProvider<TvChannel>((ref) {
   return _db.from('tv_channel').stream(primaryKey: ['id']).map(
         (rows) => rows.isEmpty ? const TvChannel() : TvChannel.fromMap(rows.first),

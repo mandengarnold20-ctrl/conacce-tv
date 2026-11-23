@@ -18,9 +18,11 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
+import '../data/branding.dart';
 import '../data/tv_schedule.dart';
 import 'live_chat.dart';
 import 'shell.dart';
+import 'tv_overlay.dart';
 
 /// Conacce TV en direct : vidéo, bandeau orateur / message, audio seul, partage, soutien.
 class LiveScreen extends ConsumerStatefulWidget {
@@ -86,6 +88,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final settings = ref.watch(settingsProvider).valueOrNull;
     final programs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
     final channel = ref.watch(tvChannelProvider).valueOrNull ?? const TvChannel();
+    final branding = ref.watch(brandingProvider).valueOrNull ?? const Branding();
     _clock = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
     _muted = tvYoutubeMuted;
     // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
@@ -136,7 +139,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           player = HlsVideoPlayer(key: ValueKey(slot!.key), url: slot.program.fileUrl, isLive: true, startAt: () => slot!.positionAt(_now()));
         }
         // Téléphone tourné : la vidéo occupe tout l'écran.
-        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: player));
+        // Habillage de la chaîne (logo, bandeau, bande artiste) par-dessus l'image.
+        final overlay = Positioned.fill(child: TvOverlay(branding: branding, now: _now, slot: slot));
+        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: Stack(children: [player, if (onTv) overlay])));
         // La TV toujours entière en haut ; la page défile, rien n'est coupé.
         // Sous la phrase d'accueil : un petit fil de commentaires, puis la zone pour écrire.
         return ListView(
@@ -160,6 +165,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     )
                   else
                     player,
+                  if (!_audioOnly && onTv) overlay,
                   if (onAir && !_audioOnly && (l.speaker != null || l.messageTitle != null))
                     Positioned(
                       left: 12,
