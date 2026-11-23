@@ -214,6 +214,9 @@ async function plan(items, myId) {
         status.mb += (+r.headers.get('Content-Length') || 0) / 1048576;
         await c.put(url, r); // rangé directement, sans tout charger en mémoire
       }
+      // Ce qui avait été gardé pour ce programme dans une autre qualité est effacé.
+      const want = new Set(urls);
+      for (const old of idx.progs[uid] || []) if (!want.has(old)) await c.delete(old).catch(() => {});
       idx.progs[uid] = urls;
       await saveIndex();
       status.ready++;
