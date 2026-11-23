@@ -508,18 +508,24 @@
   .hb-msgs { display: grid; gap: 6px; } .hb-msg { display: grid; grid-template-columns: minmax(0, 1fr) 100px 100px 32px; gap: 6px; align-items: center; }
   .st .hb-msg input, .st .hb-num input { min-height: 32px; padding: 4px 8px; }
   .hb-num { display: grid; gap: 3px; font-size: 11.5px; color: #C9D2F5; } .st .hb-num input { width: 64px; }
+  .hb-color { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #C9D2F5; cursor: pointer; }
+  .st .hb-color input { width: 30px; height: 26px; min-height: 0; padding: 0; border: 1px solid rgba(255,255,255,.25); border-radius: 6px; background: none; cursor: pointer; }
+  .st .hb-field input[type=text], .st .hb-field select { min-height: 32px; padding: 4px 8px; }
+  .hb-swatch { font-weight: 800; font-size: 12px; }
   .hb-sample { padding: 8px 10px; border-radius: 8px; background: #080D2B; font-size: 15px; }
   .st .hb select { width: auto; min-width: 170px; }
   @container (max-width: 560px) { .hb-2, .hb-3 { grid-template-columns: 1fr; } .hb-msg { grid-template-columns: 1fr 1fr; } }
   .ov { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; --k: .6; }
   .ov-logo { position: absolute; border-radius: calc(3px * var(--k)); }
-  .ov-band { position: absolute; left: 50%; transform: translate(-50%, 170%); opacity: 0; min-width: calc(150px * var(--k)); max-width: calc(330px * var(--k)); border-radius: calc(5px * var(--k)); overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.35); transition: transform .65s cubic-bezier(.2,.8,.2,1), opacity .45s; text-align: center; }
-  .ov-band.on { transform: translate(-50%, 0); opacity: 1; }
-  .ov-band.a-fade { transform: translate(-50%, 0); transition: opacity .7s; }
-  .ov-band.a-open { transform: translate(-50%, 0) scale(.2); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
-  .ov-band.a-open.on { transform: translate(-50%, 0) scale(1); }
-  .ov-artist { padding: calc(5px * var(--k)) calc(12px * var(--k)); font-size: calc(14px * var(--k)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ov-song { background: #fff; padding: calc(3px * var(--k)) calc(12px * var(--k)); font-size: calc(10.5px * var(--k)); font-weight: 600; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ov-bandpos { position: absolute; display: flex; pointer-events: none; }
+  .ov-band { --bk: var(--k); border-radius: calc(5px * var(--bk)); overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.35); text-align: center; opacity: 0; transform: translateY(170%); transition: transform .65s cubic-bezier(.5,0,.75,0), opacity .4s; }
+  .ov-band.from-top { transform: translateY(-170%); }
+  .ov-band.on { opacity: 1; transform: none; transition: transform .65s cubic-bezier(.2,.8,.2,1), opacity .4s; }
+  .ov-band.a-fade { transform: none; transition: opacity .7s; }
+  .ov-band.a-open { transform: scale(.2); transition: transform .55s cubic-bezier(.5,-.5,.7,0), opacity .35s; }
+  .ov-band.a-open.on { transform: scale(1); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
+  .ov-artist { padding: calc(5px * var(--bk)) calc(12px * var(--bk)); font-size: calc(14px * var(--bk)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; }
+  .ov-song { background: #fff; padding: calc(3px * var(--bk)) calc(12px * var(--bk)); font-size: calc(10.5px * var(--bk)); font-weight: 600; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ov-tick { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: rgba(11,20,99,.92); color: #fff; line-height: 1; }
   .ov-tick.th-blanc { background: #fff; color: #0B1463; } .ov-tick.th-noir { background: rgba(0,0,0,.85); color: #F9CA22; }
   .ov-info { display: flex; align-items: center; padding: 0 .45em; font-weight: 800; color: #0B1463; font-size: .42em; }
@@ -721,9 +727,9 @@ const ENT = {
     fields: [
       { k: 'title', label: 'Titre du programme', type: 'text', req: true, help: 'Affiché sous la TV : « En ce moment » et « À suivre ».' },
       { k: 'kind', label: 'Type', type: 'select', opts: [['clip', 'Clip musical'], ['emission', 'Émission'], ['habillage', 'Habillage (jingle, spot)']], def: 'clip' },
-      { k: 'artist', label: 'Artiste (bande artiste)', type: 'text', help: 'Ex. : ORO ft. Tope Alabi. Affiché en haut de la bande, sur le dégradé jaune-orange.' },
-      { k: 'song', label: 'Titre de la chanson (bande artiste)', type: 'text', help: 'Affiché sous l’artiste, sur fond blanc.' },
-      { k: 'show_band', label: 'Afficher la bande artiste sur ce programme', type: 'checkbox', def: true },
+      { k: 'artist', label: 'Haut de la bande : artiste (clip) ou nom de l’émission', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : ORO ft. Tope Alabi, ou « Culte du dimanche ». Affiché en haut de la bande, sur le dégradé.' },
+      { k: 'song', label: 'Bas de la bande : titre de la chanson ou invité', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : Oh Lord, ou « Invité : Pasteur Jean ». Affiché en dessous, sur fond blanc.' },
+      { k: 'show_band', label: 'Afficher la bande sur ce programme', type: 'checkbox', def: true, show: v => v.kind !== 'habillage' },
       { k: 'source', label: 'Source', type: 'select', opts: [['youtube', 'Lien YouTube'], ['file', 'Vidéo téléversée (Cloudflare Stream)']], def: 'youtube' },
       { k: 'video_url', label: 'Lien de la vidéo', type: 'text', req: true, help: 'YouTube : collez le lien de la vidéo. Vidéo téléversée : envoyez-la dans Cloudflare (Stream › Téléverser, même plus de 2 Go, en 1920×1080), puis collez ici son lien ou son identifiant.' },
       { k: 'duration', label: 'Durée', type: 'duration', req: true, help: 'Touchez « Trouver la durée » : elle se remplit seule. La durée exacte permet d’enchaîner les vidéos sans trou.' },
@@ -1822,9 +1828,32 @@ async function showRegie() {
 
   // ── Habillage : réglages enregistrés en ligne, visibles par tous en quelques secondes ──
   const LOGO_DEFAULT = '../assets/assets/images/logo.png';
-  const FONTS = ['Poppins', 'Montserrat', 'Inter', 'Raleway', 'Oswald', 'Bebas Neue', 'Anton', 'Playfair Display'];
-  const BR_DEF = { logo: { show: true, corner: 'hd', size: 100, opacity: 90, url: null }, ticker: { show: true, text: '', speed: 3, theme: 'nuit', messages: [] }, band: { show: true, anim: 'slide', at: 15, dur: 8, end: 30 }, font: { name: 'Poppins', url: null } };
-  const normBrand = c => { const o = JSON.parse(JSON.stringify(BR_DEF)); for (const k of Object.keys(o)) Object.assign(o[k], (c && c[k]) || {}); if (!Array.isArray(o.ticker.messages)) o.ticker.messages = []; return o; };
+  // Polices de la chaîne : fichiers hébergés avec l'appli (dossier fonts/), même rendu partout.
+  const FONT_FILES = {
+    'Poppins': ['poppins-500.ttf', 'poppins-800.ttf'], 'Montserrat': ['montserrat.ttf'], 'Inter': ['inter.ttf'], 'Raleway': ['raleway.ttf'],
+    'Oswald': ['oswald.ttf'], 'Bebas Neue': ['bebasneue.ttf'], 'Anton': ['anton.ttf'], 'Playfair Display': ['playfairdisplay.ttf'],
+    'Roboto': ['roboto.ttf'], 'Open Sans': ['opensans.ttf'], 'Lato': ['lato-500.ttf', 'lato-800.ttf'], 'Nunito': ['nunito.ttf'],
+    'Ubuntu': ['ubuntu-500.ttf', 'ubuntu-700.ttf'], 'Barlow': ['barlow-500.ttf', 'barlow-800.ttf'], 'Archivo Black': ['archivoblack.ttf'], 'Righteous': ['righteous.ttf'],
+  };
+  const FONTS = Object.keys(FONT_FILES);
+  const BAND_COLORS = { topA: '#F9CA22', topB: '#FD9113', topText: '#0B1463', bottomBg: '#FFFFFF', bottomText: '#0B1463' };
+  const BR_DEF = {
+    logo: { show: true, corner: 'hd', size: 100, opacity: 90, url: null },
+    ticker: { show: true, text: '', fallback: '', speed: 3, theme: 'nuit', bg: null, fg: null, on: 0, every: 0, messages: [] },
+    band: { show: true, anim: 'slide', out: null, at: 15, dur: 8, end: 30, pos: 'bc', y: 0, scale: 100, width: 52, ...BAND_COLORS },
+    font: { name: 'Poppins', url: null }, fontTicker: null, fontBand: null, fonts: [],
+  };
+  const normBrand = c => {
+    const o = JSON.parse(JSON.stringify(BR_DEF));
+    for (const k of ['logo', 'ticker', 'band', 'font']) Object.assign(o[k], (c && c[k]) || {});
+    for (const k of ['fontTicker', 'fontBand']) o[k] = c && c[k] && c[k].name ? c[k] : null;
+    o.fonts = c && Array.isArray(c.fonts) ? c.fonts.filter(f => f && f.name && f.url) : [];
+    // Ancienne police importée : on la garde dans la liste des polices importées.
+    if (o.font.url && !o.fonts.some(f => f.url === o.font.url)) o.fonts.push({ name: o.font.name, url: o.font.url });
+    if (!Array.isArray(o.ticker.messages)) o.ticker.messages = [];
+    if (!o.band.out) o.band.out = o.band.anim;
+    return o;
+  };
   R.brand = normBrand(null);
   let brandEdit = 0, brandTimer = null;
   function saveBrand() {
@@ -1845,19 +1874,18 @@ async function showRegie() {
     document.body.append(i); i.click();
   }
   const loadedFonts = {};
-  function brandFamily() {
-    const f = R.brand.font;
-    if (f.url) {
-      const fam = 'ConacceFont' + Math.abs([...f.url].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7));
-      if (!loadedFonts[fam]) { loadedFonts[fam] = 1; new FontFace(fam, `url("${f.url}")`).load().then(ff => document.fonts.add(ff)).catch(() => {}); }
-      return `"${fam}", Poppins, sans-serif`;
+  /** Famille CSS d'une police de l'habillage (chargée à la demande depuis nos fichiers ou l'adresse importée). */
+  function famOf(f) {
+    f = f || R.brand.font;
+    const fam = 'CTV ' + (f.url ? 'imp' + Math.abs([...f.url].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) : f.name);
+    if (!loadedFonts[fam]) {
+      loadedFonts[fam] = 1;
+      const files = f.url ? [[f.url, '100 900']] : (FONT_FILES[f.name] || FONT_FILES.Poppins).map(x => ['../fonts/' + x, (x.match(/-(\d00)\.ttf$/) || [])[1] || '100 900']);
+      for (const [u, wt] of files) new FontFace(fam, `url("${u}")`, { weight: wt }).load().then(ff => { document.fonts.add(ff); }).catch(() => {});
     }
-    if (!loadedFonts[f.name] && f.name !== 'Poppins' && f.name !== 'Inter') {
-      loadedFonts[f.name] = 1;
-      document.head.append(h('link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.name).replace(/%20/g, '+') + '&display=swap' }));
-    }
-    return `"${f.name}", Poppins, sans-serif`;
+    return `"${fam}", Poppins, sans-serif`;
   }
+  const brandFamily = () => famOf(R.brand.font);
   function buildHab() {
     const B = R.brand, ro = !can.program;
     habPane.textContent = '';
@@ -1868,8 +1896,26 @@ async function showRegie() {
       const inp = h('input', { type: 'range', min, max, value: val, disabled: ro, 'aria-label': label, oninput: () => { out.textContent = fmt(+inp.value); set(+inp.value); saveBrand(); } });
       return h('label', { class: 'hb-range' }, h('span', {}, label + ' · ', out), inp);
     };
-    const num = (label, val, set, suffix) => h('label', { class: 'hb-num' }, h('span', {}, label),
-      h('span', { class: 'hb-row' }, h('input', { type: 'number', min: 0, max: 3600, value: val, disabled: ro, onchange: e => { set(Math.max(0, Math.round(+e.target.value || 0))); saveBrand(); } }), suffix));
+    const num = (label, val, set, max = 3600) => h('label', { class: 'hb-num' }, h('span', {}, label),
+      h('input', { type: 'number', min: 0, max, value: val, disabled: ro, onchange: e => { set(Math.max(0, Math.min(max, Math.round(+e.target.value || 0)))); saveBrand(); } }));
+    const color = (label, val, set) => h('label', { class: 'hb-color' },
+      h('input', { type: 'color', value: val, disabled: ro, 'aria-label': label, oninput: e => { set(e.target.value); saveBrand(); } }), h('span', {}, label));
+    const sub = t => h('div', { class: 'hb-sub' }, t);
+    // Choix d'une police (polices de la chaîne + polices importées) ; « Même que la police générale » pour les éléments.
+    const fontPick = (label, cur, set, allowSame) => {
+      const sel = h('select', { 'aria-label': label, disabled: ro, onchange: e => {
+        const v = e.target.value;
+        if (v === '') set(null);
+        else if (v.startsWith('imp:')) { const f = B.fonts[+v.slice(4)]; set({ name: f.name, url: f.url }); }
+        else set({ name: v, url: null });
+        saveBrand(); buildHab();
+      } },
+        allowSame ? h('option', { value: '' }, 'Même que la police générale') : null,
+        h('optgroup', { label: 'Polices de la chaîne' }, FONTS.map(n => h('option', { value: n, style: 'font-family:' + famOf({ name: n }) }, n))),
+        B.fonts.length ? h('optgroup', { label: 'Polices importées' }, B.fonts.map((f, i) => h('option', { value: 'imp:' + i }, f.name))) : null);
+      sel.value = !cur ? '' : cur.url ? 'imp:' + Math.max(0, B.fonts.findIndex(f => f.url === cur.url)) : cur.name;
+      return h('label', { class: 'hb-field' }, label, sel);
+    };
     // Logo
     const logoBtns = can.admin ? h('div', { class: 'hb-row' },
       h('button', { class: 'btn small', onclick: () => pickFile('image/png,image/webp,image/jpeg,image/svg+xml', async f => {
@@ -1887,10 +1933,21 @@ async function showRegie() {
         h('input', { type: 'time', value: m.to || '', 'aria-label': 'À', disabled: ro, onchange: e => upd('to', e.target.value) }),
         h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer ce message', disabled: ro, onclick: () => { B.ticker.messages.splice(i, 1); saveBrand(); buildHab(); } }, '✕')));
     });
-    const themes = [['nuit', '#0B1463', 'Fond bleu nuit'], ['blanc', '#FFFFFF', 'Fond blanc'], ['noir', '#000000', 'Fond noir']];
-    const fontSel = h('select', { 'aria-label': 'Police de l’habillage', disabled: ro, onchange: e => { B.font = { name: e.target.value, url: null }; saveBrand(); buildHab(); } },
-      FONTS.map(n => h('option', { value: n }, n)), B.font.url ? h('option', { value: B.font.name }, B.font.name + ' (importée)') : null);
-    fontSel.value = B.font.name;
+    // Couleurs prêtes du bandeau (fond + texte), puis couleurs libres.
+    const themes = [['nuit', '#0B1463', '#FFFFFF', 'Bleu nuit'], ['blanc', '#FFFFFF', '#0B1463', 'Blanc'], ['noir', '#000000', '#F9CA22', 'Noir et jaune']];
+    const tBg = B.ticker.bg || themes.find(x => x[0] === B.ticker.theme)?.[1] || '#0B1463';
+    const tFg = B.ticker.fg || themes.find(x => x[0] === B.ticker.theme)?.[2] || '#FFFFFF';
+    const isTheme = k => !B.ticker.bg && !B.ticker.fg && B.ticker.theme === k;
+    const bandPos = [['hg', 'Haut gauche'], ['hc', 'Haut centre'], ['hd', 'Haut droite'], ['bg', 'Bas gauche'], ['bc', 'Bas centre'], ['bd', 'Bas droite']];
+    const anims = [['slide', 'Glissement'], ['fade', 'Fondu'], ['open', 'Déploiement']];
+    const fontBtn = can.admin ? h('button', { class: 'btn small', onclick: () => pickFile('.ttf,.otf,.woff,.woff2', async f => {
+      toast('Envoi de la police…');
+      try {
+        const url = await upload('media', f, () => {});
+        B.fonts.push({ name: f.name.replace(/\.[^.]+$/, ''), url });
+        saveBrand(); buildHab(); toast('Police importée : choisissez-la dans les listes ci-dessus.');
+      } catch (e) { toast(e.message || String(e), true); }
+    }) }, 'Importer une police (.ttf, .otf, .woff)') : null;
     habPane.append(
       h('fieldset', { class: 'hb' }, h('legend', {}, 'Logo'),
         h('div', { class: 'hb-row' }, sw(B.logo.show, 'Afficher le logo', v => { B.logo.show = v; }), h('span', { class: 'grow' }), h('span', { class: 'logo-shine hb-logo' }, h('img', { src: B.logo.url || LOGO_DEFAULT, alt: 'Logo actuel' }))),
@@ -1903,41 +1960,70 @@ async function showRegie() {
         sw(B.ticker.show, 'Afficher le bandeau', v => { B.ticker.show = v; }),
         h('label', { class: 'hb-field' }, 'Message en continu',
           h('textarea', { rows: 2, disabled: ro, placeholder: 'Ex. : Merci de suivre Conacce TV · Soutenez la chaîne', oninput: e => { B.ticker.text = e.target.value; saveBrand(); } }, B.ticker.text)),
-        h('div', { class: 'hb-2' },
-          range('Vitesse', 1, 5, B.ticker.speed, v => ['', 'très lente', 'lente', 'normale', 'rapide', 'très rapide'][v], v => { B.ticker.speed = v; }),
-          h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Fond'),
-            themes.map(([k, c, l]) => h('button', { class: 'hb-swatch' + (B.ticker.theme === k ? ' on' : ''), style: 'background:' + c, 'aria-label': l, 'aria-pressed': String(B.ticker.theme === k), disabled: ro, onclick: () => { B.ticker.theme = k; saveBrand(); buildHab(); } })))),
-        h('div', { class: 'hb-sub' }, 'Messages programmés (heure du Bénin : de… à…)'), msgs,
-        ro ? null : h('button', { class: 'btn small ghost', onclick: () => { B.ticker.messages.push({ text: '', from: '18:00', to: '21:00' }); saveBrand(); buildHab(); } }, '+ Ajouter un message programmé')),
+        sub('Messages programmés (heure du Bénin : de… à…)'), msgs,
+        ro ? null : h('button', { class: 'btn small ghost', onclick: () => { B.ticker.messages.push({ text: '', from: '18:00', to: '21:00' }); saveBrand(); buildHab(); } }, '+ Ajouter un message programmé'),
+        h('label', { class: 'hb-field' }, 'Message de repli (s’affiche quand il n’y a aucun autre message)',
+          h('input', { type: 'text', value: B.ticker.fallback || '', disabled: ro, placeholder: 'Ex. : Conacce TV · La chaîne qui vous accompagne', oninput: e => { B.ticker.fallback = e.target.value; saveBrand(); } })),
+        range('Vitesse', 1, 5, B.ticker.speed, v => ['', 'très lente', 'lente', 'normale', 'rapide', 'très rapide'][v], v => { B.ticker.speed = v; }),
+        sub('Durée de défilement'),
+        h('div', { class: 'hb-row' },
+          h('div', { class: 'hb-pills' },
+            h('button', { class: 'st-chip' + (!B.ticker.on ? ' on' : ''), disabled: ro, onclick: () => { B.ticker.on = 0; B.ticker.every = 0; saveBrand(); buildHab(); } }, 'En continu'),
+            h('button', { class: 'st-chip' + (B.ticker.on ? ' on' : ''), disabled: ro, onclick: () => { if (!B.ticker.on) { B.ticker.on = 5; B.ticker.every = 15; } saveBrand(); buildHab(); } }, 'Par moments'))),
+        B.ticker.on ? h('div', { class: 'hb-2' },
+          num('Défile pendant (minutes)', B.ticker.on, v => { B.ticker.on = Math.max(1, v); }, 1440),
+          num('Toutes les (minutes)', B.ticker.every, v => { B.ticker.every = Math.max(2, v); }, 1440)) : null,
+        sub('Couleurs'),
+        h('div', { class: 'hb-row' },
+          themes.map(([k, bg, fg, l]) => h('button', { class: 'hb-swatch' + (isTheme(k) ? ' on' : ''), style: `background:${bg};color:${fg}`, 'aria-label': 'Couleurs ' + l, 'aria-pressed': String(isTheme(k)), disabled: ro, onclick: () => { B.ticker.theme = k; B.ticker.bg = null; B.ticker.fg = null; saveBrand(); buildHab(); } }, 'A')),
+          h('span', { class: 'grow' }),
+          color('Fond', tBg, v => { B.ticker.bg = v; B.ticker.fg = B.ticker.fg || tFg; }),
+          color('Texte', tFg, v => { B.ticker.fg = v; B.ticker.bg = B.ticker.bg || tBg; })),
+        fontPick('Police du bandeau', B.fontTicker, v => { B.fontTicker = v; }, true)),
       h('fieldset', { class: 'hb' }, h('legend', {}, 'Bande artiste et titre'),
-        sw(B.band.show, 'Afficher la bande sur les clips', v => { B.band.show = v; }),
-        pills([['slide', 'Glissement'], ['fade', 'Fondu'], ['open', 'Déploiement']], B.band.anim, v => { B.band.anim = v; }),
+        sw(B.band.show, 'Afficher la bande (clips et émissions)', v => { B.band.show = v; }),
         h('div', { class: 'hb-3' },
-          num('Apparition (s après le début)', B.band.at, v => { B.band.at = v; }, ''),
-          num('Durée à l’écran (s)', B.band.dur, v => { B.band.dur = Math.max(2, v); }, ''),
-          num('2ᵉ passage (s avant la fin)', B.band.end, v => { B.band.end = v; }, '')),
-        h('div', { class: 'rg-small' }, 'Renseignez l’artiste et le titre dans « Modifier » de chaque clip. 2ᵉ passage à 0 : un seul passage.')),
-      h('fieldset', { class: 'hb' }, h('legend', {}, 'Police'),
-        h('div', { class: 'hb-row' }, fontSel,
-          can.admin ? h('button', { class: 'btn small', onclick: () => pickFile('.ttf,.otf,.woff,.woff2', async f => {
-            toast('Envoi de la police…');
-            try { const url = await upload('media', f, () => {}); B.font = { name: f.name.replace(/\.[^.]+$/, ''), url }; saveBrand(); buildHab(); toast('Police importée.'); } catch (e) { toast(e.message || String(e), true); }
-          }) }, 'Importer une police') : null),
-        h('div', { class: 'hb-sample', style: 'font-family:' + brandFamily() }, h('b', {}, 'ORO ft. Tope Alabi'), ' · Merci de suivre Conacce TV')));
+          num('Apparition (s après le début)', B.band.at, v => { B.band.at = v; }),
+          num('Durée à l’écran (s)', B.band.dur, v => { B.band.dur = Math.max(2, v); }, 60),
+          num('2ᵉ passage (s avant la fin)', B.band.end, v => { B.band.end = v; })),
+        sub('Animation d’entrée'), pills(anims, B.band.anim, v => { B.band.anim = v; }),
+        sub('Animation de sortie'), pills(anims, B.band.out, v => { B.band.out = v; }),
+        sub('Position'), pills(bandPos, B.band.pos, v => { B.band.pos = v; }),
+        h('div', { class: 'hb-3' },
+          range('Hauteur', 0, 40, B.band.y, v => v ? '+' + v + ' %' : 'au bord', v => { B.band.y = v; }),
+          range('Taille', 60, 160, B.band.scale, v => v + ' %', v => { B.band.scale = v; }),
+          range('Longueur max.', 25, 90, B.band.width, v => v + ' %', v => { B.band.width = v; })),
+        sub('Couleurs (modèle appliqué à tous les clips)'),
+        h('div', { class: 'hb-row' },
+          color('Haut 1', B.band.topA, v => { B.band.topA = v; }), color('Haut 2', B.band.topB, v => { B.band.topB = v; }),
+          color('Texte du haut', B.band.topText, v => { B.band.topText = v; })),
+        h('div', { class: 'hb-row' },
+          color('Fond du bas', B.band.bottomBg, v => { B.band.bottomBg = v; }), color('Texte du bas', B.band.bottomText, v => { B.band.bottomText = v; }),
+          ro ? null : h('button', { class: 'btn small ghost', onclick: () => { Object.assign(B.band, BAND_COLORS); saveBrand(); buildHab(); } }, 'Couleurs du logo')),
+        fontPick('Police de la bande', B.fontBand, v => { B.fontBand = v; }, true),
+        h('div', { class: 'rg-small' }, 'Dans « Modifier » de chaque programme : artiste et titre pour un clip, nom de l’émission et invité pour une émission. 2ᵉ passage à 0 : un seul passage.')),
+      h('fieldset', { class: 'hb' }, h('legend', {}, 'Police générale'),
+        fontPick('Police de l’habillage (bandeau, bande, titres)', B.font, v => { B.font = v || { name: 'Poppins', url: null }; }, false),
+        h('div', { class: 'hb-row' }, fontBtn),
+        h('div', { class: 'hb-sample', style: 'font-family:' + brandFamily() }, h('b', {}, 'ORO ft. Tope Alabi'), ' · Merci de suivre Conacce TV'),
+        h('div', { class: 'rg-small' }, 'Les polices sont hébergées avec l’appli : le texte s’affiche pareil sur tous les téléphones.')));
   }
 
   // ── Habillage dessiné sur l'écran Antenne (comme dans l'appli) ──
   const ovLogoImg = h('img', { alt: '' });
   const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
-  const ovArtist = h('div', { class: 'ov-artist sun' }), ovSong = h('div', { class: 'ov-song' });
+  const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
   const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
+  const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
   const ovTrack = h('div', { class: 'ov-track' });
-  const ovTick = h('div', { class: 'ov-tick hidden' }, h('span', { class: 'ov-info sun' }, 'INFO'), h('div', { class: 'ov-wrap' }, ovTrack));
-  const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBand, ovTick);
+  const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
+  const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
+  const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTick);
   airBox.append(ov);
   function tickerText(B, t) {
     if (!B.ticker.show) return '';
     const d = new Date(t + 3600e3), m = d.getUTCHours() * 60 + d.getUTCMinutes();
+    if (B.ticker.on > 0 && B.ticker.every > B.ticker.on && m % B.ticker.every >= B.ticker.on) return '';
     const mm = s => /^\d{1,2}:\d{2}$/.test(s || '') ? Number(s.split(':')[0]) * 60 + Number(s.split(':')[1]) : null;
     const parts = [];
     if ((B.ticker.text || '').trim()) parts.push(B.ticker.text.trim());
@@ -1946,13 +2032,14 @@ async function showRegie() {
       const on = a == null || b == null ? true : a <= b ? m >= a && m < b : m >= a || m < b;
       if (on && (x.text || '').trim()) parts.push(x.text.trim());
     }
+    if (!parts.length && (B.ticker.fallback || '').trim()) parts.push(B.ticker.fallback.trim());
     return parts.join('   •   ');
   }
+  let bandHidden = null, bandWas = false, bandSwap = null;
   function drawOverlay(t, T) {
-    const B = R.brand, w = airBox.clientWidth || 400, k = w / 640;
+    const B = R.brand, w = airBox.clientWidth || 400, hgt = airBox.clientHeight || w * 9 / 16, k = w / 640;
     ov.classList.toggle('hidden', T.kind === 'none');
     ov.style.setProperty('--k', k.toFixed(3));
-    ov.style.fontFamily = brandFamily();
     const text = tickerText(B, t), th = text ? Math.max(16, 22 * k) : 0, mg = 10 * k;
     // Logo
     const src = B.logo.url || LOGO_DEFAULT;
@@ -1962,15 +2049,17 @@ async function showRegie() {
     Object.assign(ovLogo.style, { width: (w * 0.17 * B.logo.size / 100) + 'px', opacity: B.logo.opacity / 100,
       top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
     // Bandeau
-    ovTick.classList.toggle('hidden', !text);
-    ovTick.className = 'ov-tick th-' + B.ticker.theme + (text ? '' : ' hidden');
-    ovTick.style.height = th + 'px'; ovTick.style.fontSize = th + 'px';
-    const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + B.font.name + B.font.url;
+    const theme = { nuit: ['rgba(11,20,99,.92)', '#fff'], blanc: ['#fff', '#0B1463'], noir: ['rgba(0,0,0,.85)', '#F9CA22'] }[B.ticker.theme] || ['rgba(11,20,99,.92)', '#fff'];
+    ovTick.className = 'ov-tick' + (text ? '' : ' hidden');
+    Object.assign(ovTick.style, { height: th + 'px', fontSize: th + 'px', background: B.ticker.bg || theme[0], color: B.ticker.fg || theme[1], fontFamily: famOf(B.fontTicker || B.font) });
+    const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + JSON.stringify(B.fontTicker || B.font);
     if (text && ovTrack.__k !== tkey) {
-      ovTrack.__k = tkey; ovTrack.__cycle = 0; ovTrack.textContent = '';
+      ovTrack.__k = tkey; ovTrack.textContent = '';
       if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; }
       const gap = th * 3;
       for (let i = 0; i < 8; i++) ovTrack.append(h('span', { style: `padding-right:${gap}px` }, text));
+      // La police peut finir de charger après : on remesure à ce moment-là.
+      document.fonts.ready.then(() => { if (ovTrack.__anim && ovTrack.__k === tkey) { ovTrack.__anim.cancel(); ovTrack.__anim = null; } });
     }
     // Le défilement démarre dès que l'écran Antenne est visible (mesure du texte réelle, jamais à 0).
     if (text && !ovTrack.__anim) {
@@ -1981,9 +2070,9 @@ async function showRegie() {
           { duration: Math.max(2, cycle / pps) * 1000, iterations: Infinity });
       }
     }
-    // Bande artiste
+    // Bande artiste / émission
     const p = T.sl && T.sl.p;
-    const has = !!(B.band.show && p && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
+    const has = !!(B.band.show && p && p.kind !== 'habillage' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
     let on = false;
     if (has) {
       const pos = (t - T.sl.start) / 1000, total = p.duration;
@@ -1993,8 +2082,22 @@ async function showRegie() {
       if (ovSong.textContent !== (p.song || '').trim()) ovSong.textContent = (p.song || '').trim();
       ovArtist.classList.toggle('hidden', !(p.artist || '').trim()); ovSong.classList.toggle('hidden', !(p.song || '').trim());
     }
-    ovBand.className = 'ov-band a-' + B.band.anim + (on ? ' on' : '') + (has ? '' : ' hidden');
-    ovBand.style.bottom = (th + 14 * k) + 'px';
+    // Entrée et sortie : chacune avec son animation.
+    if (on !== bandWas) {
+      bandWas = on; clearTimeout(bandSwap);
+      if (!on) { bandHidden = B.band.out; bandSwap = setTimeout(() => { bandHidden = null; }, 900); }
+    }
+    const style = on ? B.band.anim : (bandHidden || B.band.anim);
+    const fromTop = B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
+    ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
+    Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
+      top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
+    ovBand.className = 'ov-band a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
+    const mid = B.band.topA;
+    Object.assign(ovBand.style, { maxWidth: (w * B.band.width / 100) + 'px', minWidth: Math.min(150 * bk, w * B.band.width / 100) + 'px', fontFamily: famOf(B.fontBand || B.font) });
+    ovBand.style.setProperty('--bk', bk.toFixed(3));
+    Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText });
+    Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
   }
 
   // ── Barre du direct ──

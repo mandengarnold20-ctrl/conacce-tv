@@ -15,6 +15,7 @@ class TvProgram {
     this.artist,
     this.song,
     this.showBand = true,
+    this.kind = 'clip',
   });
 
   final String id;
@@ -35,7 +36,10 @@ class TvProgram {
   final String? artist;
   final String? song;
   final bool showBand;
-  bool get hasBand => showBand && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
+
+  /// clip, emission ou habillage (jingle, spot : jamais de bande).
+  final String kind;
+  bool get hasBand => showBand && kind != 'habillage' && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
 
   bool get isFixed => startAt != null;
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -66,6 +70,7 @@ class TvProgram {
         artist: m['artist'] as String?,
         song: m['song'] as String?,
         showBand: m['show_band'] as bool? ?? true,
+        kind: m['kind'] as String? ?? 'clip',
       );
 }
 

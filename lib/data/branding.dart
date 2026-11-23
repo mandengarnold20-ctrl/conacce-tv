@@ -1,3 +1,5 @@
+import 'dart:ui' show Color;
+
 /// Habillage de la chaîne, réglé depuis la régie (table tv_branding).
 class TickerMessage {
   const TickerMessage({required this.text, this.from, this.to});
@@ -25,6 +27,49 @@ class TickerMessage {
       TickerMessage(text: (m['text'] ?? '').toString(), from: m['from']?.toString(), to: m['to']?.toString());
 }
 
+/// Une police : celles de la chaîne (fichiers hébergés avec l'appli, dossier fonts/),
+/// ou une police importée en régie (adresse du fichier).
+class BrandFont {
+  const BrandFont(this.name, [this.url]);
+
+  final String name;
+  final String? url;
+
+  /// Polices proposées en régie, avec leurs fichiers (hébergés avec l'appli : même rendu partout).
+  static const builtIn = <String, List<String>>{
+    'Poppins': ['poppins-500.ttf', 'poppins-800.ttf'],
+    'Montserrat': ['montserrat.ttf'],
+    'Inter': ['inter.ttf'],
+    'Raleway': ['raleway.ttf'],
+    'Oswald': ['oswald.ttf'],
+    'Bebas Neue': ['bebasneue.ttf'],
+    'Anton': ['anton.ttf'],
+    'Playfair Display': ['playfairdisplay.ttf'],
+    'Roboto': ['roboto.ttf'],
+    'Open Sans': ['opensans.ttf'],
+    'Lato': ['lato-500.ttf', 'lato-800.ttf'],
+    'Nunito': ['nunito.ttf'],
+    'Ubuntu': ['ubuntu-500.ttf', 'ubuntu-700.ttf'],
+    'Barlow': ['barlow-500.ttf', 'barlow-800.ttf'],
+    'Archivo Black': ['archivoblack.ttf'],
+    'Righteous': ['righteous.ttf'],
+  };
+
+  /// Clé unique pour le chargement (adresse importée, ou nom d'une police de la chaîne).
+  String get key => url ?? 'builtin:$name';
+
+  /// Fichiers à charger (adresses relatives au site pour les polices de la chaîne).
+  List<String> get files => url != null ? [url!] : [for (final f in builtIn[name] ?? builtIn['Poppins']!) 'fonts/$f'];
+
+  static BrandFont? fromMap(Object? m) {
+    if (m is! Map) return null;
+    final n = m['name']?.toString().trim() ?? '';
+    if (n.isEmpty) return null;
+    final u = m['url']?.toString().trim();
+    return BrandFont(n, u == null || u.isEmpty ? null : u);
+  }
+}
+
 class Branding {
   const Branding({
     this.logoShow = true,
@@ -34,16 +79,32 @@ class Branding {
     this.logoUrl,
     this.tickerShow = true,
     this.tickerText = '',
+    this.tickerFallback = '',
     this.tickerSpeed = 3,
     this.tickerTheme = 'nuit',
+    this.tickerBg,
+    this.tickerFg,
+    this.tickerOnMin = 0,
+    this.tickerEveryMin = 0,
     this.messages = const [],
     this.bandShow = true,
     this.bandAnim = 'slide',
+    this.bandAnimOut = 'slide',
     this.bandAt = 15,
     this.bandDur = 8,
     this.bandEnd = 30,
-    this.fontName = 'Poppins',
-    this.fontUrl,
+    this.bandPos = 'bc',
+    this.bandY = 0,
+    this.bandScale = 100,
+    this.bandWidth = 52,
+    this.bandTopA = const Color(0xFFF9CA22),
+    this.bandTopB = const Color(0xFFFD9113),
+    this.bandTopText = const Color(0xFF0B1463),
+    this.bandBottomBg = const Color(0xFFFFFFFF),
+    this.bandBottomText = const Color(0xFF0B1463),
+    this.font = const BrandFont('Poppins'),
+    this.fontTicker,
+    this.fontBand,
   });
 
   final bool logoShow;
@@ -53,39 +114,76 @@ class Branding {
   final String? logoUrl;
   final bool tickerShow;
   final String tickerText;
+
+  /// Message de repli : affiché quand il n'y a ni message principal ni message programmé en cours.
+  final String tickerFallback;
   final int tickerSpeed; // 1 à 5
-  final String tickerTheme; // nuit, blanc, noir
+  final String tickerTheme; // nuit, blanc, noir (couleurs prêtes)
+  final Color? tickerBg; // couleurs libres (prioritaires sur le thème)
+  final Color? tickerFg;
+
+  /// Durée de défilement : le bandeau passe [tickerOnMin] minutes toutes les [tickerEveryMin] minutes.
+  /// 0 = en continu.
+  final int tickerOnMin;
+  final int tickerEveryMin;
   final List<TickerMessage> messages;
   final bool bandShow;
-  final String bandAnim; // slide, fade, open
+  final String bandAnim; // entrée : slide, fade, open
+  final String bandAnimOut; // sortie : slide, fade, open
   final int bandAt; // secondes après le début du clip
   final int bandDur; // secondes à l'écran
   final int bandEnd; // 2e passage : secondes avant la fin (0 = aucun)
-  final String fontName;
-  final String? fontUrl;
+  final String bandPos; // b|h + g|c|d (bas/haut, gauche/centre/droite)
+  final int bandY; // hauteur : décalage en % de l'image (0–40)
+  final int bandScale; // taille du texte en % (60–160)
+  final int bandWidth; // longueur maximale en % de la largeur (25–90)
+  final Color bandTopA, bandTopB, bandTopText, bandBottomBg, bandBottomText;
+  final BrandFont font; // police générale
+  final BrandFont? fontTicker; // police du bandeau (sinon la générale)
+  final BrandFont? fontBand; // police de la bande artiste (sinon la générale)
 
-  /// Texte du bandeau à cet instant : message principal + messages programmés en cours.
-  String tickerAt(DateTime utc) {
+  // Compatibilité : anciens noms.
+  String get fontName => font.name;
+  String? get fontUrl => font.url;
+
+  BrandFont get tickerFont => fontTicker ?? font;
+  BrandFont get bandFont => fontBand ?? font;
+
+  static int _beninMinute(DateTime utc) {
     final local = utc.toUtc().add(const Duration(hours: 1)); // heure du Bénin
-    final minute = local.hour * 60 + local.minute;
+    return local.hour * 60 + local.minute;
+  }
+
+  /// Texte du bandeau à cet instant : message principal + messages programmés en cours,
+  /// ou le message de repli s'il n'y a rien d'autre. Vide = bandeau caché.
+  String tickerAt(DateTime utc) {
+    final minute = _beninMinute(utc);
+    if (tickerOnMin > 0 && tickerEveryMin > tickerOnMin && minute % tickerEveryMin >= tickerOnMin) return '';
     final parts = <String>[
       if (tickerText.trim().isNotEmpty) tickerText.trim(),
       for (final m in messages)
         if (m.text.trim().isNotEmpty && m.activeAt(minute)) m.text.trim(),
     ];
+    if (parts.isEmpty && tickerFallback.trim().isNotEmpty) parts.add(tickerFallback.trim());
     return parts.join('   •   ');
   }
 
   static int _int(Object? v, int def) => v is num ? v.toInt() : int.tryParse('$v') ?? def;
   static bool _bool(Object? v, bool def) => v is bool ? v : def;
   static String? _str(Object? v) => v == null || '$v'.trim().isEmpty ? null : '$v';
+  static Color? _color(Object? v) {
+    final s = _str(v)?.replaceAll('#', '');
+    if (s == null || !RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(s)) return null;
+    return Color(0xFF000000 | int.parse(s, radix: 16));
+  }
 
   factory Branding.fromConfig(Map<String, dynamic>? c) {
     if (c == null) return const Branding();
     final logo = (c['logo'] as Map?) ?? const {};
     final ticker = (c['ticker'] as Map?) ?? const {};
     final band = (c['band'] as Map?) ?? const {};
-    final font = (c['font'] as Map?) ?? const {};
+    const d = Branding();
+    final anim = _str(band['anim']) ?? 'slide';
     return Branding(
       logoShow: _bool(logo['show'], true),
       logoCorner: _str(logo['corner']) ?? 'hd',
@@ -94,19 +192,35 @@ class Branding {
       logoUrl: _str(logo['url']),
       tickerShow: _bool(ticker['show'], true),
       tickerText: _str(ticker['text']) ?? '',
+      tickerFallback: _str(ticker['fallback']) ?? '',
       tickerSpeed: _int(ticker['speed'], 3).clamp(1, 5).toInt(),
       tickerTheme: _str(ticker['theme']) ?? 'nuit',
+      tickerBg: _color(ticker['bg']),
+      tickerFg: _color(ticker['fg']),
+      tickerOnMin: _int(ticker['on'], 0).clamp(0, 1440).toInt(),
+      tickerEveryMin: _int(ticker['every'], 0).clamp(0, 1440).toInt(),
       messages: [
         for (final m in (ticker['messages'] as List?) ?? const [])
           if (m is Map) TickerMessage.fromMap(m),
       ],
       bandShow: _bool(band['show'], true),
-      bandAnim: _str(band['anim']) ?? 'slide',
+      bandAnim: anim,
+      bandAnimOut: _str(band['out']) ?? anim,
       bandAt: _int(band['at'], 15).clamp(0, 3600).toInt(),
       bandDur: _int(band['dur'], 8).clamp(2, 60).toInt(),
       bandEnd: _int(band['end'], 30).clamp(0, 3600).toInt(),
-      fontName: _str(font['name']) ?? 'Poppins',
-      fontUrl: _str(font['url']),
+      bandPos: _str(band['pos']) ?? 'bc',
+      bandY: _int(band['y'], 0).clamp(0, 40).toInt(),
+      bandScale: _int(band['scale'], 100).clamp(60, 160).toInt(),
+      bandWidth: _int(band['width'], 52).clamp(25, 90).toInt(),
+      bandTopA: _color(band['topA']) ?? d.bandTopA,
+      bandTopB: _color(band['topB']) ?? d.bandTopB,
+      bandTopText: _color(band['topText']) ?? d.bandTopText,
+      bandBottomBg: _color(band['bottomBg']) ?? d.bandBottomBg,
+      bandBottomText: _color(band['bottomText']) ?? d.bandBottomText,
+      font: BrandFont.fromMap(c['font']) ?? const BrandFont('Poppins'),
+      fontTicker: BrandFont.fromMap(c['fontTicker']),
+      fontBand: BrandFont.fromMap(c['fontBand']),
     );
   }
 }
