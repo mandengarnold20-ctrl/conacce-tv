@@ -2789,6 +2789,9 @@ async function showRegie() {
     const t = now();
     F.clock.textContent = hmsOf(t);
     const T = airTarget(t);
+    // Même programme, même moment (à 3 s près, après une modification de la playlist) : on ne recharge rien.
+    const same = R.air.T && T.sl && R.air.T.sl && R.air.T.sl.p.id === T.sl.p.id && Math.abs(R.air.T.sl.start - T.sl.start) < 3000 && R.air.T.kind === T.kind;
+    if (same) { R.air.T = T; R.air.key = T.key; }
     if (T.key !== R.air.key) mountAir(T);
     if (T.sl && t - lastSync > 15000) {
       lastSync = t;

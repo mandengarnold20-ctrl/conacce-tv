@@ -44,6 +44,42 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool? _bigOverride;
   bool? _lastLandscape;
 
+  List<TvProgram>? _progs;
+  TvChannel? _chan;
+  String? _appliedSig, _pendingSig;
+  Timer? _settle;
+
+  static String _sigOf(List<TvProgram> ps, TvChannel c) =>
+      '${c.status}|${c.anchor.millisecondsSinceEpoch}|${c.pausedAt?.millisecondsSinceEpoch}|' +
+      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.videoUrl}').join(',');
+
+  void _settleSchedule(List<TvProgram> ps, TvChannel c) {
+    final sig = _sigOf(ps, c);
+    if (_progs == null || (ps.isNotEmpty && _progs!.isEmpty)) {
+      _progs = ps;
+      _chan = c;
+      _appliedSig = sig;
+      return;
+    }
+    if (sig == _appliedSig) {
+      _settle?.cancel();
+      _pendingSig = null;
+      return;
+    }
+    if (sig == _pendingSig) return;
+    _pendingSig = sig;
+    _settle?.cancel();
+    _settle = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      setState(() {
+        _progs = ps;
+        _chan = c;
+        _appliedSig = sig;
+        _pendingSig = null;
+      });
+    });
+  }
+
   void _toggleBig(bool now) => setState(() => _bigOverride = now ? false : true);
   // L'écran TV entier (vidéo + habillage) : déplacé tel quel quand on tourne le téléphone,
   // la vidéo ne se recharge pas et le logo / bandeau restent dessus.
@@ -69,6 +105,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   @override
   void dispose() {
+    _settle?.cancel();
     _ticker?.cancel();
     super.dispose();
   }
@@ -105,8 +142,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Widget build(BuildContext context) {
     final live = ref.watch(liveStreamProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
-    final programs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
-    final channel = ref.watch(tvChannelProvider).valueOrNull ?? const TvChannel();
+    final liveProgs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
+    final liveChan = ref.watch(tvChannelProvider).valueOrNull ?? const TvChannel();
+    // La régie modifie la grille et l'horloge de la boucle en deux messages séparés :
+    // on attend qu'ils soient arrivés tous les deux (1,5 s de calme) avant d'en tenir compte,
+    // pour que l'image ne saute pas entre les deux.
+    _settleSchedule(liveProgs, liveChan);
+    final programs = _progs ?? liveProgs;
+    final channel = _chan ?? liveChan;
     final branding = ref.watch(brandingProvider).valueOrNull ?? const Branding();
     _clock = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
     _muted = tvYoutubeMuted;
