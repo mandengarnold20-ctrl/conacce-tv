@@ -1,5 +1,6 @@
 # Publie automatiquement la version web de Conacce TV (iPhone, ordinateur…)
-# sur https://mandengarnold20-ctrl.github.io/conacce-tv/ à chaque modification.
+# sur https://mandengarnold20-ctrl.github.io/conacce-tv/ à chaque modification,
+# et prépare une copie (branche cf-pages) pour Cloudflare : tv.conaccechaplainsafrique.com
 name: Site web Conacce TV
 
 on:
@@ -8,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -33,6 +34,17 @@ jobs:
         run: if [ -f build/web/flutter_service_worker.js ]; then sed -i '/^"fonts\//d' build/web/flutter_service_worker.js; fi
       - name: Page de secours
         run: cp build/web/index.html build/web/404.html
+      - name: Copie pour Cloudflare (adresse à la racine du domaine)
+        run: |
+          rm -rf cf && cp -r build/web cf
+          sed -i 's#<base href="/conacce-tv/">#<base href="/">#' cf/index.html cf/404.html cf/admin/index.html 2>/dev/null || true
+          cd cf
+          git init -q -b cf-pages
+          git config user.name "Conacce TV"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -qm "Site web ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" cf-pages
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
