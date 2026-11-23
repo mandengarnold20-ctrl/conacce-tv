@@ -19,12 +19,12 @@ Deno.serve(async (req) => {
   const account = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
   if (!token || !account) return json({ error: 'not_configured' }, 503);
 
-  // Seuls les administrateurs peuvent envoyer des vidéos.
+  // Seuls les administrateurs et les éditeurs de la régie peuvent envoyer des vidéos.
   const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   });
-  const { data: isAdmin, error } = await sb.rpc('is_admin');
-  if (error || !isAdmin) return json({ error: 'forbidden' }, 403);
+  const { data: allowed, error } = await sb.rpc('can_program');
+  if (error || !allowed) return json({ error: 'forbidden' }, 403);
 
   const { size, name, duration } = await req.json().catch(() => ({}));
   if (!size || size <= 0) return json({ error: 'bad_request' }, 400);

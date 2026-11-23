@@ -9,7 +9,7 @@
 <link rel="icon" href="../favicon.png">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Barlow+Condensed:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -235,90 +235,206 @@
     .item .thumb { width: 46px; height: 46px; }
     h1 { font-size: 20px; }
   }
-  /* ─── Régie TV (inspirée des logiciels de diffusion) ─── */
-  main.wide { max-width: 1680px; }
-  .rg { --rg-bg: #0A0F2E; --rg-panel: #10173F; --rg-row: #141C4A; --rg-on: #FD7A13; }
-  .rg-top { display: grid; grid-template-columns: 1fr 260px 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
-  .rg-scr { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px; }
-  .rg-scr .lab { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: 1.5px; font-weight: 700; color: #9AA6DA; margin-bottom: 8px; }
-  .rg-scr.air .lab b { color: #fff; background: var(--live); padding: 2px 8px; border-radius: 3px; }
+  /* ─── Régie TV : studio sombre ─── */
+  @keyframes sunflow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  .sun, .st .sun { background: linear-gradient(110deg, #F9CA22 0%, #FD7A13 35%, #FFB347 60%, #F9CA22 100%); background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; color: #0B1463; }
+  @media (prefers-reduced-motion: reduce) { .sun { animation: none; } }
+  .app.studio { display: block; }
+  .app.studio > nav.side, .app.studio .topbar { display: none; }
+  .app.studio main { padding: 0; max-width: none; }
+  .st { min-height: 100vh; background: #060A22; color: #EEF1FF; font-family: Inter, Poppins, system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column; }
+  .st h2 { font-family: Poppins, sans-serif; font-size: 17px; font-weight: 700; margin: 0; }
+  .st h3 { font-family: Poppins, sans-serif; font-size: 15px; margin: 18px 0 8px; }
+  .st .grow { flex: 1 1 auto; }
+  .st input, .st select, .st textarea { background: #080D2B; border-color: rgba(255,255,255,.14); border-radius: 10px; }
+  .st .btn { border-radius: 10px; background: #121A45; border-color: rgba(255,255,255,.14); }
+  .st .btn.primary, .st .btn.sun-btn { background: linear-gradient(110deg, #F9CA22 0%, #FD7A13 35%, #FFB347 60%, #F9CA22 100%); background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; color: #0B1463; border: none; font-weight: 800; }
+  .st .btn.ghost { background: transparent; }
+  .st-top { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 10px 18px; background: #080D2B; border-bottom: 1px solid rgba(255,255,255,.08); position: sticky; top: 0; z-index: 20; }
+  .st-brand { display: flex; align-items: center; gap: 10px; }
+  .st-brand small { font-size: 11px; letter-spacing: 2.4px; font-weight: 700; color: #F9CA22; }
+  .st-logo { display: inline-flex; border-radius: 8px; overflow: hidden; font-family: Poppins, sans-serif; font-weight: 800; font-size: 18px; line-height: 1; }
+  .st-logo > span { padding: 7px 8px 7px 10px; background: #0B1463; color: #fff; }
+  .st-logo > span.sun { padding: 7px 10px; color: #0B1463; }
+  .st-pill { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-weight: 700; font-size: 12px; letter-spacing: 1.2px;
+             background: rgba(255,59,92,.14); border: 1px solid rgba(255,59,92,.45); }
+  .st-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #FF3B5C; animation: pulse 1.6s ease-in-out infinite; }
+  .st-pill.paused { background: rgba(249,202,34,.12); border-color: rgba(249,202,34,.45); } .st-pill.paused .st-live-dot { background: #F9CA22; }
+  .st-pill.stopped { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.2); } .st-pill.stopped .st-live-dot { background: #8C97CC; animation: none; }
+  .st-clock { font-family: Poppins, sans-serif; font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+  .st-saved { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #B9C3EE; } .st-saved svg { color: #6EE7A8; flex: none; }
+  .st-bell { position: relative; width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: #0E1436; color: #EEF1FF; display: grid; place-items: center; cursor: pointer; }
+  .st-bell b { position: absolute; top: 5px; right: 5px; min-width: 16px; height: 16px; border-radius: 8px; background: #FD7A13; color: #0B1463; font-size: 10px; display: grid; place-items: center; }
+  .st-me { display: flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; border-radius: 999px; background: #0E1436; border: 1px solid rgba(255,255,255,.1); }
+  .st-me > span.sun { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
+  .st-me > span:last-child { display: flex; flex-direction: column; line-height: 1.2; } .st-me b { font-size: 13px; } .st-me small { font-size: 11px; color: #F9CA22; }
+  .st-out { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: transparent; color: #C9D2F5; display: grid; place-items: center; cursor: pointer; }
+  .st-out:hover, .st-bell:hover { border-color: #F9CA22; }
+  .st-body { display: flex; flex-wrap: wrap; flex: 1 1 auto; min-height: 0; }
+  .st-rail { flex: 1 1 180px; max-width: 210px; display: flex; flex-direction: column; gap: 4px; padding: 16px 10px; background: #080D2B; border-right: 1px solid rgba(255,255,255,.08); }
+  .st-nav { font: inherit; display: flex; align-items: center; gap: 10px; padding: 11px 12px; min-height: 44px; border-radius: 10px; border: none; background: none; color: #C9D2F5; cursor: pointer; text-align: left; }
+  .st-nav:hover { background: #0E1436; color: #fff; }
+  .st-nav.on { background: #F9CA22; color: #0B1463; font-weight: 700; }
+  .st-reserve { padding: 12px; border-radius: 12px; background: #0E1436; border: 1px solid rgba(255,255,255,.08); display: flex; flex-direction: column; gap: 6px; }
+  .st-reserve small { font-size: 11px; letter-spacing: 1.2px; font-weight: 700; color: #9AA6DA; } .st-reserve small:last-child { letter-spacing: 0; font-weight: 500; color: #B9C3EE; }
+  .st-reserve b { font-family: Poppins, sans-serif; font-size: 20px; }
+  .st-main { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 16px 20px 40px; }
+  .st-card { background: #0E1436; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .st-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .st-alerts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .st-alert { flex: 1 1 300px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; border: 1px solid; line-height: 1.45; }
+  .st-alert svg { flex: none; } .st-alert a { margin-left: auto; font-weight: 600; white-space: nowrap; }
+  .st-alert.bad { background: rgba(255,59,92,.12); border-color: rgba(255,59,92,.5); } .st-alert.bad svg { color: #FF8DA1; }
+  .st-alert.warn { background: rgba(253,122,19,.12); border-color: rgba(253,122,19,.45); } .st-alert.warn svg { color: #FDA45A; }
+  .st-alert.info { background: rgba(110,160,255,.08); border-color: rgba(110,160,255,.35); } .st-alert.info svg { color: #9CC0FF; }
+  .st-alert.ok { background: rgba(110,231,168,.08); border-color: rgba(110,231,168,.35); } .st-alert.ok svg { color: #6EE7A8; }
+  .st-tag { font-size: 11px; font-weight: 800; letter-spacing: 1px; } .st-tag.ok { color: #6EE7A8; }
+  .st-days { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: #080D2B; }
+  .st-days button { font: inherit; font-size: 12.5px; font-weight: 600; min-height: 40px; padding: 4px 10px; border-radius: 9px; border: none; background: none; color: #C9D2F5; cursor: pointer; line-height: 1.15; }
+  .st-days button small { display: block; font-size: 10.5px; font-weight: 500; color: #9AA6DA; }
+  .st-days button.on { background: #F9CA22; color: #0B1463; } .st-days button.on small { color: #0B1463; }
+  .st-search { display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 10px; background: #080D2B; border: 1px solid rgba(255,255,255,.14); color: #9AA6DA; min-width: 220px; }
+  .st-search input { border: none; background: transparent; padding: 8px 0; min-height: 40px; outline: none; }
+  .st-search:focus-within { outline: 2px solid #F9CA22; }
+  .st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .st-chip { font: inherit; font-size: 12.5px; font-weight: 600; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: none; color: #C9D2F5; cursor: pointer; }
+  .st-chip.on { border-color: #F9CA22; background: rgba(249,202,34,.14); color: #F9CA22; }
+  /* Ligne de temps */
+  .tl-scroll { overflow-x: auto; padding-top: 22px; }
+  .tl { min-width: 900px; display: flex; flex-direction: column; gap: 6px; }
+  .tl-ticks { position: relative; height: 16px; }
+  .tl-ticks span { position: absolute; transform: translateX(-50%); font-size: 10.5px; color: #9AA6DA; font-variant-numeric: tabular-nums; }
+  .tl-ticks span:first-child { transform: none; } .tl-ticks span:last-child { transform: translateX(-100%); }
+  .tl-wrap { position: relative; }
+  .tl-lane { position: relative; height: 64px; border-radius: 8px; background: rgba(255,255,255,.03); }
+  .tl-b { position: absolute; top: 4px; bottom: 4px; border-radius: 6px; padding: 6px 8px; overflow: hidden; text-align: left; font: inherit; font-size: 11.5px; line-height: 1.3; border: 1px solid transparent; cursor: pointer; }
+  .tl-b b, .tl-b small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tl-b small { opacity: .85; font-size: 11px; }
+  .tl-b.loop, .tl-legend .hatch { background: repeating-linear-gradient(135deg, rgba(110,123,196,.32) 0 6px, rgba(110,123,196,.16) 6px 12px); border-color: rgba(110,123,196,.5); color: #DCE2FF; }
+  .tl-b.fixed { color: #0B1463; z-index: 1; } .tl-b.fixed:hover, .tl-b.loop:hover { outline: 2px solid #fff; }
+  .tl-b.gap, .tl-legend .gap { background: rgba(253,122,19,.06); border: 1px dashed #FDA45A; color: #FDA45A; cursor: default; }
+  .tl-now { position: absolute; top: -6px; bottom: -6px; width: 2px; background: #FF3B5C; z-index: 2; pointer-events: none; }
+  .tl-now span { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: #FF3B5C; color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  .tl-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 11.5px; color: #B9C3EE; }
+  .tl-legend span { display: flex; align-items: center; gap: 6px; } .tl-legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+  /* Moniteurs */
+  .rg-top { display: grid; grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr); gap: 16px; align-items: start; }
+  .rg-scr { background: #0E1436; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 12px; }
+  .rg-scr .lab { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: 1.5px; font-weight: 700; color: #9AA6DA; margin-bottom: 10px; gap: 8px; }
+  .rg-scr.air .lab b { color: #fff; background: #FF3B5C; padding: 3px 8px; border-radius: 4px; }
   .rg-scr.air.paused .lab b { background: #F9CA22; color: #0B1463; }
   .rg-scr.air.stopped .lab b { background: #444C7A; }
-  .rg-box { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 4px; overflow: hidden; }
+  .rg-box { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; overflow: hidden; }
   .rg-box > .host, .rg-box > .host > *, .rg-box iframe, .rg-box video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .rg-box .msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: #9AA6DA; font-size: 13px; letter-spacing: 1px; }
+  .rg-box .msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: #9AA6DA; font-size: 13px; letter-spacing: .5px; background: radial-gradient(120% 90% at 30% 20%, #1B2156 0%, #0A0E2A 70%); }
   .rg-box .msg b { display: block; color: #fff; font-size: 15px; margin-bottom: 4px; letter-spacing: 2px; }
-  .rg-box.air-frame { outline: 3px solid var(--live); outline-offset: -3px; }
-  .rg-scr .under { display: flex; gap: 8px; align-items: center; margin-top: 8px; min-height: 32px; flex-wrap: wrap; }
-  .rg-scr .under .ttl { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rg-scr input[type=range] { width: 140px; min-height: 0; padding: 0; accent-color: var(--rg-on); background: none; border: none; }
-  .rg-mid { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 14px; text-align: center; display: grid; gap: 10px; }
-  .rg-clock { font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; letter-spacing: 1px; }
-  .rg-k { font-size: 10.5px; letter-spacing: 1.5px; color: #9AA6DA; font-weight: 700; }
-  .rg-count { font-variant-numeric: tabular-nums; font-size: clamp(26px, 2.6vw, 40px); font-weight: 700; color: var(--rg-on); line-height: 1.05; }
+  .rg-box.air-frame { outline: 2px solid #FF3B5C; outline-offset: -2px; }
+  .rg-box.prev-frame { outline: 2px solid #6EE7A8; outline-offset: -2px; }
+  .rg-scr .under { display: flex; gap: 8px; align-items: center; margin-top: 10px; min-height: 36px; flex-wrap: wrap; }
+  .rg-scr .under .ttl { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rg-vol { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #B9C3EE; }
+  .st input[type=range] { width: 130px; min-height: 0; padding: 0; accent-color: #FD7A13; background: none; border: none; }
+  .rg-mid { background: #0E1436; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 16px; text-align: center; display: grid; gap: 14px; }
+  .rg-k { font-size: 11px; letter-spacing: 1.6px; color: #9AA6DA; font-weight: 700; }
+  .rg-count { font-family: Poppins, sans-serif; font-variant-numeric: tabular-nums; font-size: clamp(30px, 2.8vw, 44px); font-weight: 700; color: #FDA45A; line-height: 1.1; }
   .rg-count.warn { color: #FF5468; }
-  .rg-bar { height: 6px; background: rgba(255,255,255,.08); border-radius: 6px; overflow: hidden; }
-  .rg-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #F9CA22, var(--rg-on)); }
+  .rg-bar { display: block; height: 6px; background: rgba(255,255,255,.08); border-radius: 6px; overflow: hidden; margin: 8px 0; }
+  .rg-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #F9CA22, #FD7A13); }
   .rg-small { font-size: 12.5px; color: #C9D2F5; line-height: 1.45; }
-  .rg-ctl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-  .rg-ctl .btn { min-height: 46px; font-weight: 700; padding: 6px; }
-  .rg-ctl .btn.on { background: var(--rg-on); color: #0B1463; border-color: transparent; }
-  .rg-pills { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-  .rg-live { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08);
-             border-left: 4px solid var(--live); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
-  .rg-live > b { letter-spacing: 2px; font-size: 13px; }
-  .rg-live select { width: auto; min-width: 190px; }
+  .rg-trans { display: grid; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid rgba(249,202,34,.35); background: rgba(249,202,34,.05); }
+  .rg-trans .btn { min-height: 48px; letter-spacing: .6px; }
+  .rg-tlab { display: grid; gap: 6px; font-size: 11.5px; color: #B9C3EE; text-align: left; }
+  .st input.rg-tbar { width: 100%; height: 26px; accent-color: #F9CA22; cursor: ew-resize; }
+  .rg-ctl { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .rg-ctl .btn { min-height: 48px; font-weight: 700; padding: 6px; background: transparent; }
+  .rg-ctl .btn.on { background: #F9CA22; color: #0B1463; border-color: #F9CA22; }
+  .rg-live { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #0E1436; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 12px 16px; }
+  .rg-live > b { letter-spacing: 2px; font-size: 13px; color: #FF8DA1; }
+  .rg-live select { width: auto; min-width: 200px; }
   .rg-live input[type=url] { flex: 1; min-width: 240px; }
   .rg-live .rg-small { flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
   .rg-dot { width: 10px; height: 10px; border-radius: 50%; background: #444C7A; display: inline-block; flex: none; }
-  .rg-dot.on { background: var(--live); box-shadow: 0 0 0 4px rgba(255,59,92,.25); }
+  .rg-dot.on { background: #FF3B5C; box-shadow: 0 0 0 4px rgba(255,59,92,.25); }
   .rg-dot.wait { background: #F9CA22; }
-  .rg-trans { display: grid; gap: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
-  .rg-trans .btn { min-height: 44px; font-weight: 700; }
-  .rg-tbar { width: 100%; min-height: 0; padding: 0; background: none; border: none; accent-color: #F9CA22; height: 26px; cursor: ew-resize; }
+  /* Programmes */
   .rg-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .rg-pan { background: var(--rg-panel); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 360px; position: relative; }
-  .rg-pan > header { background: #F9A11B; color: #0B1463; padding: 8px 12px; display: flex; gap: 10px; align-items: center; font-weight: 700; flex-wrap: wrap; }
-  .rg-pan > header .grow { flex: 1; }
-  .rg-pan > header .meta { font-weight: 500; font-size: 12.5px; }
-  .rg-pan.week > header { background: #6E7BC4; color: #fff; }
+  .rg-pan { background: #0A1030; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-height: 320px; position: relative; }
+  .rg-pan > header { padding: 10px 12px; display: flex; gap: 10px; align-items: baseline; justify-content: space-between; font-family: Poppins, sans-serif; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .rg-pan > header::before { content: ''; width: 10px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(135deg, #6E7BC4 0 3px, #3B4683 3px 6px); align-self: center; }
+  .rg-pan.week > header::before { background: linear-gradient(90deg, #F9CA22, #FD7A13); }
+  .rg-pan > header > span:first-of-type { flex: 1; }
+  .rg-pan > header .meta { font-family: Inter, sans-serif; font-weight: 500; font-size: 12.5px; color: #B9C3EE; }
   .rg-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.06); }
   .rg-tools input[type=time] { width: 120px; }
   .rg-tools label.inl { display: flex; gap: 6px; align-items: center; font-size: 13px; }
-  .rg-days { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid rgba(255,255,255,.06); }
-  .rg-days button { font: inherit; font-size: 12px; background: none; border: none; color: #C9D2F5; padding: 8px 2px; cursor: pointer; border-bottom: 3px solid transparent; }
-  .rg-days button small { display: block; font-size: 10.5px; color: #8C97CC; }
-  .rg-days button.on { color: #fff; font-weight: 700; border-bottom-color: var(--rg-on); background: rgba(255,255,255,.04); }
   .rg-rows { flex: 1; overflow-y: auto; max-height: 520px; }
-  .rg-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 62px auto; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
+  .rg-row { display: grid; grid-template-columns: 50px 64px minmax(0, 1fr) 62px auto; gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,.05); font-size: 13px; }
+  .rg-row .th { width: 64px; height: 36px; border-radius: 5px; overflow: hidden; background: linear-gradient(135deg, #24306E, #0A0E2A); }
+  .rg-row .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .rg-row .t small { display: block; font-size: 11.5px; opacity: .75; overflow: hidden; text-overflow: ellipsis; }
-  .rg-row:nth-child(even) { background: rgba(255,255,255,.02); }
   .rg-row .n { color: #9AA6DA; font-variant-numeric: tabular-nums; }
-  .rg-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rg-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
   .rg-row .d { font-variant-numeric: tabular-nums; color: #C9D2F5; text-align: right; }
-  .rg-row .a { display: flex; gap: 4px; }
-  .rg-row .a button { font: inherit; font-size: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); color: #E0E6FF; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  .rg-row .a { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .rg-row .a button { font: inherit; font-size: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #E0E6FF; border-radius: 6px; padding: 4px 8px; min-height: 30px; cursor: pointer; }
   .rg-row .a button:hover { border-color: #F9CA22; }
   .rg-row .a button.x { color: #FF8A9B; }
   .rg-row .a button.off { opacity: .25; cursor: default; }
-  .rg-row.onair { background: var(--rg-on) !important; color: #0B1463; font-weight: 600; }
-  .rg-row.onair .n, .rg-row.onair .d { color: #0B1463; }
-  .rg-row.sel { box-shadow: inset 3px 0 0 #F9CA22; }
+  .rg-row.onair { background: rgba(253,122,19,.22); box-shadow: inset 3px 0 0 #FD7A13; }
+  .rg-row.sel { box-shadow: inset 3px 0 0 #6EE7A8; }
   .rg-row input[type=time] { min-height: 28px; padding: 2px 6px; width: 92px; font-size: 12.5px; }
-  .rg-drop { padding: 18px; text-align: center; color: #8C97CC; font-size: 12.5px; letter-spacing: 1px; border-top: 1px dashed rgba(255,255,255,.12); }
+  .rg-drop { padding: 16px; text-align: center; color: #8C97CC; font-size: 12.5px; border-top: 1px dashed rgba(255,255,255,.12); }
   .rg-pan.drag::after { content: 'Déposez les vidéos ici'; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(253,122,19,.18);
-                        border: 2px dashed var(--rg-on); font-weight: 700; font-size: 16px; color: #fff; pointer-events: none; }
+                        border: 2px dashed #FD7A13; font-weight: 700; font-size: 16px; color: #fff; pointer-events: none; }
   .rg-ups { display: grid; gap: 4px; padding: 0 12px; }
   .rg-ups:empty { display: none; }
   .rg-ups div { font-size: 12px; color: #C9D2F5; display: flex; gap: 8px; align-items: center; padding: 4px 0; }
   .rg-ups div i { flex: 1; height: 5px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; position: relative; }
-  .rg-ups div i::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--rg-on); }
-  .rg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .rg-ups div i::before { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: #FD7A13; }
+  .rg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .st .empty { background: transparent; padding: 24px 16px; }
+  /* Équipe et sauvegarde */
+  .tm { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .tm-team { flex: 999 1 560px; min-width: 0; } .tm-save { flex: 1 1 340px; min-width: 0; }
+  .tm-list, .tm-res { display: grid; gap: 6px; }
+  .tm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #0A1030; border: 1px solid rgba(255,255,255,.06); }
+  .tm-av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: #24306E; flex: none; }
+  .tm-who { flex: 1 1 160px; min-width: 0; } .tm-who b { display: block; } .tm-who small { color: #B9C3EE; font-size: 12px; }
+  .tm-role { padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+  .tm-role.owner, .tm-role.admin { background: rgba(249,202,34,.16); color: #F9CA22; }
+  .tm-role.editeur { background: rgba(110,160,255,.16); color: #9CC0FF; }
+  .tm-role.animateur { background: rgba(255,59,92,.16); color: #FF8DA1; }
+  .tm-acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .tm-acts select, .tm-row > select { width: auto; min-height: 36px; padding: 4px 10px; }
+  .tm-add { padding: 12px 14px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.2); display: grid; gap: 10px; }
+  .tm-add h3 { margin: 0; } .tm-add ol { margin: 0; padding-left: 20px; line-height: 1.7; color: #C9D2F5; } .tm-add a { word-break: break-all; }
+  .tm-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .tm-roles > div { padding: 12px; border-radius: 12px; background: #0A1030; border: 1px solid; font-size: 12.5px; color: #C9D2F5; line-height: 1.5; }
+  .tm-roles b { display: block; margin-bottom: 4px; font-size: 14px; }
+  .tm-roles .admin { border-color: rgba(249,202,34,.3); } .tm-roles .admin b { color: #F9CA22; }
+  .tm-roles .editeur { border-color: rgba(110,160,255,.3); } .tm-roles .editeur b { color: #9CC0FF; }
+  .tm-roles .animateur { border-color: rgba(255,59,92,.3); } .tm-roles .animateur b { color: #FF8DA1; }
+  .tm-log { display: grid; gap: 2px; max-height: 360px; overflow-y: auto; font-size: 13px; }
+  .tm-log > div { display: flex; gap: 12px; padding: 6px 8px; border-radius: 6px; } .tm-log > div:nth-child(odd) { background: rgba(255,255,255,.03); }
+  .tm-log time { color: #9AA6DA; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 150px; }
+  .tm-save > .st-alert { flex: none; }
+  .rg-pan { container-type: inline-size; }
+  @container (max-width: 640px) { .rg-row { grid-template-columns: 50px 64px minmax(0, 1fr) 62px; } .rg-row .a { grid-column: 3 / -1; justify-content: flex-start; } }
+  .tm-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tm-backups { display: grid; gap: 6px; }
+  .tm-bk { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: #0A1030; }
+  .tm-bk > span { flex: 1; } .tm-bk b { display: block; font-size: 13px; } .tm-bk small { color: #B9C3EE; font-size: 12px; }
   .modal { position: fixed; inset: 0; background: rgba(5,0,10,.7); z-index: 60; display: grid; place-items: center; padding: 16px; }
-  .modal > div { width: min(560px, 100%); background: #0A1250; border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 12px; }
+  .modal > div { width: min(560px, 100%); background: #0E1436; border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 12px; }
   .modal .row { display: flex; gap: 8px; justify-content: flex-end; }
-  @media (max-width: 1100px) { .rg-top { grid-template-columns: 1fr 1fr; } .rg-mid { grid-column: 1 / -1; grid-row: 2; } .rg-panels { grid-template-columns: 1fr; } }
-  @media (max-width: 700px) { .rg-top { grid-template-columns: 1fr; } .rg-row { grid-template-columns: 56px 1fr 54px; } .rg-row .a { grid-column: 1 / -1; justify-content: flex-end; } }
+  @media (max-width: 1150px) { .rg-top { grid-template-columns: 1fr 1fr; } .rg-mid { grid-column: 1 / -1; grid-row: 2; } .rg-panels { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) {
+    .rg-top { grid-template-columns: 1fr; }
+    .st-rail { max-width: none; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid rgba(255,255,255,.08); padding: 8px; }
+    .st-rail .grow, .st-reserve { display: none; }
+    .st-saved, .st-me > span:last-child { display: none; }
+    .st-main { padding: 12px; }
+    .rg-row { grid-template-columns: 44px 56px minmax(0, 1fr) 54px; } .rg-row .a { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
@@ -364,6 +480,7 @@ function toast(msg, bad) {
 }
 function friendly(err) {
   const m = (err && (err.message || err.error_description || err.msg)) || String(err);
+  if (/Votre rôle|5 comptes|administrateur principal|Seul un administrateur|Copie introuvable|Fichier de sauvegarde/.test(m)) return m;
   if (/row-level security|permission denied|Réservé aux administrateurs/i.test(m)) return 'Votre compte n’a pas les droits administrateur.';
   if (/sermon_has_source/.test(m)) return 'Ajoutez au moins la vidéo ou l’audio du culte.';
   if (/radio_requires_url/.test(m)) return 'Pour mettre la radio à l’antenne, collez d’abord le lien du flux audio.';
@@ -1267,29 +1384,6 @@ async function showInbox() {
 }
 
 // ─── Équipe ───
-async function showTeam() {
-  const main = $('#main');
-  const { data, error } = await sb.from('app_users').select('id,display_name,role,created_at').order('role').order('created_at');
-  if (current !== 'team') return;
-  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Équipe'),
-    h('p', { class: 'intro' }, 'Toute personne qui s’est connectée une fois (appli ou cette page) apparaît ici. Donnez le rôle « Administrateur » à ceux qui doivent gérer le contenu.'))));
-  if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
-  const list = h('div', { class: 'list' });
-  for (const u of data) {
-    const sel = options(h('select', { style: 'width:auto' }), [['user', 'Utilisateur'], ['admin', 'Administrateur']], u.role);
-    sel.addEventListener('change', async () => {
-      if (u.id === me.id && sel.value !== 'admin' && !confirm('Vous allez perdre votre propre accès à cette page. Continuer ?')) { sel.value = u.role; return; }
-      const { error } = await sb.from('app_users').update({ role: sel.value }).eq('id', u.id);
-      if (error) { sel.value = u.role; return toast(friendly(error), true); }
-      u.role = sel.value; toast('Rôle mis à jour');
-    });
-    list.append(h('div', { class: 'item' }, h('div', { class: 'thumb', style: 'border-radius:50%' }, initial(u.display_name)),
-      h('div', {}, h('div', { class: 't' }, (u.display_name || 'Sans nom') + (u.id === me.id ? ' (vous)' : '')), h('div', { class: 's' }, 'Inscrit le ' + fmtDate(u.created_at))),
-      h('div', { class: 'acts' }, sel)));
-  }
-  main.append(list);
-}
-
 // ─── Navigation ───
 // Menu rangé par thèmes : [clé, titre de groupe ou '', libellé]
 const MAX_FEATURED = 7;
@@ -1371,7 +1465,7 @@ function tvSchedule(programs, anchorMs) {
     }
     return null;
   };
-  return { at, after: sl => at(sl.end + 500), loop, fixed, empty: !ok.length };
+  return { at, after: sl => at(sl.end + 500), nextFixed, loop, fixed, empty: !ok.length };
 }
 
 // Envoi direct vers Cloudflare Stream (protocole tus, par morceaux de 64 Mo, reprise automatique).
@@ -1417,94 +1511,196 @@ function confirmBox(msg, okLabel, danger) {
   });
 }
 
+// ─── Rôles de la régie ───
+// owner : administrateur principal · admin · editeur : vidéos et bandeau · animateur : directs.
+let ROLE = null;
+const ROLE_LABEL = { owner: 'Administrateur principal', admin: 'Administrateur', editeur: 'Éditeur', animateur: 'Animateur' };
+const can = {
+  get admin() { return ROLE === 'owner' || ROLE === 'admin'; },
+  get program() { return ROLE === 'owner' || ROLE === 'admin' || ROLE === 'editeur'; },
+  get live() { return ROLE === 'owner' || ROLE === 'admin' || ROLE === 'animateur'; },
+};
+let myName = '';
+
+// Vignette d'un programme (YouTube ou Cloudflare Stream).
+function progThumb(p) {
+  if (p.source === 'youtube') { const id = ytId(p.video_url); return id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : null; }
+  const m = String(p.video_url || '').match(/([a-f0-9]{32})/);
+  return m ? `https://videodelivery.net/${m[1]}/thumbnails/thumbnail.jpg?height=90&time=20s` : null;
+}
+const ICON = {
+  studio: '<rect x="2" y="7" width="20" height="13" rx="2"/><path d="m17 2-5 5-5-5"/>',
+  team: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4-6"/>',
+  admin: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  cloud: '<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.5 12.5 3.5 3.5 0 0 0 6 19z"/><path d="m9 14 2 2 4-4"/>',
+  out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  warn: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  ok: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
+};
+function icon(name, size = 18) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('width', size); s.setAttribute('height', size); s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '2');
+  s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = ICON[name] || '';
+  return s;
+}
+const fmtLong = sec => { sec = Math.round(sec || 0); const hh = Math.floor(sec / 3600), mm = Math.floor(sec % 3600 / 60); return hh ? `${hh} h ${pad(mm)}` : `${mm} min`; };
+
+// Cadre du studio : barre du haut + menu de gauche, commun à « Studio » et « Équipe ».
+function studioFrame(active) {
+  const pill = h('div', { class: 'st-pill' }, h('i', { class: 'st-live-dot' }), h('span', {}, '…'));
+  const clock = h('div', { class: 'st-clock' }, '--:--:--');
+  const saved = h('div', { class: 'st-saved' }, icon('cloud', 16), h('span', {}, 'Enregistré en ligne'));
+  const bellN = h('b', { class: 'hidden' }, '0');
+  const bell = h('button', { class: 'st-bell', 'aria-label': 'Alertes', onclick: () => { const a = $('#st-alerts'); if (a) a.scrollIntoView({ behavior: 'smooth', block: 'center' }); else show('regie'); } }, icon('bell', 20), bellN);
+  const reserve = h('div', { class: 'st-reserve hidden' });
+  const nav = (k, ic, l) => h('button', { class: 'st-nav' + (active === k ? ' on' : ''), onclick: () => show(k) }, icon(ic), l);
+  const root = h('div', { class: 'st' },
+    h('header', { class: 'st-top' },
+      h('div', { class: 'st-brand' }, h('span', { class: 'st-logo' }, h('span', {}, 'Conacce'), h('span', { class: 'sun' }, 'tv')), h('small', {}, 'RÉGIE')),
+      pill, clock, h('span', { class: 'grow' }), saved, bell,
+      h('div', { class: 'st-me' }, h('span', { class: 'sun' }, initial(myName)), h('span', {}, h('b', {}, myName), h('small', {}, ROLE_LABEL[ROLE] || ''))),
+      h('button', { class: 'st-out', 'aria-label': 'Se déconnecter', title: 'Se déconnecter', onclick: async () => { if (window.__leave) { try { window.__leave(); } catch (e) {} window.__leave = null; } await sb.auth.signOut(); me = null; ROLE = null; location.hash = ''; boot(); } }, icon('out', 18))),
+    h('div', { class: 'st-body' },
+      h('nav', { class: 'st-rail', 'aria-label': 'Sections de la régie' },
+        nav('regie', 'studio', 'Studio'),
+        can.admin ? nav('team', 'team', 'Équipe et sauvegarde') : null,
+        can.admin ? nav('dash', 'admin', 'Administration') : null,
+        h('span', { class: 'grow' }), reserve),
+      h('div', { class: 'st-main' })));
+  const clk = setInterval(() => { clock.textContent = hmsOf(Date.now()); }, 1000); clock.textContent = hmsOf(Date.now());
+  const prevLeave = window.__leave;
+  window.__leave = () => { clearInterval(clk); if (prevLeave) prevLeave(); };
+  // Copie automatique du jour (une fois par jour) + heure de la dernière copie.
+  sb.rpc('tv_backup_auto').then(({ data }) => {
+    if (data) saved.lastChild.textContent = 'Enregistré en ligne · copie ' + (new Date(data).toDateString() === new Date().toDateString() ? 'du jour à ' + hm(data) : 'du ' + new Date(data).toLocaleDateString('fr-FR'));
+  });
+  sb.from('tv_channel').select('status').eq('id', 1).maybeSingle().then(({ data }) => {
+    if (data && pill.lastChild.textContent === '…') { pill.className = 'st-pill ' + data.status; pill.lastChild.textContent = { playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'CHAÎNE ARRÊTÉE' }[data.status] || ''; }
+  });
+  $('#main').append(root);
+  return { root, pill, clock, saved, bell, bellN, reserve, main: root.querySelector('.st-main') };
+}
+
 async function showRegie() {
-  const main = $('#main');
+  const F = studioFrame('regie');
+  const main = F.main;
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
   const R = {
     programs: [], channel: { status: 'playing', anchor: '2026-01-01T00:00:00Z' }, live: null, offset: 0,
     day: dayIdx(Date.now()), weekly: true, mute: store('rg_mute') !== '0', vol: Number(store('rg_vol') || 80),
-    air: { key: null }, prev: null, ready: {}, alive: true, timeEdited: false,
+    air: { key: null }, prev: null, ready: {}, alive: true, timeEdited: false, q: '', kind: 'all',
   };
   const now = () => Date.now() + R.offset;
+  const LIVE_SRC = { obs: 'OBS / vMix', youtube: 'YouTube', facebook: 'Facebook', tiktok: 'TikTok' };
 
   // ── Écrans ──
-  const prevBox = h('div', { class: 'rg-box' }, h('div', { class: 'msg' }, h('div', {}, h('b', {}, 'APERÇU'), 'Touchez « Aperçu » sur un programme pour le visionner ici, sans toucher à l’antenne.')));
+  const prevBox = h('div', { class: 'rg-box prev-frame' }, h('div', { class: 'msg' }, h('div', {}, h('b', {}, 'APERÇU'), 'Touchez « Aperçu » sur un programme pour le visionner ici, sans toucher à l’antenne.')));
   const prevTitle = h('div', { class: 'ttl muted' }, 'Rien en aperçu');
   const prevNow = h('button', { class: 'btn small hidden', onclick: () => R.prev && airNow(R.prev) }, 'Diffuser maintenant');
   const prevClose = h('button', { class: 'btn small ghost hidden', onclick: () => setPreview(null) }, 'Fermer');
+  const prevState = h('span', { class: 'st-tag ok hidden' }, 'PRÊT');
   const airBox = h('div', { class: 'rg-box air-frame' }, h('div', { class: 'host' }));
   const airLabel = h('b', {}, 'À L’ANTENNE');
-  const airScr = h('div', { class: 'rg-scr air' },
+  const airScr = h('section', { class: 'rg-scr air', 'aria-label': 'Antenne' },
     h('div', { class: 'lab' }, h('span', {}, 'ANTENNE · CE QUE VOIENT LES SPECTATEURS'), airLabel), airBox);
   const airTitle = h('div', { class: 'ttl' }, '');
   const muteBtn = h('button', { class: 'btn small', onclick: () => { R.mute = !R.mute; store('rg_mute', R.mute ? '1' : '0'); applyVol(); } }, '');
   const volIn = h('input', { type: 'range', min: 0, max: 100, value: R.vol, 'aria-label': 'Volume', oninput: () => { R.vol = Number(volIn.value); store('rg_vol', String(R.vol)); if (R.vol > 0 && R.mute) R.mute = false; applyVol(); } });
-  airScr.append(h('div', { class: 'under' }, airTitle, muteBtn, h('span', { class: 'rg-small' }, 'Volume'), volIn));
+  airScr.append(h('div', { class: 'under' }, airTitle, muteBtn, h('label', { class: 'rg-vol' }, 'Volume', volIn)));
 
-  // ── Centre : horloge, compte à rebours, commandes ──
-  const clock = h('div', { class: 'rg-clock' }, '--:--:--');
+  // ── Centre : compte à rebours, transition, commandes ──
   const count = h('div', { class: 'rg-count' }, '--:--:--');
   const bar = h('i');
   const endAt = h('div', { class: 'rg-small' }, '');
   const nextEl = h('div', { class: 'rg-small' }, '');
-  const bPlay = h('button', { class: 'btn', onclick: () => control('play') }, 'Play');
+  const bPlay = h('button', { class: 'btn', onclick: () => control('play') }, 'Lecture');
   const bPause = h('button', { class: 'btn', onclick: () => control('pause') }, 'Pause');
-  const bStop = h('button', { class: 'btn', onclick: () => control('stop') }, 'Stop');
+  const bStop = h('button', { class: 'btn', onclick: () => control('stop') }, 'Arrêt');
   const stateEl = h('div', { class: 'rg-small' }, '');
-  // Mode studio (comme OBS) : « Transition » ou la barre en T envoient l'aperçu à l'antenne.
   const take = async () => {
     if (!R.prev) return toast('Choisissez d’abord un programme avec « Aperçu ».', true);
     airBox.style.transition = 'opacity .4s'; airBox.style.opacity = '0';
     await airNow(R.prev, true);
     setTimeout(() => { airBox.style.opacity = '1'; }, 450);
   };
-  const bTrans = h('button', { class: 'btn primary', onclick: take, title: 'Envoyer l’aperçu à l’antenne' }, 'Transition');
+  const bTrans = h('button', { class: 'btn primary sun-btn', onclick: take, title: 'Envoyer l’aperçu à l’antenne' }, 'TRANSITION');
   const tbar = h('input', { type: 'range', min: 0, max: 100, value: 0, class: 'rg-tbar', 'aria-label': 'Barre de transition' });
   tbar.addEventListener('input', () => { airBox.style.transition = 'none'; airBox.style.opacity = String(1 - tbar.value / 140); });
-  const tEnd = async () => {
-    const v = Number(tbar.value);
-    if (v >= 95) await take(); else { airBox.style.transition = 'opacity .3s'; airBox.style.opacity = '1'; }
+  tbar.addEventListener('change', async () => {
+    if (Number(tbar.value) >= 95) await take(); else { airBox.style.transition = 'opacity .3s'; airBox.style.opacity = '1'; }
     tbar.value = 0;
-  };
-  tbar.addEventListener('change', tEnd);
-  const mid = h('div', { class: 'rg-mid' },
-    h('div', {}, h('div', { class: 'rg-k' }, 'HEURE'), clock),
-    h('div', {}, h('div', { class: 'rg-k' }, 'RESTE À L’ANTENNE'), count),
-    h('div', { class: 'rg-bar' }, bar), endAt, nextEl,
-    h('div', { class: 'rg-trans' }, bTrans, tbar), h('div', { class: 'rg-ctl' }, bPlay, bPause, bStop), stateEl);
+  });
+  const mid = h('section', { class: 'rg-mid', 'aria-label': 'Commandes' },
+    h('div', {}, h('div', { class: 'rg-k' }, 'RESTE À L’ANTENNE'), count, h('div', { class: 'rg-bar' }, bar), endAt, nextEl),
+    can.program ? h('div', { class: 'rg-trans' }, bTrans, h('label', { class: 'rg-tlab' }, 'Barre de transition : glissez jusqu’au bout', tbar)) : null,
+    can.program ? h('div', { class: 'rg-ctl' }, bPlay, bPause, bStop) : null, stateEl);
 
-  main.append(h('div', { class: 'rg' },
-    h('div', { class: 'head' },
-      h('div', {}, h('h1', {}, 'Régie TV'),
-        h('p', { class: 'intro' }, 'Déposez vos vidéos ou collez vos liens YouTube : ils se programment tout seuls, à la suite, à partir de l’heure de votre ordinateur. La chaîne tourne 24 h/24, même ordinateur éteint, et tout le monde voit la même image au même moment.'))),
-    h('div', { class: 'rg-top' },
-      h('div', { class: 'rg-scr' }, h('div', { class: 'lab' }, h('span', {}, 'APERÇU · VISIONNAGE'), h('span', {}, '')), prevBox,
-        h('div', { class: 'under' }, prevTitle, prevNow, prevClose)),
-      mid, airScr),
-    liveBar(),
+  // ── Alertes ──
+  const alerts = h('div', { class: 'st-alerts', id: 'st-alerts', role: 'status' });
+
+  // ── Grille du jour (ligne de temps 24 h) ──
+  const dayTabs = h('div', { class: 'st-days', role: 'tablist', 'aria-label': 'Jour affiché' });
+  const gridTitle = h('h2', {}, 'Grille du jour');
+  const ticks = h('div', { class: 'tl-ticks' });
+  for (let k = 0; k <= 24; k += 2) ticks.append(h('span', { style: `left:${k / 24 * 100}%` }, pad(k) + ':00'));
+  const lane = h('div', { class: 'tl-lane' });
+  const nowLine = h('div', { class: 'tl-now hidden' }, h('span', {}, 'MAINTENANT'));
+  const gridSec = h('section', { class: 'st-card', id: 'grille', 'aria-label': 'Grille' },
+    h('div', { class: 'st-card-head' }, gridTitle, h('span', { class: 'rg-small' }, 'Touchez un bloc pour le voir dans l’aperçu.'), h('span', { class: 'grow' }), dayTabs),
+    h('div', { class: 'tl-scroll' }, h('div', { class: 'tl' }, ticks, h('div', { class: 'tl-wrap' }, lane, nowLine))),
+    h('div', { class: 'tl-legend' },
+      h('span', {}, h('i', { class: 'sun' }), 'Rendez-vous (plan de la semaine)'),
+      h('span', {}, h('i', { class: 'hatch' }), 'Playlist en boucle'),
+      h('span', {}, h('i', { class: 'gap' }), 'Trou : écran d’attente')));
+
+  // ── Programmes : recherche + playlist + semaine ──
+  const qIn = h('input', { type: 'search', placeholder: 'Rechercher un titre…', 'aria-label': 'Rechercher un programme', oninput: () => { R.q = qIn.value; draw(); } });
+  const chips = h('div', { class: 'st-chips' });
+  const drawChips = () => {
+    chips.textContent = '';
+    for (const [k, l] of [['all', 'Tout'], ['youtube', 'YouTube'], ['file', 'Vidéos envoyées']])
+      chips.append(h('button', { class: 'st-chip' + (R.kind === k ? ' on' : ''), 'aria-pressed': R.kind === k ? 'true' : 'false', onclick: () => { R.kind = k; drawChips(); draw(); } }, l));
+  };
+  drawChips();
+  const progSec = h('section', { class: 'st-card', id: 'programmes', 'aria-label': 'Programmes' },
+    h('div', { class: 'st-card-head' }, h('h2', {}, 'Programmes'), h('span', { class: 'grow' }),
+      h('label', { class: 'st-search' }, icon('search', 16), qIn), chips),
     h('div', { class: 'rg-panels' }, playlistPanel(), weekPanel()),
     h('div', { class: 'rg-foot' },
-      h('div', { class: 'rg-small' }, 'Un direct lancé depuis OBS passe toujours devant la programmation ; elle reprend toute seule à la fin du direct.'),
-      h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+      h('div', { class: 'rg-small' }, 'Un direct passe toujours devant la programmation ; elle reprend toute seule à la fin du direct.'),
+      can.program ? h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
         h('button', { class: 'btn small', onclick: restartLoop }, 'Reprendre la playlist au début'),
-        h('button', { class: 'btn small danger', onclick: clearAll }, 'Supprimer toute la programmation')))));
+        can.admin ? h('button', { class: 'btn small danger', onclick: clearAll }, 'Supprimer toute la programmation') : null) : null));
 
-  // ── Barre du direct : OBS / vMix, ou lien d'un direct YouTube, Facebook, TikTok ──
-  const LIVE_SRC = { obs: 'OBS / vMix', youtube: 'YouTube', facebook: 'Facebook', tiktok: 'TikTok' };
+  main.append(alerts,
+    h('div', { class: 'rg-top' },
+      h('section', { class: 'rg-scr', 'aria-label': 'Aperçu' }, h('div', { class: 'lab' }, h('span', {}, 'APERÇU'), prevState), prevBox,
+        h('div', { class: 'under' }, prevTitle, can.program ? prevNow : null, prevClose)),
+      mid, airScr),
+    liveBar(), gridSec, progSec);
+  if (!can.program) main.append(h('p', { class: 'rg-small', style: 'text-align:center' }, 'Votre rôle : ' + ROLE_LABEL[ROLE] + '. Vous lancez et arrêtez les directs ; la grille est en lecture seule.'));
+
+  // ── Barre du direct ──
   function liveBar() {
     const srcSel = h('select', { 'aria-label': 'Source du direct' },
       h('option', { value: 'obs' }, 'OBS / vMix (flux Cloudflare)'),
       h('option', { value: 'youtube' }, 'Lien d’un direct YouTube'),
       h('option', { value: 'facebook' }, 'Lien d’un direct Facebook'),
       h('option', { value: 'tiktok' }, 'Lien d’un direct TikTok'));
-    const urlIn = h('input', { type: 'url', placeholder: 'Collez le lien du direct (bouton Partager › Copier le lien)' });
+    const urlIn = h('input', { type: 'url', placeholder: 'Collez le lien du direct (bouton Partager › Copier le lien)', 'aria-label': 'Lien du direct' });
     const btn = h('button', { class: 'btn primary', onclick: toggleLive }, 'Activer le direct');
     const dot = h('span', { class: 'rg-dot' });
     const info = h('span', {}, '');
     srcSel.onchange = () => { R.liveUI.touched = true; drawLive(); };
     urlIn.oninput = () => { R.liveUI.touched = true; };
     R.liveUI = { srcSel, urlIn, btn, dot, info, touched: false };
-    return h('div', { class: 'rg-live' }, h('b', {}, 'DIRECT'), srcSel, urlIn, btn, h('div', { class: 'rg-small' }, dot, info));
+    return h('section', { class: 'rg-live', id: 'directs', 'aria-label': 'Direct' }, h('b', {}, 'DIRECT'),
+      can.live ? [srcSel, urlIn, btn] : null, h('div', { class: 'rg-small' }, dot, info));
   }
   function drawLive() {
     const U = R.liveUI; if (!U) return;
@@ -1533,8 +1729,7 @@ async function showRegie() {
       const ok = src === 'youtube' ? !!ytId(url) : src === 'facebook' ? /(facebook\.com|fb\.watch)\//i.test(url) : /tiktok\.com\//i.test(url);
       if (!ok) return toast(src === 'youtube' ? 'Collez le lien de la vidéo du direct YouTube (youtube.com/live/… ou youtu.be/…).' : 'Collez le lien du direct ' + LIVE_SRC[src] + '.', true);
     }
-    const patch = turnOn ? { is_live: true, source: src, live_url: src === 'obs' ? (d.live_url || null) : url } : { is_live: false };
-    const { error } = await sb.from('live_stream').update(patch).eq('id', d.id);
+    const { error } = await sb.rpc('live_control', turnOn ? { p_on: true, p_source: src, p_url: src === 'obs' ? null : url } : { p_on: false });
     if (error) return toast(friendly(error), true);
     U.touched = false;
     toast(turnOn ? (src === 'obs' ? 'Direct activé : il passe à l’antenne dès qu’OBS / vMix envoie l’image.' : 'Direct ' + LIVE_SRC[src] + ' à l’antenne.') : 'Direct arrêté : la programmation reprend.');
@@ -1547,36 +1742,35 @@ async function showRegie() {
     const meta = h('span', { class: 'meta' }, '');
     const ups = h('div', { class: 'rg-ups' });
     const pan = h('div', { class: 'rg-pan' },
-      h('header', {}, h('span', {}, 'PLAYLIST EN BOUCLE'), meta, h('span', { class: 'grow' })),
-      h('div', { class: 'rg-tools' },
+      h('header', {}, h('span', {}, 'Playlist en boucle'), meta),
+      can.program ? h('div', { class: 'rg-tools' },
         h('button', { class: 'btn small primary', onclick: () => pickFiles('loop') }, 'Ajouter des vidéos'),
         h('button', { class: 'btn small', onclick: () => askLinks('loop') }, 'Coller des liens YouTube'),
-        h('span', { class: 'rg-small' }, 'Tourne sans fin quand rien n’est prévu dans le plan de la semaine.')),
-      ups, rows, h('div', { class: 'rg-drop' }, 'GLISSEZ-DÉPOSEZ VOS VIDÉOS ICI (PLUSIEURS À LA FOIS)'));
-    dropZone(pan, 'loop');
+        h('span', { class: 'rg-small' }, 'Tourne sans fin quand rien n’est prévu.')) : null,
+      ups, rows, can.program ? h('div', { class: 'rg-drop' }, 'Glissez-déposez vos vidéos ici (plusieurs à la fois)') : null);
+    if (can.program) dropZone(pan, 'loop');
     R.loopUI = { rows, meta, ups };
     return pan;
   }
 
-  // ── Panneau Plan de la semaine ──
+  // ── Panneau Plan de la semaine (jour choisi dans la grille) ──
   function weekPanel() {
     const rows = h('div', { class: 'rg-rows' });
     const meta = h('span', { class: 'meta' }, '');
+    const title = h('span', {}, 'Plan du jour');
     const ups = h('div', { class: 'rg-ups' });
-    const days = h('div', { class: 'rg-days' });
     const timeIn = h('input', { type: 'time', 'aria-label': 'Heure de début', oninput: () => { R.timeEdited = true; } });
     const weekly = h('input', { type: 'checkbox', checked: true, onchange: () => { R.weekly = weekly.checked; } });
     const pan = h('div', { class: 'rg-pan week' },
-      h('header', {}, h('span', {}, 'PLAN DE LA SEMAINE'), meta, h('span', { class: 'grow' })),
-      days,
-      h('div', { class: 'rg-tools' },
+      h('header', {}, title, meta),
+      can.program ? h('div', { class: 'rg-tools' },
         h('label', { class: 'inl' }, 'Début à', timeIn),
         h('label', { class: 'inl' }, weekly, 'Chaque semaine'),
         h('button', { class: 'btn small primary', onclick: () => pickFiles('week') }, 'Ajouter des vidéos'),
-        h('button', { class: 'btn small', onclick: () => askLinks('week') }, 'Coller des liens YouTube')),
-      ups, rows, h('div', { class: 'rg-drop' }, 'GLISSEZ-DÉPOSEZ VOS VIDÉOS ICI : ELLES S’ENCHAÎNENT À PARTIR DE L’HEURE INDIQUÉE'));
-    dropZone(pan, 'week');
-    R.weekUI = { rows, meta, ups, days, timeIn };
+        h('button', { class: 'btn small', onclick: () => askLinks('week') }, 'Coller des liens YouTube')) : null,
+      ups, rows, can.program ? h('div', { class: 'rg-drop' }, 'Glissez-déposez ici : les vidéos s’enchaînent à partir de l’heure indiquée') : null);
+    if (can.program) dropZone(pan, 'week');
+    R.weekUI = { rows, meta, ups, timeIn, title };
     return pan;
   }
 
@@ -1623,55 +1817,133 @@ async function showRegie() {
     return dayStart(R.day) + (a * 60 + b) * 60000;
   }
 
+  // Ligne de temps d'une journée : rendez-vous, blocs de playlist fusionnés, trous.
+  function dayBlocks(i) {
+    const S = R.sched, s0 = dayStart(i), s1 = s0 + DAY_MS, out = [];
+    if (!S || S.empty) return [{ kind: 'gap', from: s0, to: s1 }];
+    let t = s0, guard = 0;
+    while (t < s1 && guard++ < 6000) {
+      const sl = S.at(t);
+      if (!sl) {
+        const n = S.nextFixed(t); const to = Math.min(n ? n.start : s1, s1);
+        out.push({ kind: 'gap', from: t, to: Math.max(to, t + 60000) }); t = Math.max(to, t + 60000); continue;
+      }
+      const kind = sl.p.start_at ? 'fixed' : 'loop', from = Math.max(sl.start, t), to = Math.min(sl.end, s1);
+      const last = out[out.length - 1];
+      if (kind === 'loop' && last && last.kind === 'loop' && Math.abs(last.to - from) < 1500) { last.to = to; last.n++; if (!last.items.includes(sl.p)) last.items.push(sl.p); }
+      else out.push({ kind, from, to, p: sl.p, n: 1, items: [sl.p] });
+      t = Math.max(sl.end, t + 1000);
+    }
+    return out;
+  }
+  function drawGrid() {
+    const s0 = dayStart(R.day);
+    gridTitle.textContent = 'Grille du ' + new Date(s0).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    dayTabs.textContent = '';
+    RG_DAYS.forEach((d, i) => {
+      const n = dayItems(i).length;
+      dayTabs.append(h('button', { role: 'tab', 'aria-selected': i === R.day ? 'true' : 'false', class: i === R.day ? 'on' : '', onclick: () => { R.day = i; R.timeEdited = false; draw(); } },
+        d + (n ? ` · ${n}` : ''), h('small', {}, i === dayIdx(now()) ? 'aujourd’hui' : new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }))));
+    });
+    lane.textContent = '';
+    for (const b of dayBlocks(R.day)) {
+      const left = (b.from - s0) / DAY_MS * 100, width = Math.max(0.15, (b.to - b.from) / DAY_MS * 100);
+      const label = b.kind === 'gap' ? 'Trou' : b.kind === 'loop' ? 'Playlist en boucle' : b.p.title;
+      const sub = b.kind === 'gap' ? `${hm(b.from)} → ${hm(b.to)} · écran d’attente` : b.kind === 'loop' ? `${hm(b.from)} → ${hm(b.to)} · ${b.items.length} programme${b.items.length > 1 ? 's' : ''}` : `${hm(b.from)} · ${fmtHms(b.p.duration)}`;
+      const el = h(b.kind === 'gap' ? 'div' : 'button', { class: 'tl-b ' + b.kind + (b.kind === 'fixed' ? ' sun' : ''), style: `left:${left}%;width:${width}%`, title: label + ' · ' + sub,
+        onclick: b.kind === 'gap' ? null : () => setPreview(b.kind === 'loop' ? b.items[0] : b.p) }, h('b', {}, label), h('small', {}, sub));
+      lane.append(el);
+    }
+    const isToday = s0 === startOfDay(now());
+    nowLine.classList.toggle('hidden', !isToday);
+  }
+
   // ── Affichage des listes ──
+  const match = p => (R.kind === 'all' || p.source === R.kind) && (!R.q.trim() || norm(p.title).includes(norm(R.q.trim())));
   function draw() {
     R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor));
     const loop = R.sched.loop;
     const L = R.loopUI; L.rows.textContent = '';
     L.meta.textContent = `${loop.length} programme${loop.length > 1 ? 's' : ''} · ${fmtHms(loop.reduce((a, p) => a + p.duration, 0)) || '0:00'}`;
     if (!loop.length) L.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Playlist vide. Ajoutez des vidéos ou des liens YouTube.'));
-    loop.forEach((p, k) => L.rows.append(row(p, String(k + 1).padStart(2, '0'), [
-      ['Aperçu', () => setPreview(p)],
-      ['▲', () => k > 0 && move(loop, k, -1), k > 0 ? '' : 'off', 'Monter'],
-      ['▼', () => k < loop.length - 1 && move(loop, k, 1), k < loop.length - 1 ? '' : 'off', 'Descendre'],
-      ['Modifier', () => openForm('tv', p)],
-      ['Retirer', () => removeOne(p), 'x'],
-    ])));
-    const W = R.weekUI; W.days.textContent = '';
-    RG_DAYS.forEach((d, i) => {
-      const n = dayItems(i).length;
-      W.days.append(h('button', { class: i === R.day ? 'on' : '', onclick: () => { R.day = i; R.timeEdited = false; draw(); } },
-        d + (n ? ` (${n})` : ''), h('small', {}, new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }))));
+    let shown = 0;
+    loop.forEach((p, k) => {
+      if (!match(p)) return; shown++;
+      L.rows.append(row(p, String(k + 1).padStart(2, '0'), [
+        ['Aperçu', () => setPreview(p)],
+        can.program && !R.q && R.kind === 'all' ? ['▲', () => k > 0 && move(loop, k, -1), k > 0 ? '' : 'off', 'Monter'] : null,
+        can.program && !R.q && R.kind === 'all' ? ['▼', () => k < loop.length - 1 && move(loop, k, 1), k < loop.length - 1 ? '' : 'off', 'Descendre'] : null,
+        can.program ? ['Modifier', () => openForm('tv', p)] : null,
+        can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
+      ]));
     });
+    if (loop.length && !shown) L.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Aucun programme ne correspond à cette recherche.'));
+    const W = R.weekUI;
     const items = dayItems(R.day);
-    W.meta.textContent = `${RG_DAYS_LONG[R.day]} · ${items.length} programme${items.length > 1 ? 's' : ''}`;
+    W.title.textContent = 'Plan du ' + RG_DAYS_LONG[R.day];
+    W.meta.textContent = `${items.length} rendez-vous`;
     if (!R.timeEdited) W.timeIn.value = hm(suggestStart(R.day));
     W.rows.textContent = '';
     if (!items.length) W.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, `Rien de prévu ${RG_DAYS_LONG[R.day]} : la playlist en boucle passe toute la journée.`));
     for (const it of items) {
       const p = it.p;
+      if (!match(p)) continue;
       const r = row(p, hm(it.at), [
         ['Aperçu', () => setPreview(p)],
-        ['Heure', () => editTime(r, p, it)],
-        ['Modifier', () => openForm('tv', p)],
-        ['Retirer', () => removeOne(p), 'x'],
+        can.program ? ['Heure', () => editTime(r, p, it)] : null,
+        can.program ? ['Modifier', () => openForm('tv', p)] : null,
+        can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
       ], p.repeat_daily ? 'chaque jour' : p.repeat_weekly ? 'chaque semaine' : 'une fois', it.at);
       W.rows.append(r);
     }
+    drawGrid();
+    drawAlerts();
     tick(true);
   }
   function row(p, num, acts, note, at) {
     const st = p.source === 'file' ? (R.ready[p.id] === false ? ' · en préparation chez Cloudflare' : '') : '';
+    const th = progThumb(p);
     return h('div', { class: 'rg-row' + (R.prev && R.prev.id === p.id ? ' sel' : ''), 'data-id': p.id, 'data-at': at || '' },
       h('span', { class: 'n' }, num),
+      h('span', { class: 'th' }, th ? h('img', { src: th, alt: '', loading: 'lazy', onerror: e => e.target.remove() }) : null),
       h('span', { class: 't', title: p.title }, p.title, h('small', {},
-        (p.source === 'youtube' ? 'YouTube' : 'Vidéo téléversée') + (note ? ' · ' + note : '') + st)),
+        (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') + st)),
       h('span', { class: 'd' }, fmtHms(p.duration)),
-      h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t }, l))));
+      h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t ? t + ' : ' + p.title : null }, l))));
+  }
+
+  // ── Alertes ──
+  function drawAlerts() {
+    const out = [], S = R.sched, st = R.channel.status;
+    if (S.empty) out.push(['bad', 'Aucun programme : les spectateurs voient l’écran d’attente. Ajoutez des vidéos à la playlist.']);
+    else {
+      if (st === 'stopped') out.push(['bad', 'Chaîne arrêtée : les spectateurs voient l’écran d’attente. Touchez « Lecture » pour la relancer.']);
+      if (st === 'paused') out.push(['warn', 'Chaîne en pause : les spectateurs voient « Nous revenons dans un instant ».']);
+      if (!S.loop.length) {
+        const gaps = dayBlocks(dayIdx(now())).filter(b => b.kind === 'gap' && b.to > now());
+        if (gaps.length) out.push(['warn', `Playlist en boucle vide : ${gaps.length} trou${gaps.length > 1 ? 's' : ''} aujourd’hui (prochain à ${hm(Math.max(gaps[0].from, now()))}). Ajoutez des vidéos à la playlist pour les combler.`, '#programmes']);
+      }
+    }
+    if (R.liveIdle) out.push(['warn', 'Direct allumé, mais OBS / vMix n’envoie aucune image : la programmation reste à l’antenne.', '#directs']);
+    const prep = R.programs.filter(p => p.source === 'file' && R.ready[p.id] === false).length;
+    if (prep) out.push(['info', `${prep} vidéo${prep > 1 ? 's' : ''} encore en préparation chez Cloudflare : elle${prep > 1 ? 's' : ''} passera${prep > 1 ? 'ont' : ''} dès qu’elle${prep > 1 ? 's seront prêtes' : ' sera prête'}.`]);
+    const uniq = new Map(); for (const p of R.programs) uniq.set(p.video_url, p.duration);
+    const total = [...uniq.values()].reduce((a, d) => a + d, 0);
+    if (!S.empty && total < 24 * 3600) out.push(['info', `${fmtLong(total)} de programmes différents. Objectif : 24 h, pour éviter que la boucle se répète trop souvent.`]);
+    alerts.textContent = '';
+    const serious = out.filter(a => a[0] !== 'info').length;
+    if (!out.length) out.push(['ok', 'Tout va bien : la chaîne tourne sans trou.']);
+    for (const [k, msg, link] of out) alerts.append(h('div', { class: 'st-alert ' + k }, icon(k === 'ok' ? 'ok' : k === 'info' ? 'info' : 'warn'), h('span', {}, msg),
+      link ? h('a', { href: link, onclick: e => { e.preventDefault(); $(link).scrollIntoView({ behavior: 'smooth' }); } }, 'Voir') : null));
+    F.bellN.textContent = String(serious); F.bellN.classList.toggle('hidden', !serious);
+    F.bell.setAttribute('aria-label', serious ? `Alertes : ${serious}` : 'Aucune alerte');
+    F.reserve.classList.remove('hidden'); F.reserve.textContent = '';
+    F.reserve.append(h('small', {}, 'PROGRAMMES DIFFÉRENTS'), h('b', {}, fmtLong(total)),
+      h('span', { class: 'rg-bar' }, h('i', { style: `width:${Math.min(100, total / 864)}%` })), h('small', {}, 'objectif : 24 h'));
   }
 
   function editTime(r, p, it) {
-    const inp = h('input', { type: 'time', value: hm(it.at) });
+    const inp = h('input', { type: 'time', value: hm(it.at), 'aria-label': 'Nouvelle heure' });
     const cell = r.querySelector('.n'); cell.textContent = ''; cell.append(inp); inp.focus();
     let done = false;
     const save = async () => {
@@ -1693,7 +1965,7 @@ async function showRegie() {
     const { data, error } = await sb.rpc('tv_control', { action });
     if (error) return toast(friendly(error), true);
     R.channel = Array.isArray(data) ? data[0] : data;
-    toast({ play: 'La chaîne est à l’antenne.', pause: 'Chaîne en pause : « Nous revenons dans un instant ».', stop: 'Chaîne arrêtée.', restart: 'La playlist reprend au premier programme.', clear: 'Programmation supprimée.' }[action]);
+    toast({ play: 'La chaîne est à l’antenne.', pause: 'Chaîne en pause : « Nous revenons dans un instant ».', stop: 'Chaîne arrêtée.', restart: 'La playlist reprend au premier programme.', clear: 'Programmation supprimée. Une copie est gardée dans « Équipe et sauvegarde ».' }[action]);
     if (action === 'clear') await reload(); else draw();
   }
   async function restartLoop() {
@@ -1701,7 +1973,7 @@ async function showRegie() {
   }
   async function clearAll() {
     if (!R.programs.length) return toast('La programmation est déjà vide.');
-    if (await confirmBox(`Supprimer toute la programmation (${R.programs.length} programme${R.programs.length > 1 ? 's' : ''}, playlist et plan de la semaine) ? Les spectateurs voient l’écran d’attente jusqu’à ce que vous ajoutiez de nouveaux programmes. Cette action est définitive. Les vidéos restent dans votre compte Cloudflare.`, 'Tout supprimer', true)) control('clear');
+    if (await confirmBox(`Supprimer toute la programmation (${R.programs.length} programme${R.programs.length > 1 ? 's' : ''}, playlist et plan de la semaine) ? Les spectateurs voient l’écran d’attente jusqu’à ce que vous ajoutiez de nouveaux programmes. Une copie est gardée 30 jours : vous pourrez la restaurer dans « Équipe et sauvegarde ».`, 'Tout supprimer', true)) control('clear');
   }
   async function removeOne(p) {
     const { error } = await sb.from('tv_programs').delete().eq('id', p.id);
@@ -1730,7 +2002,6 @@ async function showRegie() {
     reload();
   }
 
-  // Ajout : position en fin de playlist, ou heures qui s'enchaînent dans le plan de la semaine.
   function slotPlanner(where) {
     let pos = R.programs.filter(p => !p.start_at).reduce((a, p) => Math.max(a, p.position || 0), 0);
     let t = where === 'week' ? chosenStart() : 0;
@@ -1748,7 +2019,7 @@ async function showRegie() {
   }
 
   function askLinks(where) {
-    const ta = h('textarea', { rows: 7, placeholder: 'https://youtu.be/…\nhttps://www.youtube.com/watch?v=…' });
+    const ta = h('textarea', { rows: 7, placeholder: 'https://youtu.be/…\nhttps://www.youtube.com/watch?v=…', 'aria-label': 'Liens YouTube' });
     const go = h('button', { class: 'btn primary' }, 'Programmer');
     const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
       h('div', {}, h('h2', {}, where === 'loop' ? 'Ajouter à la playlist en boucle' : `Ajouter au plan : ${RG_DAYS_LONG[R.day]} à partir de ${hm(chosenStart())}`),
@@ -1783,14 +2054,12 @@ async function showRegie() {
 
   async function addFiles(where, files) {
     const UI = where === 'loop' ? R.loopUI : R.weekUI;
-    // 1. Durées lues sur l'ordinateur, puis heures de passage réservées dans l'ordre de dépôt.
     const plan = slotPlanner(where);
     const jobs = [];
     for (const f of files) {
       const duration = await readDuration(f);
       jobs.push({ f, duration, title: f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim(), slot: duration ? plan(duration) : null });
     }
-    // 2. Envoi direct vers Cloudflare Stream, une vidéo après l'autre.
     let okN = 0;
     for (const [i, j] of jobs.entries()) {
       const pc = h('i'); const txt = h('span', {}, `${i + 1}/${jobs.length} · ${j.title} · préparation…`);
@@ -1801,14 +2070,13 @@ async function showRegie() {
         if (error) {
           let why = ''; try { why = (await error.context.json()).error; } catch (_) {}
           if (why === 'not_configured' || /Failed to send|not found|404/i.test(String(error.message) + why) || !why) { line.remove(); uploadHelp(); return; }
-          throw new Error(why === 'forbidden' ? 'Réservé aux administrateurs' : 'Cloudflare a refusé l’envoi (' + why + ')');
+          throw new Error(why === 'forbidden' ? 'Votre rôle ne permet pas d’envoyer des vidéos' : 'Cloudflare a refusé l’envoi (' + why + ')');
         }
         uploading++;
         try { await tusUpload(data.url, j.f, setP); } finally { uploading--; }
         const url = `https://videodelivery.net/${data.uid}/manifest/video.m3u8`;
         let duration = j.duration, slot = j.slot;
         if (!duration) {
-          // Format illisible par le navigateur : on attend que Cloudflare l'ait préparé pour connaître sa durée.
           txt.textContent = `${i + 1}/${jobs.length} · ${j.title} · envoyée, Cloudflare la prépare…`;
           for (let k = 0; k < 120 && R.alive && !duration; k++) { await new Promise(r => setTimeout(r, 15000)); if (await manifestReady(url)) duration = await hlsDuration(url).catch(() => null); }
           if (!duration) throw new Error('durée inconnue : ajoutez-la avec « Modifier »');
@@ -1826,7 +2094,7 @@ async function showRegie() {
     const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
       h('div', {}, h('h2', {}, 'Envoi de fichiers pas encore activé'),
         h('div', { style: 'line-height:1.6' },
-          'Pour déposer des vidéos depuis la régie, il faut relier une seule fois votre compte Cloudflare Stream :',
+          'Pour déposer des vidéos depuis la régie, il faut relier une seule fois votre compte Cloudflare :',
           h('ol', { style: 'margin:8px 0 0;padding-left:20px' },
             h('li', {}, h('a', { href: 'https://dash.cloudflare.com/profile/api-tokens', target: '_blank', rel: 'noopener' }, 'Cloudflare › Jetons d’API'), ' : « Créer un jeton » › modèle personnalisé › permission « Compte › Stream › Modifier ». Copiez le jeton.'),
             h('li', {}, 'Dans Cloudflare › Stream, copiez l’« ID de compte » (Account ID).'),
@@ -1841,10 +2109,11 @@ async function showRegie() {
     R.prev = p;
     const old = prevBox.__destroy; prevBox.__destroy = null; if (old) old();
     prevBox.textContent = '';
-    prevNow.classList.toggle('hidden', !p); prevClose.classList.toggle('hidden', !p);
+    prevNow.classList.toggle('hidden', !p); prevClose.classList.toggle('hidden', !p); prevState.classList.toggle('hidden', !p);
     document.querySelectorAll('.rg-row').forEach(r => r.classList.toggle('sel', !!p && r.dataset.id === p.id));
     if (!p) { prevTitle.textContent = 'Rien en aperçu'; prevBox.append(h('div', { class: 'msg' }, h('div', {}, h('b', {}, 'APERÇU'), 'Touchez « Aperçu » sur un programme pour le visionner ici.'))); return; }
     prevTitle.textContent = p.title + ' · ' + fmtHms(p.duration);
+    if (window.innerWidth < 1100) prevBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
     const host = h('div', { class: 'host' }); prevBox.append(host);
     if (p.source === 'youtube') {
       await loadYt(); if (R.prev !== p) return;
@@ -1876,7 +2145,7 @@ async function showRegie() {
     }
     const S = R.sched;
     if (!S || S.empty) return { kind: 'none', key: 'empty', msg: ['AUCUN PROGRAMME', 'Ajoutez des vidéos à la playlist ou au plan de la semaine.'] };
-    if (R.channel.status === 'stopped') return { kind: 'none', key: 'stopped', msg: ['CHAÎNE ARRÊTÉE', 'Les spectateurs voient l’écran d’attente. Touchez « Play » pour reprendre.'] };
+    if (R.channel.status === 'stopped') return { kind: 'none', key: 'stopped', msg: ['CHAÎNE ARRÊTÉE', 'Les spectateurs voient l’écran d’attente. Touchez « Lecture » pour reprendre.'] };
     if (R.channel.status === 'paused') return { kind: 'none', key: 'paused', msg: ['EN PAUSE', 'Les spectateurs voient « Nous revenons dans un instant ».'] };
     const sl = S.at(t);
     if (!sl) return { kind: 'none', key: 'nothing', msg: ['RIEN À L’ANTENNE', 'Ajoutez des vidéos à la playlist en boucle pour combler les trous.'] };
@@ -1890,10 +2159,7 @@ async function showRegie() {
     const host = airBox.firstChild; host.textContent = '';
     if (T.kind === 'none') { host.append(h('div', { class: 'msg' }, h('div', {}, h('b', {}, T.msg[0]), T.msg[1]))); return; }
     const pos = () => T.sl ? (now() - T.sl.start) / 1000 : 0;
-    if (T.kind === 'embed') {
-      host.append(h('iframe', { src: T.url, allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true }));
-      return;
-    }
+    if (T.kind === 'embed') { host.append(h('iframe', { src: T.url, allow: 'autoplay; encrypted-media; picture-in-picture', allowfullscreen: true, title: T.title })); return; }
     if (T.kind === 'yt') {
       const div = h('div'); host.append(div);
       loadYt().then(() => {
@@ -1915,20 +2181,19 @@ async function showRegie() {
   }
   function applyVol() {
     muteBtn.textContent = R.mute ? 'Son coupé · activer' : 'Son activé · couper';
-    muteBtn.classList.toggle('primary', R.mute);
+    muteBtn.classList.toggle('primary', !R.mute);
     volIn.value = R.vol;
     const A = R.air;
     if (A.yt) { try { R.mute ? A.yt.mute() : A.yt.unMute(); A.yt.setVolume(R.vol); } catch (e) {} }
     if (A.video) { A.video.muted = R.mute; A.video.volume = R.vol / 100; if (!R.mute) A.video.play().catch(() => {}); }
   }
-  let lastSync = 0;
+  let lastSync = 0, lastAlerts = 0;
   function tick(force) {
     if (!R.alive) return;
     const t = now();
-    clock.textContent = hmsOf(t);
+    F.clock.textContent = hmsOf(t);
     const T = airTarget(t);
-    if (force === true || T.key !== R.air.key) { if (T.key !== R.air.key) mountAir(T); }
-    // Rattrapage : l'écran antenne reste calé sur la grille.
+    if (T.key !== R.air.key) mountAir(T);
     if (T.sl && t - lastSync > 4000) {
       lastSync = t;
       const want = (t - T.sl.start) / 1000;
@@ -1937,19 +2202,21 @@ async function showRegie() {
         if (R.air.video && R.air.video.readyState > 1 && Math.abs(R.air.video.currentTime - want) > 4) R.air.video.currentTime = want;
       } catch (e) {}
     }
-    // Compte à rebours, fin, à suivre.
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
-    airLabel.textContent = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
+    const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
+    airLabel.textContent = lbl;
+    F.pill.className = 'st-pill ' + st; F.pill.lastChild.textContent = { live: 'EN DIRECT', playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'CHAÎNE ARRÊTÉE' }[st];
     bPlay.classList.toggle('on', st === 'playing'); bPause.classList.toggle('on', st === 'paused'); bStop.classList.toggle('on', st === 'stopped');
-    stateEl.textContent = R.liveIdle && st !== 'live' ? 'Le direct est marqué allumé, mais OBS n’envoie aucune image : la programmation passe à l’antenne.' : { live: 'Un direct est en cours : il passe devant la programmation. « Arrêter le direct » pour reprendre la programmation.', playing: 'La chaîne tourne pour tous les spectateurs.', paused: 'En pause : « Play » reprend là où la playlist s’était arrêtée.', stopped: 'Arrêtée : « Play » relance la playlist depuis le début.' }[st];
+    bPlay.setAttribute('aria-pressed', String(st === 'playing')); bPause.setAttribute('aria-pressed', String(st === 'paused')); bStop.setAttribute('aria-pressed', String(st === 'stopped'));
+    stateEl.textContent = R.liveIdle && st !== 'live' ? 'Le direct est marqué allumé, mais OBS n’envoie aucune image : la programmation passe à l’antenne.' : { live: 'Un direct est en cours : il passe devant la programmation.', playing: 'La chaîne tourne pour tous les spectateurs.', paused: 'En pause : « Lecture » reprend là où la playlist s’était arrêtée.', stopped: 'Arrêtée : « Lecture » relance la playlist depuis le début.' }[st];
     if (T.sl) {
       const left = T.sl.end - t, total = T.sl.end - T.sl.start;
       count.textContent = hms(left); count.classList.toggle('warn', left < 10000);
       bar.style.width = Math.min(100, Math.max(0, (t - T.sl.start) / total * 100)) + '%';
-      endAt.textContent = `${T.title} · fin à ${hmsOf(T.sl.end)}`;
+      endAt.textContent = `Fin à ${hmsOf(T.sl.end)}`;
       const nx = R.sched.after(T.sl);
-      nextEl.textContent = nx ? `À suivre à ${hm(T.sl.end)} : ${nx.p.title}` : '';
+      nextEl.textContent = nx ? `À suivre : ${nx.p.title}` : '';
       airTitle.textContent = T.title;
     } else {
       count.textContent = T.live ? 'EN DIRECT' : '--:--:--'; count.classList.remove('warn');
@@ -1957,7 +2224,9 @@ async function showRegie() {
       endAt.textContent = T.live ? 'Direct : pas de fin programmée.' : ''; nextEl.textContent = '';
       airTitle.textContent = T.live ? T.title : '';
     }
-    // Programme à l'antenne surligné dans les listes.
+    // Ligne « maintenant » de la grille.
+    nowLine.style.left = (timeOfDay(t) / DAY_MS * 100) + '%';
+    if (t - lastAlerts > 30000) { lastAlerts = t; if (R.sched) { drawGrid(); drawAlerts(); } }
     const onId = T.sl ? T.sl.p.id : null;
     document.querySelectorAll('.rg-row').forEach(r => r.classList.toggle('onair', !!onId && r.dataset.id === onId && (!r.dataset.at || Math.abs(Number(r.dataset.at) - T.sl.start) < 60000 || !T.sl.p.start_at)));
   }
@@ -1972,7 +2241,6 @@ async function showRegie() {
     if (pr.error) return toast(friendly(pr.error), true);
     R.programs = pr.data || [];
     if (ch.data) R.channel = ch.data;
-    else if (ch.error && /tv_channel|relation/.test(ch.error.message)) toast('Base pas encore à jour (migration v10).', true);
     draw();
     checkReady();
   }
@@ -1988,16 +2256,17 @@ async function showRegie() {
     R.liveRow = data || null;
     await probeLive();
   }
-  // Le direct ne passe devant que si OBS envoie vraiment l'image (sinon Cloudflare répond vide).
   async function probeLive() {
     const d = R.liveRow; let on = false;
     if (d && d.is_live && (d.source || 'obs') !== 'obs') on = !!(d.live_url || '').trim();
     else if (d && d.is_live && d.hls_url) {
       try { const r = await fetch(d.hls_url, { cache: 'no-store' }); on = r.status === 200 && (await r.text()).includes('#EXT'); } catch (e) {}
     }
+    const was = !!R.liveIdle;
     R.live = on ? d : null;
     R.liveIdle = !!(d && d.is_live && !on);
     drawLive();
+    if (was !== R.liveIdle && R.sched) drawAlerts();
   }
   try {
     const sent = Date.now(); const { data } = await sb.rpc('tv_now'); const got = Date.now();
@@ -2014,12 +2283,165 @@ async function showRegie() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_channel' }, p => { if (p.new && p.new.id) { R.channel = p.new; draw(); } })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive().then(() => tick(true)))
     .subscribe();
+  const frameLeave = window.__leave;
   window.__leave = () => {
     R.alive = false; clearInterval(timer); clearInterval(readyTimer); clearInterval(liveTimer);
     try { sb.removeChannel(rt); } catch (e) {}
     if (R.air.destroy) try { R.air.destroy(); } catch (e) {}
     if (prevBox.__destroy) try { prevBox.__destroy(); } catch (e) {}
+    if (frameLeave) frameLeave();
   };
+}
+
+// ─── Équipe, accès et sauvegarde ───
+async function showTeam() {
+  if (!can.admin) return show('regie');
+  const F = studioFrame('team');
+  const main = F.main;
+  const MAX = 5;
+  const accounts = h('div', { class: 'tm-list' });
+  const places = h('span', { class: 'rg-small' }, '');
+  const addBox = h('div', { class: 'tm-add' });
+  const log = h('div', { class: 'tm-log' });
+  const backups = h('div', { class: 'tm-backups' });
+  let team = [];
+
+  const roleOf = u => u.is_owner ? 'owner' : u.role === 'admin' ? 'admin' : u.staff;
+  const patchFor = r => r === 'admin' ? { role: 'admin', staff: null } : r ? { role: 'user', staff: r } : { role: 'user', staff: null };
+  const roleSelect = (value, onChange) => {
+    const s = h('select', { 'aria-label': 'Rôle' },
+      h('option', { value: 'admin' }, 'Administrateur'), h('option', { value: 'editeur' }, 'Éditeur'), h('option', { value: 'animateur' }, 'Animateur'));
+    s.value = value; s.onchange = () => onChange(s); return s;
+  };
+  async function setRole(u, r, label) {
+    if (u.id === me.id && r !== 'admin' && !(await confirmBox('Vous allez perdre vos droits d’administrateur sur cette page. Continuer ?', 'Continuer', true))) return false;
+    const { error } = await sb.from('app_users').update(patchFor(r)).eq('id', u.id);
+    if (error) { toast(friendly(error), true); return false; }
+    toast(label); loadTeam(); loadLog(); return true;
+  }
+
+  async function loadTeam() {
+    const { data, error } = await sb.rpc('regie_team');
+    if (error) { accounts.textContent = ''; accounts.append(h('div', { class: 'empty bad' }, friendly(error))); return; }
+    team = data || [];
+    places.textContent = `${team.length} sur ${MAX} places utilisées`;
+    accounts.textContent = '';
+    for (const u of team) {
+      const r = roleOf(u), mine = u.id === me.id;
+      const right = u.is_owner ? h('span', { class: 'rg-small' }, 'Non modifiable')
+        : h('div', { class: 'tm-acts' },
+          roleSelect(r, s => setRole(u, s.value, 'Rôle changé : ' + (u.display_name || '') + ' est maintenant ' + ROLE_LABEL[s.value] + '.').then(ok => { if (!ok) s.value = r; })),
+          h('button', { class: 'btn small danger', onclick: async () => {
+            if (!(await confirmBox(`Retirer l’accès à la régie de ${u.display_name || 'ce compte'} ? Son compte reste, mais il ne pourra plus ouvrir la régie.`, 'Retirer l’accès', true))) return;
+            setRole(u, null, 'Accès retiré.');
+          } }, 'Retirer l’accès'));
+      accounts.append(h('div', { class: 'tm-row' },
+        h('span', { class: 'tm-av' + (u.is_owner ? ' sun' : '') }, initial(u.display_name)),
+        h('div', { class: 'tm-who' }, h('b', {}, (u.display_name || 'Sans nom') + (mine ? ' (vous)' : '')),
+          h('small', {}, u.last_sign_in_at ? 'Dernière connexion : ' + fmtDate(u.last_sign_in_at) : 'Jamais connecté')),
+        h('span', { class: 'tm-role ' + r }, ROLE_LABEL[r]),
+        right));
+    }
+    drawAdd();
+  }
+
+  function drawAdd() {
+    addBox.textContent = '';
+    const full = team.length >= MAX;
+    const link = location.origin + location.pathname;
+    const q = h('input', { type: 'search', placeholder: 'Nom d’utilisateur de la personne…', 'aria-label': 'Chercher un compte', disabled: full });
+    const res = h('div', { class: 'tm-res' });
+    let timer;
+    q.oninput = () => { clearTimeout(timer); timer = setTimeout(find, 300); };
+    async function find() {
+      res.textContent = '';
+      const v = q.value.trim(); if (v.length < 2) return;
+      const { data, error } = await sb.from('app_users').select('id,display_name,created_at').eq('role', 'user').is('staff', null).ilike('display_name', '%' + v.replace(/[%_]/g, '') + '%').order('created_at', { ascending: false }).limit(8);
+      if (error) return res.append(h('div', { class: 'bad' }, friendly(error)));
+      if (!data.length) return res.append(h('div', { class: 'rg-small' }, 'Aucun compte à ce nom. Vérifiez que la personne a bien créé son compte.'));
+      for (const u of data) {
+        const sel = roleSelect('editeur', () => {});
+        res.append(h('div', { class: 'tm-row' }, h('span', { class: 'tm-av' }, initial(u.display_name)),
+          h('div', { class: 'tm-who' }, h('b', {}, u.display_name || 'Sans nom'), h('small', {}, 'Compte créé le ' + fmtDate(u.created_at))),
+          sel, h('button', { class: 'btn small primary', onclick: async () => { if (await setRole(u, sel.value, (u.display_name || '') + ' a maintenant accès à la régie (' + ROLE_LABEL[sel.value] + ').')) { q.value = ''; res.textContent = ''; } } }, 'Donner l’accès')));
+      }
+    }
+    addBox.append(...[h('h3', {}, 'Ajouter une personne'),
+      full ? h('p', { class: 'bad' }, 'Les 5 places sont prises. Retirez l’accès à quelqu’un pour en ajouter une autre.') : null,
+      h('ol', {},
+        h('li', {}, 'Envoyez-lui le lien de la régie : ', h('a', { href: link, target: '_blank', rel: 'noopener' }, link), ' ',
+          h('button', { class: 'btn small ghost', onclick: () => navigator.clipboard.writeText(link).then(() => toast('Lien copié.'), () => toast('Copiez le lien à la main.', true)) }, 'Copier')),
+        h('li', {}, 'Elle touche « Créer mon compte » et choisit son nom d’utilisateur et son mot de passe.'),
+        h('li', {}, 'Cherchez son nom ci-dessous, choisissez son rôle et touchez « Donner l’accès ».')),
+      q, res].filter(Boolean));
+  }
+
+  async function loadLog() {
+    const { data, error } = await sb.from('regie_log').select('at,who,action').order('at', { ascending: false }).limit(40);
+    log.textContent = '';
+    if (error) return log.append(h('div', { class: 'bad' }, friendly(error)));
+    if (!data.length) return log.append(h('div', { class: 'rg-small' }, 'Rien pour le moment. Chaque action de la régie sera notée ici.'));
+    for (const l of data) log.append(h('div', {}, h('time', {}, fmtDate(l.at)), h('span', {}, h('b', {}, l.who || 'Quelqu’un'), ' ', l.action)));
+  }
+
+  async function loadBackups() {
+    const { data, error } = await sb.from('tv_backups').select('id,created_at,kind,who,n').order('created_at', { ascending: false }).limit(40);
+    backups.textContent = '';
+    if (error) return backups.append(h('div', { class: 'bad' }, friendly(error)));
+    if (!data.length) return backups.append(h('div', { class: 'rg-small' }, 'Pas encore de copie.'));
+    for (const b of data) {
+      const kind = b.kind === 'auto' ? 'automatique' : b.kind === 'manuelle' ? 'faite par ' + (b.who || 'un administrateur') : b.kind;
+      backups.append(h('div', { class: 'tm-bk' },
+        h('span', {}, h('b', {}, fmtDate(b.created_at)), h('small', {}, `${kind} · ${b.n} programme${b.n > 1 ? 's' : ''}`)),
+        h('button', { class: 'btn small', onclick: async () => {
+          if (!(await confirmBox(`Remettre la programmation telle qu’elle était le ${fmtDate(b.created_at)} (${b.n} programmes) ? La programmation actuelle sera remplacée, mais une copie en est gardée juste avant.`, 'Restaurer'))) return;
+          const { data: n, error } = await sb.rpc('tv_backup_restore', { p_id: b.id });
+          if (error) return toast(friendly(error), true);
+          toast(`Programmation restaurée : ${n} programmes.`); loadBackups(); loadLog();
+        } }, 'Restaurer')));
+    }
+  }
+  async function exportFile() {
+    const { data, error } = await sb.from('tv_programs').select('*').order('position').order('created_at');
+    if (error) return toast(friendly(error), true);
+    const blob = new Blob([JSON.stringify({ app: 'conacce-tv', exported_at: new Date().toISOString(), programs: data }, null, 2)], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: `conacce-tv-programmation-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.append(a); a.click(); a.remove();
+    toast('Fichier téléchargé : gardez-le en lieu sûr.');
+  }
+  function importFile() {
+    const inp = h('input', { type: 'file', accept: '.json,application/json', class: 'hidden' });
+    inp.onchange = async () => {
+      const f = inp.files[0]; inp.remove(); if (!f) return;
+      let json; try { json = JSON.parse(await f.text()); } catch (e) { return toast('Ce fichier n’est pas une sauvegarde Conacce TV.', true); }
+      const list = Array.isArray(json) ? json : json && json.programs;
+      if (!Array.isArray(list)) return toast('Ce fichier n’est pas une sauvegarde Conacce TV.', true);
+      if (!(await confirmBox(`Remplacer toute la programmation par celle du fichier (${list.length} programmes) ? Une copie de la programmation actuelle est gardée juste avant.`, 'Importer'))) return;
+      const { data: n, error } = await sb.rpc('tv_backup_import', { p: { programs: list } });
+      if (error) return toast(friendly(error), true);
+      toast(`Programmation importée : ${n} programmes.`); loadBackups(); loadLog();
+    };
+    document.body.append(inp); inp.click();
+  }
+
+  main.append(h('div', { class: 'tm' },
+    h('section', { class: 'st-card tm-team', 'aria-label': 'Comptes de la régie' },
+      h('div', { class: 'st-card-head' }, h('h2', {}, 'Comptes de la régie'), places),
+      accounts, addBox,
+      h('div', { class: 'tm-roles' },
+        h('div', { class: 'admin' }, h('b', {}, 'Administrateur'), 'Tout : programmes, directs, comptes, sauvegardes, tout effacer.'),
+        h('div', { class: 'editeur' }, h('b', {}, 'Éditeur'), 'Ajoute et programme les vidéos, pilote la chaîne. Ne peut pas tout effacer ni gérer les comptes.'),
+        h('div', { class: 'animateur' }, h('b', {}, 'Animateur'), 'Lance et arrête les directs. Voit la grille sans la modifier.')),
+      h('h3', {}, 'Journal des actions'), log),
+    h('section', { class: 'st-card tm-save', 'aria-label': 'Sauvegarde en ligne' },
+      h('div', { class: 'st-card-head' }, h('h2', {}, 'Sauvegarde en ligne')),
+      h('div', { class: 'st-alert ok' }, icon('cloud', 22), h('span', {}, h('b', {}, 'Tout est enregistré en ligne, à chaque changement. '), 'Si l’ordinateur tombe en panne, connectez-vous depuis un autre : tout est là. En plus, une copie de la programmation est faite chaque matin et avant chaque « Tout supprimer », gardée 30 jours.')),
+      h('div', { class: 'tm-btns' },
+        h('button', { class: 'btn small primary', onclick: async () => { const { error } = await sb.rpc('tv_backup_now'); if (error) return toast(friendly(error), true); toast('Copie faite.'); loadBackups(); loadLog(); } }, 'Faire une copie maintenant'),
+        h('button', { class: 'btn small', onclick: exportFile }, 'Télécharger la programmation'),
+        h('button', { class: 'btn small', onclick: importFile }, 'Importer un fichier')),
+      h('h3', {}, 'Points de restauration'), backups)));
+  loadTeam(); loadLog(); loadBackups();
 }
 
 const NAV = [
@@ -2027,24 +2449,30 @@ const NAV = [
   ['live', 'Diffusion', 'TV en direct'], ['regie', '', 'Régie TV (programmation)'], ['radio', '', 'Radio Dunamis FM'],
   ['sermons', 'Contenus', 'Vidéos'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
   ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
-  ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe'],
+  ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe et sauvegarde'],
 ];
 let current = null, me = null;
 
 function show(key, arg) {
   if (key === 'tv') key = 'regie';
+  if (!can.admin && key !== 'regie') key = 'regie';
   if (window.__leave) { try { window.__leave(); } catch (e) {} window.__leave = null; }
   current = key;
   history.replaceState(null, '', '#' + key);
   document.querySelectorAll('button.nav').forEach(b => b.classList.toggle('on', b.dataset.k === key));
   const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
-  main.classList.toggle('wide', key === 'regie');
+  const app = $('.app'); if (app) app.classList.toggle('studio', key === 'regie' || key === 'team');
   if (ENT[key]) return showList(key);
   ({ regie: showRegie, dash: showDash, live: showLive, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
 }
 
 function shell(user) {
   const root = $('#root'); root.textContent = '';
+  if (!can.admin) {
+    // Éditeurs et animateurs : la régie seulement.
+    root.append(h('div', { class: 'app studio' }, h('main', { id: 'main' })));
+    return show('regie');
+  }
   root.append(h('div', { class: 'app' },
     h('nav', { class: 'side' },
       h('div', { class: 'brand' }, h('img', { src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }), h('div', {}, 'ADMINISTRATION')),
@@ -2133,8 +2561,8 @@ function deniedScreen(user) {
   root.append(h('div', { class: 'center' }, h('div', { class: 'login' },
     h('img', { class: 'logo', src: '../assets/assets/images/logo.png', alt: 'Conacce TV' }),
     h('h1', { style: 'text-align:center' }, 'Accès réservé'),
-    h('p', {}, 'Vous êtes connecté avec ', h('b', {}, userLabel(user.email)), ', mais ce compte n’est pas encore administrateur.'),
-    h('p', {}, 'Un administrateur peut vous donner l’accès dans la rubrique « Équipe ». Rechargez ensuite cette page.'),
+    h('p', {}, 'Vous êtes connecté avec ', h('b', {}, userLabel(user.email)), ', mais ce compte n’a pas encore accès à la régie.'),
+    h('p', {}, 'Donnez votre nom d’utilisateur à l’administrateur : il vous donnera l’accès dans « Équipe et sauvegarde ». Rechargez ensuite cette page.'),
     h('div', { style: 'display:flex;gap:10px' },
       h('button', { class: 'btn primary', onclick: () => location.reload() }, 'Recharger'),
       h('button', { class: 'btn', onclick: async () => { await sb.auth.signOut(); boot(); } }, 'Changer de compte')))));
@@ -2147,10 +2575,12 @@ async function boot() {
     return loginScreen(err ? 'Ce lien a expiré. Connectez-vous avec votre nom d’utilisateur et votre mot de passe.' : null);
   }
   me = session.user;
-  const { data, error } = await sb.from('app_users').select('role').eq('id', me.id).maybeSingle();
+  const { data, error } = await sb.from('app_users').select('role,staff,is_owner,display_name').eq('id', me.id).maybeSingle();
   if (error) return loginScreen(friendly(error));
-  if (data?.role !== 'admin') return deniedScreen(me);
-  await loadRefs();
+  ROLE = !data ? null : data.is_owner ? 'owner' : data.role === 'admin' ? 'admin' : data.staff || null;
+  myName = (data && data.display_name) || userLabel(me.email);
+  if (!ROLE) return deniedScreen(me);
+  if (can.admin) await loadRefs();
   shell(me);
 }
 
