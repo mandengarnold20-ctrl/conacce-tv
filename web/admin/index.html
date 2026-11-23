@@ -2116,7 +2116,6 @@ async function showRegie() {
     return parts.join('   •   ');
   }
   const drawOverlay = makeOverlay(airBox);
-  const drawPrevOverlay = makeOverlay(prevBox);
 
   // ── Barre du direct ──
   function liveBar() {
@@ -2802,8 +2801,6 @@ async function showRegie() {
       } catch (e) {}
     }
     drawOverlay(t, T);
-    // Aperçu : même habillage que les spectateurs, calé sur la position de la vidéo en aperçu.
-    drawPrevOverlay(t, R.prev ? { kind: 'prev', sl: { p: R.prev, start: t - (prevBox.__pos ? prevBox.__pos() : 0) * 1000 } } : { kind: 'none' });
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
     const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
