@@ -541,6 +541,17 @@
   .logo-shine::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-160%); animation: logoshine 6s ease-in-out infinite; pointer-events: none; }
   @keyframes logoshine { 0%, 70% { transform: translateX(-160%); } 100% { transform: translateX(160%); } }
   @media (prefers-reduced-motion: reduce) { .logo-shine::after { animation: none; display: none; } }
+  /* Étape 3 : glisser-déposer, modèles */
+  .tl-wrap { position: relative; }
+  .tl-drop { position: absolute; top: 0; bottom: 0; width: 2px; background: #F9CA22; box-shadow: 0 0 0 1px rgba(0,0,0,.4); z-index: 5; pointer-events: none; }
+  .tl-drop span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #F9CA22; color: #0B1463; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; white-space: nowrap; margin-bottom: 2px; }
+  .tl-b.movable { cursor: grab; touch-action: none; } .tl-b.dragging { cursor: grabbing; opacity: .85; outline: 2px dashed #fff; z-index: 6; }
+  .rg-row[draggable=true] { cursor: grab; } .rg-row[draggable=true]:active { cursor: grabbing; }
+  .rg-bar.low i { background: #FDA45A; }
+  .tp { max-width: 640px; } .tp-sec { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .tp .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .tp .row input { flex: 1; min-width: 180px; }
+  .tp-list { display: grid; gap: 6px; } .tp-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); }
+  .tp-item .t { display: grid; } .tp-item small { color: #9AA6DA; font-size: 11.5px; }
 </style>
 </head>
 <body>
@@ -1763,7 +1774,8 @@ async function showRegie() {
   const lane = h('div', { class: 'tl-lane' });
   const nowLine = h('div', { class: 'tl-now hidden' }, h('span', {}, 'MAINTENANT'));
   const gridSec = h('section', { class: 'st-card', id: 'grille', 'aria-label': 'Grille' },
-    h('div', { class: 'st-card-head' }, gridTitle, h('span', { class: 'rg-small' }, 'Touchez un bloc pour le voir dans l’aperçu.'), h('span', { class: 'grow' }), dayTabs),
+    h('div', { class: 'st-card-head' }, gridTitle, h('span', { class: 'rg-small' }, can.program ? 'Glissez une vidéo de la liste sur la grille ; glissez un rendez-vous pour changer son heure.' : 'Touchez un bloc pour le voir dans l’aperçu.'), h('span', { class: 'grow' }),
+      can.program ? h('button', { class: 'btn small', onclick: () => templatesBox() }, 'Modèles de journées') : null, dayTabs),
     h('div', { class: 'tl-scroll' }, h('div', { class: 'tl' }, ticks, h('div', { class: 'tl-wrap' }, lane, nowLine))),
     h('div', { class: 'tl-legend' },
       h('span', {}, h('i', { class: 'sun' }), 'Rendez-vous (plan de la semaine)'),
@@ -2009,17 +2021,85 @@ async function showRegie() {
         h('div', { class: 'rg-small' }, 'Les polices sont hébergées avec l’appli : le texte s’affiche pareil sur tous les téléphones.')));
   }
 
-  // ── Habillage dessiné sur l'écran Antenne (comme dans l'appli) ──
-  const ovLogoImg = h('img', { alt: '' });
-  const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
-  const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
-  const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
-  const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
-  const ovTrack = h('div', { class: 'ov-track' });
-  const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
-  const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
-  const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTick);
-  airBox.append(ov);
+  // ── Habillage dessiné sur l'écran Antenne et sur l'Aperçu (comme dans l'appli) ──
+  function makeOverlay(box) {
+    const ovLogoImg = h('img', { alt: '' });
+    const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
+    const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
+    const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
+    const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
+    const ovTrack = h('div', { class: 'ov-track' });
+    const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
+    const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
+    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTick);
+    box.append(ov);
+    let bandHidden = null, bandWas = false, bandSwap = null;
+      return function draw(t, T) {
+      if (!ov.isConnected) { box.append(ov); if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; } }
+      const B = R.brand, w = box.clientWidth || 400, hgt = box.clientHeight || w * 9 / 16, k = w / 640;
+      ov.classList.toggle('hidden', T.kind === 'none');
+      ov.style.setProperty('--k', k.toFixed(3));
+      const text = tickerText(B, t), th = text ? Math.max(16, 22 * k) : 0, mg = 10 * k;
+      // Logo
+      const src = B.logo.url || LOGO_DEFAULT;
+      if (ovLogoImg.getAttribute('src') !== src) ovLogoImg.src = src;
+      ovLogo.classList.toggle('hidden', !B.logo.show);
+      const top = B.logo.corner[0] === 'h', left = B.logo.corner[1] === 'g';
+      Object.assign(ovLogo.style, { width: (w * 0.17 * B.logo.size / 100) + 'px', opacity: B.logo.opacity / 100,
+        top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
+      // Bandeau
+      const theme = { nuit: ['rgba(11,20,99,.92)', '#fff'], blanc: ['#fff', '#0B1463'], noir: ['rgba(0,0,0,.85)', '#F9CA22'] }[B.ticker.theme] || ['rgba(11,20,99,.92)', '#fff'];
+      ovTick.className = 'ov-tick' + (text ? '' : ' hidden');
+      Object.assign(ovTick.style, { height: th + 'px', fontSize: th + 'px', background: B.ticker.bg || theme[0], color: B.ticker.fg || theme[1], fontFamily: famOf(B.fontTicker || B.font) });
+      const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + JSON.stringify(B.fontTicker || B.font);
+      if (text && ovTrack.__k !== tkey) {
+        ovTrack.__k = tkey; ovTrack.textContent = '';
+        if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; }
+        const gap = th * 3;
+        for (let i = 0; i < 8; i++) ovTrack.append(h('span', { style: `padding-right:${gap}px` }, text));
+        // La police peut finir de charger après : on remesure à ce moment-là.
+        document.fonts.ready.then(() => { if (ovTrack.__anim && ovTrack.__k === tkey) { ovTrack.__anim.cancel(); ovTrack.__anim = null; } });
+      }
+      // Le défilement démarre dès que l'écran Antenne est visible (mesure du texte réelle, jamais à 0).
+      if (text && !ovTrack.__anim) {
+        const cycle = ovTrack.firstChild ? ovTrack.firstChild.getBoundingClientRect().width : 0;
+        if (cycle > 0) {
+          const pps = [0, 30, 45, 65, 90, 125][B.ticker.speed] * (th / 22);
+          ovTrack.__anim = ovTrack.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${cycle}px)` }],
+            { duration: Math.max(2, cycle / pps) * 1000, iterations: Infinity });
+        }
+      }
+      // Bande artiste / émission
+      const p = T.sl && T.sl.p;
+      const has = !!(B.band.show && p && p.kind !== 'habillage' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
+      let on = false;
+      if (has) {
+        const pos = (t - T.sl.start) / 1000, total = p.duration;
+        const win = a => pos >= a && pos < a + B.band.dur;
+        on = win(B.band.at) || (B.band.end > 0 && total > B.band.end + B.band.at + B.band.dur && win(total - B.band.end));
+        if (ovArtist.textContent !== (p.artist || '').trim()) ovArtist.textContent = (p.artist || '').trim();
+        if (ovSong.textContent !== (p.song || '').trim()) ovSong.textContent = (p.song || '').trim();
+        ovArtist.classList.toggle('hidden', !(p.artist || '').trim()); ovSong.classList.toggle('hidden', !(p.song || '').trim());
+      }
+      // Entrée et sortie : chacune avec son animation.
+      if (on !== bandWas) {
+        bandWas = on; clearTimeout(bandSwap);
+        if (!on) { bandHidden = B.band.out; bandSwap = setTimeout(() => { bandHidden = null; }, 900); }
+      }
+      const style = on ? B.band.anim : (bandHidden || B.band.anim);
+      const fromTop = B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
+      ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
+      Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
+        top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
+      ovBand.className = 'ov-band a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
+      const mid = B.band.topA;
+      Object.assign(ovBand.style, { maxWidth: (w * B.band.width / 100) + 'px', minWidth: Math.min(150 * bk, w * B.band.width / 100) + 'px', fontFamily: famOf(B.fontBand || B.font) });
+      ovBand.style.setProperty('--bk', bk.toFixed(3));
+      Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText });
+      Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
+      };
+    }
+
   function tickerText(B, t) {
     if (!B.ticker.show) return '';
     const d = new Date(t + 3600e3), m = d.getUTCHours() * 60 + d.getUTCMinutes();
@@ -2035,70 +2115,8 @@ async function showRegie() {
     if (!parts.length && (B.ticker.fallback || '').trim()) parts.push(B.ticker.fallback.trim());
     return parts.join('   •   ');
   }
-  let bandHidden = null, bandWas = false, bandSwap = null;
-  function drawOverlay(t, T) {
-    const B = R.brand, w = airBox.clientWidth || 400, hgt = airBox.clientHeight || w * 9 / 16, k = w / 640;
-    ov.classList.toggle('hidden', T.kind === 'none');
-    ov.style.setProperty('--k', k.toFixed(3));
-    const text = tickerText(B, t), th = text ? Math.max(16, 22 * k) : 0, mg = 10 * k;
-    // Logo
-    const src = B.logo.url || LOGO_DEFAULT;
-    if (ovLogoImg.getAttribute('src') !== src) ovLogoImg.src = src;
-    ovLogo.classList.toggle('hidden', !B.logo.show);
-    const top = B.logo.corner[0] === 'h', left = B.logo.corner[1] === 'g';
-    Object.assign(ovLogo.style, { width: (w * 0.17 * B.logo.size / 100) + 'px', opacity: B.logo.opacity / 100,
-      top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
-    // Bandeau
-    const theme = { nuit: ['rgba(11,20,99,.92)', '#fff'], blanc: ['#fff', '#0B1463'], noir: ['rgba(0,0,0,.85)', '#F9CA22'] }[B.ticker.theme] || ['rgba(11,20,99,.92)', '#fff'];
-    ovTick.className = 'ov-tick' + (text ? '' : ' hidden');
-    Object.assign(ovTick.style, { height: th + 'px', fontSize: th + 'px', background: B.ticker.bg || theme[0], color: B.ticker.fg || theme[1], fontFamily: famOf(B.fontTicker || B.font) });
-    const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + JSON.stringify(B.fontTicker || B.font);
-    if (text && ovTrack.__k !== tkey) {
-      ovTrack.__k = tkey; ovTrack.textContent = '';
-      if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; }
-      const gap = th * 3;
-      for (let i = 0; i < 8; i++) ovTrack.append(h('span', { style: `padding-right:${gap}px` }, text));
-      // La police peut finir de charger après : on remesure à ce moment-là.
-      document.fonts.ready.then(() => { if (ovTrack.__anim && ovTrack.__k === tkey) { ovTrack.__anim.cancel(); ovTrack.__anim = null; } });
-    }
-    // Le défilement démarre dès que l'écran Antenne est visible (mesure du texte réelle, jamais à 0).
-    if (text && !ovTrack.__anim) {
-      const cycle = ovTrack.firstChild ? ovTrack.firstChild.getBoundingClientRect().width : 0;
-      if (cycle > 0) {
-        const pps = [0, 30, 45, 65, 90, 125][B.ticker.speed] * (th / 22);
-        ovTrack.__anim = ovTrack.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${cycle}px)` }],
-          { duration: Math.max(2, cycle / pps) * 1000, iterations: Infinity });
-      }
-    }
-    // Bande artiste / émission
-    const p = T.sl && T.sl.p;
-    const has = !!(B.band.show && p && p.kind !== 'habillage' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
-    let on = false;
-    if (has) {
-      const pos = (t - T.sl.start) / 1000, total = p.duration;
-      const win = a => pos >= a && pos < a + B.band.dur;
-      on = win(B.band.at) || (B.band.end > 0 && total > B.band.end + B.band.at + B.band.dur && win(total - B.band.end));
-      if (ovArtist.textContent !== (p.artist || '').trim()) ovArtist.textContent = (p.artist || '').trim();
-      if (ovSong.textContent !== (p.song || '').trim()) ovSong.textContent = (p.song || '').trim();
-      ovArtist.classList.toggle('hidden', !(p.artist || '').trim()); ovSong.classList.toggle('hidden', !(p.song || '').trim());
-    }
-    // Entrée et sortie : chacune avec son animation.
-    if (on !== bandWas) {
-      bandWas = on; clearTimeout(bandSwap);
-      if (!on) { bandHidden = B.band.out; bandSwap = setTimeout(() => { bandHidden = null; }, 900); }
-    }
-    const style = on ? B.band.anim : (bandHidden || B.band.anim);
-    const fromTop = B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
-    ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
-    Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
-      top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
-    ovBand.className = 'ov-band a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
-    const mid = B.band.topA;
-    Object.assign(ovBand.style, { maxWidth: (w * B.band.width / 100) + 'px', minWidth: Math.min(150 * bk, w * B.band.width / 100) + 'px', fontFamily: famOf(B.fontBand || B.font) });
-    ovBand.style.setProperty('--bk', bk.toFixed(3));
-    Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText });
-    Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
-  }
+  const drawOverlay = makeOverlay(airBox);
+  const drawPrevOverlay = makeOverlay(prevBox);
 
   // ── Barre du direct ──
   function liveBar() {
@@ -2268,10 +2286,154 @@ async function showRegie() {
       const el = h(b.kind === 'gap' ? 'div' : 'button', { class: 'tl-b ' + b.kind + (b.kind === 'fixed' ? ' sun' : ''), style: `left:${left}%;width:${width}%`, title: label + ' · ' + sub,
         onclick: b.kind === 'gap' ? null : () => setPreview(b.kind === 'loop' ? b.items[0] : b.p) }, h('b', {}, label), h('small', {}, sub));
       lane.append(el);
+      if (b.kind === 'fixed') makeMovable(el, b);
     }
     const isToday = s0 === startOfDay(now());
     nowLine.classList.toggle('hidden', !isToday);
   }
+
+  // ── Glisser-déposer sur la grille du jour ──
+  const SNAP = 5 * 60000;
+  const dropMark = h('div', { class: 'tl-drop hidden' }, h('span', {}));
+  lane.parentNode.append(dropMark);
+  const timeAtX = clientX => {
+    const r = lane.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    return dayStart(R.day) + Math.round(f * DAY_MS / SNAP) * SNAP;
+  };
+  const showMark = (t, label) => {
+    const s0 = dayStart(R.day);
+    dropMark.classList.remove('hidden');
+    dropMark.style.left = ((t - s0) / DAY_MS * 100) + '%';
+    dropMark.firstChild.textContent = label || hm(t);
+  };
+  const hideMark = () => dropMark.classList.add('hidden');
+  /** Place un programme à l'heure [t] : déplace un rendez-vous, ou crée un rendez-vous à partir d'une vidéo de la playlist. */
+  async function placeAt(p, t) {
+    if (!can.program) return;
+    if (p.start_at) {
+      const base = p.repeat_daily || p.repeat_weekly ? startOfDay(Date.parse(p.start_at)) + (t - startOfDay(t)) : t;
+      if (base === Date.parse(p.start_at)) return draw();
+      const { error } = await sb.from('tv_programs').update({ start_at: new Date(base).toISOString() }).eq('id', p.id);
+      if (error) return toast(friendly(error), true);
+      toast(`« ${p.title} » déplacé à ${hm(t)}${p.repeat_daily ? ' (chaque jour)' : p.repeat_weekly ? ' (chaque semaine)' : ''}.`);
+    } else {
+      try {
+        await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null,
+          show_band: p.show_band !== false, position: 0, start_at: new Date(t).toISOString(), repeat_daily: false, repeat_weekly: false });
+        toast(`« ${p.title} » programmé ${RG_DAYS_LONG[R.day]} à ${hm(t)}. Il reste aussi dans la playlist.`);
+      } catch (e) { return toast(friendly(e), true); }
+    }
+    const clash = dayItems(R.day).find(it => it.p.id !== p.id && it.at < t + p.duration * 1000 && it.end > t);
+    if (clash) toast(`Attention : chevauche « ${clash.p.title} » (${hm(clash.at)}). Le plus tardif coupe le précédent.`, true);
+    reload();
+  }
+  if (can.program) {
+    lane.addEventListener('dragover', e => {
+      if (![...e.dataTransfer.types].includes('text/x-ctv')) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; showMark(timeAtX(e.clientX));
+    });
+    lane.addEventListener('dragleave', e => { if (!lane.contains(e.relatedTarget)) hideMark(); });
+    lane.addEventListener('drop', e => {
+      const id = e.dataTransfer.getData('text/x-ctv'); hideMark();
+      const p = R.programs.find(x => x.id === id); if (!p) return;
+      e.preventDefault(); placeAt(p, timeAtX(e.clientX));
+    });
+  }
+  /** Rendez-vous déplaçable à la souris sur la ligne de temps (un simple clic l'ouvre dans l'aperçu). */
+  function makeMovable(el, b) {
+    if (!can.program) return;
+    el.classList.add('movable');
+    el.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      const x0 = e.clientX, left0 = parseFloat(el.style.left), w = lane.getBoundingClientRect().width;
+      let moved = false, t = b.from;
+      const mv = ev => {
+        const dx = ev.clientX - x0;
+        if (!moved && Math.abs(dx) < 5) return;
+        moved = true; el.classList.add('dragging');
+        t = dayStart(R.day) + Math.round(((left0 + dx / w * 100) / 100 * DAY_MS) / SNAP) * SNAP;
+        t = Math.max(dayStart(R.day), Math.min(dayStart(R.day) + DAY_MS - SNAP, t));
+        el.style.left = ((t - dayStart(R.day)) / DAY_MS * 100) + '%';
+        showMark(t, hm(t) + ' · ' + b.p.title);
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+        hideMark(); el.classList.remove('dragging');
+        if (moved) { el.__noClick = true; setTimeout(() => { el.__noClick = false; }, 50); placeAt(b.p, t); }
+      };
+      window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+    });
+    el.addEventListener('click', e => { if (el.__noClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
+
+  // ── Modèles de journées ──
+  const snap = p => ({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false });
+  const dayModel = i => dayItems(i).filter(it => !it.p.repeat_daily).map(it => ({ minute: Math.round((it.at - dayStart(i)) / 60000), ...snap(it.p) }));
+  async function applyItems(items, i) {
+    const s0 = dayStart(i), have = dayItems(i);
+    let n = 0, skip = 0;
+    for (const it of items) {
+      const at = s0 + it.minute * 60000;
+      if (have.some(x => x.p.video_url === it.video_url && Math.abs(x.at - at) < 60000)) { skip++; continue; }
+      const { minute, ...row } = it;
+      try { await insertProgram({ ...row, position: 0, start_at: new Date(at).toISOString(), repeat_daily: false, repeat_weekly: false }); n++; } catch (e) { toast(friendly(e), true); break; }
+    }
+    toast(`${n} rendez-vous ajouté${n > 1 ? 's' : ''} ${RG_DAYS_LONG[i]}${skip ? ` (${skip} déjà présent${skip > 1 ? 's' : ''})` : ''}.`);
+    reload();
+  }
+  async function templatesBox() {
+    const { data, error } = await sb.from('tv_day_templates').select('*').order('created_at', { ascending: false });
+    if (error) return toast(/tv_day_templates/.test(error.message) ? 'Base pas encore à jour (migration v14).' : friendly(error), true);
+    const src = R.day, model = dayModel(src);
+    const daySel = (val) => { const s = h('select', { 'aria-label': 'Jour' }, RG_DAYS_LONG.map((d, i) => h('option', { value: i }, d.replace(/^le /, '') + ' ' + new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })))); s.value = val; return s; };
+    const nameIn = h('input', { type: 'text', placeholder: 'Ex. : Dimanche type, Journée de prière…', 'aria-label': 'Nom du modèle', maxlength: 60 });
+    const copyTo = daySel((src + 1) % 7);
+    const list = h('div', { class: 'tp-list' });
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() }, h('div', { class: 'tp' },
+      h('h2', {}, 'Modèles de journées'),
+      h('div', { class: 'tp-sec' }, h('b', {}, `Journée affichée : ${RG_DAYS_LONG[src]} · ${model.length} rendez-vous`),
+        model.length ? h('div', { class: 'row' }, nameIn, h('button', { class: 'btn primary', onclick: async () => {
+          const name = nameIn.value.trim(); if (!name) return toast('Donnez un nom au modèle.', true);
+          const { error } = await sb.from('tv_day_templates').insert({ name, items: model });
+          if (error) return toast(friendly(error), true);
+          toast(`Modèle « ${name} » enregistré.`); m.remove(); templatesBox();
+        } }, 'Enregistrer comme modèle')) : h('div', { class: 'rg-small' }, 'Aucun rendez-vous ce jour-là : glissez d’abord des vidéos sur la grille.'),
+        model.length ? h('div', { class: 'row' }, h('span', { class: 'rg-small' }, 'Copier cette journée vers'), copyTo, h('button', { class: 'btn', onclick: () => { const to = +copyTo.value; if (to === src) return toast('Choisissez un autre jour.', true); m.remove(); applyItems(model, to); } }, 'Copier')) : null),
+      h('div', { class: 'tp-sec' }, h('b', {}, 'Modèles enregistrés'), list),
+      h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Fermer'))));
+    if (!data.length) list.append(h('div', { class: 'rg-small' }, 'Aucun modèle pour l’instant.'));
+    for (const tp of data) {
+      const to = daySel(src);
+      const dur = (tp.items || []).reduce((a, x) => a + (x.duration || 0), 0);
+      list.append(h('div', { class: 'tp-item' },
+        h('span', { class: 't' }, h('b', {}, tp.name), h('small', {}, `${(tp.items || []).length} rendez-vous · ${fmtLong(dur)} · de ${hm(dayStart(0) + Math.min(...(tp.items || [{ minute: 0 }]).map(x => x.minute)) * 60000)}`)),
+        to, h('button', { class: 'btn small primary', onclick: () => { m.remove(); applyItems(tp.items || [], +to.value); } }, 'Appliquer'),
+        can.admin || (me && tp.created_by === me.id) ? h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer le modèle ' + tp.name, onclick: async () => {
+          if (!(await confirmBox(`Supprimer le modèle « ${tp.name} » ? Les rendez-vous déjà placés restent dans la grille.`, 'Supprimer', true))) return;
+          const { error } = await sb.from('tv_day_templates').delete().eq('id', tp.id);
+          if (error) return toast(friendly(error), true);
+          m.remove(); templatesBox();
+        } }, '✕') : null));
+    }
+    document.body.append(m);
+  }
+
+  // ── Notifications sur l'ordinateur pour les alertes graves ──
+  let lastSerious = new Set();
+  function notifyNew(out) {
+    const now_ = new Set(out.filter(a => a[0] === 'bad' || a[0] === 'warn').map(a => a[1]));
+    if (window.Notification && Notification.permission === 'granted') {
+      for (const msg of now_) if (!lastSerious.has(msg)) { try { new Notification('Conacce TV · alerte de la régie', { body: msg, tag: msg.slice(0, 40), icon: LOGO_DEFAULT }); } catch (e) {} }
+    }
+    lastSerious = now_;
+  }
+  const notifBtn = () => {
+    if (!window.Notification) return null;
+    if (Notification.permission === 'granted') return h('div', { class: 'rg-small' }, '✓ Les alertes graves s’affichent aussi en notification sur cet ordinateur (régie ouverte, même en arrière-plan).');
+    if (Notification.permission === 'denied') return h('div', { class: 'rg-small' }, 'Notifications bloquées par le navigateur pour ce site : autorisez-les dans les réglages du navigateur (icône à gauche de l’adresse).');
+    return h('button', { class: 'btn small', onclick: async () => { await Notification.requestPermission(); drawAlerts(); } }, 'Recevoir les alertes en notification sur cet ordinateur');
+  };
 
   // ── Affichage des listes ──
   const match = p => (R.kind === 'all' || (p.kind || 'clip') === R.kind) && (!R.q.trim() || norm(p.title + ' ' + (p.artist || '') + ' ' + (p.song || '')).includes(norm(R.q.trim())));
@@ -2318,7 +2480,9 @@ async function showRegie() {
   function row(p, num, acts, note, at) {
     const st = p.source === 'file' ? (R.ready[p.id] === false ? ' · en préparation chez Cloudflare' : '') : '';
     const th = progThumb(p);
-    return h('div', { class: 'rg-row' + (R.prev && R.prev.id === p.id ? ' sel' : ''), 'data-id': p.id, 'data-at': at || '' },
+    return h('div', { class: 'rg-row' + (R.prev && R.prev.id === p.id ? ' sel' : ''), 'data-id': p.id, 'data-at': at || '',
+      draggable: can.program ? 'true' : null, title: can.program ? 'Glissez sur la grille pour le programmer à une heure précise' : null,
+      ondragstart: can.program ? e => { e.dataTransfer.setData('text/x-ctv', p.id); e.dataTransfer.effectAllowed = 'copyMove'; } : null },
       h('span', { class: 'n' }, num),
       h('span', { class: 'th' }, th ? h('img', { src: th, alt: '', loading: 'lazy', onerror: e => e.target.remove() }) : null),
       h('span', { class: 't', title: p.title }, p.title, h('small', {},
@@ -2342,6 +2506,10 @@ async function showRegie() {
     if (R.liveIdle) out.push(['warn', 'Direct allumé, mais OBS / vMix n’envoie aucune image : la programmation reste à l’antenne.', '#directs']);
     const prep = R.programs.filter(p => p.source === 'file' && R.ready[p.id] === false).length;
     if (prep) out.push(['info', `${prep} vidéo${prep > 1 ? 's' : ''} encore en préparation chez Cloudflare : elle${prep > 1 ? 's' : ''} passera${prep > 1 ? 'ont' : ''} dès qu’elle${prep > 1 ? 's seront prêtes' : ' sera prête'}.`]);
+    // Boucle de sécurité : ce qui tourne quand rien n'est programmé.
+    const loopDur = S.empty ? 0 : S.loop.reduce((a, p) => a + p.duration, 0);
+    const planned = [0, 1, 2, 3, 4, 5, 6].filter(i => dayItems(i).length).length;
+    if (S.loop.length && loopDur < 2 * 3600) out.push(['warn', `Réserve basse : la playlist en boucle ne dure que ${fmtLong(loopDur)}, elle se répète souvent. Ajoutez des vidéos (objectif : au moins 24 h).`, '#programmes']);
     const uniq = new Map(); for (const p of R.programs) uniq.set(p.video_url, p.duration);
     const total = [...uniq.values()].reduce((a, d) => a + d, 0);
     if (!S.empty && total < 24 * 3600) out.push(['info', `${fmtLong(total)} de programmes différents. Objectif : 24 h, pour éviter que la boucle se répète trop souvent.`]);
@@ -2353,11 +2521,15 @@ async function showRegie() {
     const top = out.filter(a => a[0] !== 'info');
     for (const a of (top.length ? top : [['ok', 'Tout va bien : la chaîne tourne sans trou.' + (out.some(a => a[0] === 'info') ? ' Conseils dans l’onglet « Alertes ».' : ''), out.some(a => a[0] === 'info') ? '#alertes' : null]])) alerts.append(item(a));
     for (const a of out) alertsFull.append(item(a));
+    const nb = notifBtn(); if (nb) alertsFull.append(nb);
+    notifyNew(out);
     F.bellN.textContent = String(serious); F.bellN.classList.toggle('hidden', !serious);
     F.bell.setAttribute('aria-label', serious ? `Alertes : ${serious}` : 'Aucune alerte');
     F.reserve.classList.remove('hidden'); F.reserve.textContent = '';
-    F.reserve.append(h('small', {}, 'PROGRAMMES DIFFÉRENTS'), h('b', {}, fmtLong(total)),
-      h('span', { class: 'rg-bar' }, h('i', { style: `width:${Math.min(100, total / 864)}%` })), h('small', {}, 'objectif : 24 h'));
+    F.reserve.append(h('small', {}, 'BOUCLE DE SÉCURITÉ'), h('b', {}, fmtLong(loopDur)),
+      h('span', { class: 'rg-bar' + (loopDur < 2 * 3600 ? ' low' : '') }, h('i', { style: `width:${Math.min(100, loopDur / 864)}%` })),
+      h('small', {}, `objectif : 24 h · ${fmtLong(total)} de vidéos différentes`),
+      h('small', {}, `Plan : ${planned}/7 jours avec rendez-vous`));
   }
 
   function editTime(r, p, it) {
@@ -2525,7 +2697,7 @@ async function showRegie() {
   // ── Écran d'aperçu ──
   async function setPreview(p) {
     R.prev = p;
-    const old = prevBox.__destroy; prevBox.__destroy = null; if (old) old();
+    const old = prevBox.__destroy; prevBox.__destroy = null; prevBox.__pos = null; if (old) old();
     prevBox.textContent = '';
     prevNow.classList.toggle('hidden', !p); prevClose.classList.toggle('hidden', !p); prevState.classList.toggle('hidden', !p);
     document.querySelectorAll('.rg-row').forEach(r => r.classList.toggle('sel', !!p && r.dataset.id === p.id));
@@ -2538,9 +2710,11 @@ async function showRegie() {
       const div = h('div'); host.append(div);
       const pl = new YT.Player(div, { width: '100%', height: '100%', videoId: ytId(p.video_url), playerVars: { autoplay: 1, controls: 1, playsinline: 1, rel: 0, origin: location.origin } });
       prevBox.__destroy = () => { try { pl.destroy(); } catch (e) {} };
+      prevBox.__pos = () => { try { return pl.getCurrentTime() || 0; } catch (e) { return 0; } };
     } else {
       const v = h('video', { controls: true, autoplay: true, playsinline: true }); host.append(v);
       prevBox.__destroy = attachHls(v, streamUrl(p.video_url));
+      prevBox.__pos = () => v.currentTime || 0;
     }
   }
   function attachHls(v, url) {
@@ -2627,6 +2801,8 @@ async function showRegie() {
       } catch (e) {}
     }
     drawOverlay(t, T);
+    // Aperçu : même habillage que les spectateurs, calé sur la position de la vidéo en aperçu.
+    drawPrevOverlay(t, R.prev ? { kind: 'prev', sl: { p: R.prev, start: t - (prevBox.__pos ? prevBox.__pos() : 0) * 1000 } } : { kind: 'none' });
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
     const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];
