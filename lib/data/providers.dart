@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -69,9 +71,37 @@ Future<bool> hlsIsAiring(String url) async {
   }
 }
 
+/// Hors connexion : la dernière grille, l'habillage et l'état de la chaîne reçus sont gardés
+/// sur le téléphone ; la TV continue avec eux tant que le réseau ne revient pas.
+Stream<List<Map<String, dynamic>>> _withOfflineCopy(String key, Stream<List<Map<String, dynamic>>> Function() live) async* {
+  SharedPreferences? prefs;
+  try {
+    prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(key);
+    if (saved != null) {
+      yield [for (final r in jsonDecode(saved) as List) Map<String, dynamic>.from(r as Map)];
+    }
+  } catch (_) {}
+  // Coupure réseau : on garde la copie affichée et on se reconnecte tout seul.
+  var wait = 3;
+  while (true) {
+    try {
+      await for (final rows in live()) {
+        wait = 3;
+        try {
+          await prefs?.setString(key, jsonEncode(rows));
+        } catch (_) {}
+        yield rows;
+      }
+    } catch (_) {}
+    await Future<void>.delayed(Duration(seconds: wait));
+    if (wait < 30) wait *= 2;
+  }
+}
+
 /// Programmes de la chaîne 24 h/24 (grille), mis à jour instantanément.
 final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
-  return _db.from('tv_programs').stream(primaryKey: ['id']).map(
+  return _withOfflineCopy('ctv_programs', () => _db.from('tv_programs').stream(primaryKey: ['id'])).map(
         (rows) => rows.where((r) => r['is_active'] != false).map(TvProgram.fromMap).toList(),
       );
 });
@@ -79,13 +109,13 @@ final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
 /// État de la chaîne (régie) : à l'antenne, en pause ou arrêtée.
 /// Habillage de la chaîne (logo, bandeau, bande artiste), mis à jour en direct par la régie.
 final brandingProvider = StreamProvider<Branding>((ref) {
-  return _db.from('tv_branding').stream(primaryKey: ['id']).map(
+  return _withOfflineCopy('ctv_branding', () => _db.from('tv_branding').stream(primaryKey: ['id'])).map(
         (rows) => rows.isEmpty ? const Branding() : Branding.fromConfig(rows.first['config'] as Map<String, dynamic>?),
       );
 });
 
 final tvChannelProvider = StreamProvider<TvChannel>((ref) {
-  return _db.from('tv_channel').stream(primaryKey: ['id']).map(
+  return _withOfflineCopy('ctv_channel', () => _db.from('tv_channel').stream(primaryKey: ['id'])).map(
         (rows) => rows.isEmpty ? const TvChannel() : TvChannel.fromMap(rows.first),
       );
 });

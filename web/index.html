@@ -162,13 +162,23 @@
       var v = document.createElement('video');
       v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.playsInline = true;
       v.preload = 'auto'; v.autoplay = false; v.controls = false;
-      v.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:0;transition:opacity .35s';
-      v.addEventListener('waiting', function () { if (v === vids[cur]) { clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && (v.paused || v.readyState < 3)) spin.style.display = 'flex'; }, 1500); } });
+      v.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:0;transition:opacity .8s';
+      v.addEventListener('waiting', function () { if (v === vids[cur]) { clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && (v.paused || v.readyState < 3)) { spinText(); spin.style.display = 'flex'; } }, 1500); } });
       v.addEventListener('playing', function () { if (v === vids[cur]) { clearTimeout(waitT); if (spin) spin.style.display = 'none'; v.style.opacity = '1'; } });
       // Un déplacement de l'écran (page qui se réorganise, téléphone tourné) peut mettre la vidéo en pause : elle repart aussitôt.
       v.addEventListener('pause', function () { if (v === vids[cur] && want && !v.ended) setTimeout(function () { if (want && v.paused) doPlay(v); }, 60); });
       return v;
     }
+    // Sans internet et programme pas encore téléchargé : écran d'attente avec le logo.
+    function spinText() {
+      if (!spin) return;
+      var off = navigator.onLine === false;
+      spin.style.background = off ? '#0B1463' : 'transparent';
+      spin.lastChild && (spin.querySelector('.t').textContent = off ? 'Hors connexion · la chaîne reprend dès le retour du réseau' : 'Chargement…');
+      spin.querySelector('.lg').style.display = off ? 'block' : 'none';
+    }
+    window.addEventListener('offline', function () { spinText(); });
+    window.addEventListener('online', function () { spinText(); if (want && vids[cur] && vids[cur].paused) doPlay(vids[cur]); });
     function ensure() {
       if (vids.length) return;
       park = document.createElement('div');
@@ -177,7 +187,9 @@
       vids = [mk(), mk()];
       spin = document.createElement('div');
       spin.style.cssText = 'position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none';
-      spin.innerHTML = '<div style="padding:10px 14px;border-radius:12px;background:rgba(0,0,0,.6);color:#C9D2F5;font:12px Poppins,sans-serif;display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvspin .8s linear infinite"></span>Chargement…</div>';
+      spin.style.flexDirection = 'column'; spin.style.gap = '12px';
+      spin.innerHTML = '<img class="lg" src="assets/assets/images/logo.png" alt="" style="display:none;width:40%;max-width:260px;border-radius:6px">' +
+        '<div style="padding:10px 14px;border-radius:12px;background:rgba(0,0,0,.6);color:#C9D2F5;font:12px Poppins,sans-serif;display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvspin .8s linear infinite"></span><span class="t">Chargement…</span></div>';
       chip = document.createElement('div');
       chip.style.cssText = 'position:absolute;left:50%;top:8px;transform:translateX(-50%);display:none;padding:5px 10px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font:12px Poppins,sans-serif;pointer-events:none';
       chip.textContent = '🔇 Touchez pour le son';
@@ -247,7 +259,7 @@
         place(); return;
       }
       v.style.opacity = '0';
-      clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && v.paused) spin.style.display = 'flex'; }, 1500);
+      clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && v.paused) { spinText(); spin.style.display = 'flex'; } }, 1500);
       load(v, url); place();
     };
     // Prépare le programme suivant sur l'écran libre (quelques dizaines de secondes avant).
@@ -322,16 +334,33 @@
     if (v.webkitRequestFullscreen) v.webkitRequestFullscreen();
   };
   </script>
-  <!-- Supprime l'ancienne version gardée en mémoire par le navigateur (mise à jour immédiate) -->
+  <!-- Ancienne version gardée par le navigateur : on la retire (mise à jour immédiate).
+       Réserve hors connexion (ctv-sw.js) : les programmes de la chaîne sont téléchargés à l'avance. -->
   <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function (rs) {
-      if (!rs.length) return;
-      Promise.all(rs.map(function (r) { return r.unregister(); }))
-        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); }) : null; })
+      var old = rs.filter(function (r) { var w = r.active || r.waiting || r.installing; return w && /flutter_service_worker/.test(w.scriptURL); });
+      if (!old.length) return;
+      Promise.all(old.map(function (r) { return r.unregister(); }))
+        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.filter(function (n) { return /^flutter/.test(n); }).map(function (n) { return caches.delete(n); })); }) : null; })
         .then(function () { try { if (!sessionStorage.getItem('maj')) { sessionStorage.setItem('maj', '1'); location.reload(); } } catch (e) {} });
     });
+    window.addEventListener('load', function () { navigator.serviceWorker.register('ctv-sw.js').catch(function () {}); });
+    navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.type === 'ctv-offline') window.conacceOfflineStatus = e.data.status; });
   }
+  window.conacceOfflineStatus = null;
+  // L'appli envoie la liste des programmes prévus ; le téléchargement se fait en coulisse.
+  // Données mobiles signalées par le téléphone (Android) ou mode « économie de données » : on n'en télécharge pas.
+  window.conacceOfflinePlan = function (json) {
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      var c = navigator.connection;
+      if (c && (c.saveData || c.type === 'cellular')) return;
+      var items = JSON.parse(json);
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+      navigator.serviceWorker.ready.then(function (r) { if (r.active) r.active.postMessage({ type: 'ctv-plan', items: items }); });
+    } catch (e) {}
+  };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

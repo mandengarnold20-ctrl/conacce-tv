@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +12,7 @@ import '../core/media/audio_player_service.dart';
 import '../core/media/embed_video.dart';
 import '../core/media/hls_video_player.dart';
 import '../core/media/tv_youtube.dart';
+import '../core/media/offline.dart';
 import '../core/media/tv_file.dart';
 import '../core/media/web_fullscreen.dart';
 import '../core/theme/app_colors.dart';
@@ -43,6 +45,36 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   /// null = automatique (en grand quand le téléphone est tourné).
   bool? _bigOverride;
   bool? _lastLandscape;
+
+  String _offKey = '';
+  String? _lastPlan;
+
+  /// Réserve hors connexion : programme en cours, suivant, toute la playlist en boucle
+  /// et les rendez-vous des prochaines 24 h sont téléchargés à l'avance.
+  void _sendPlan(TvSchedule schedule, TvSlot? slot, TvSlot? next, Size size) {
+    final seen = <String>{};
+    final items = <Map<String, String>>[];
+    void add(TvProgram? p) {
+      if (p == null || p.isYoutube || p.videoUrl.trim().isEmpty) return;
+      final url = _phoneQuality(p.fileUrl, size);
+      if (seen.add(url)) items.add({'url': url, 'title': p.title});
+    }
+    add(slot?.program);
+    add(next?.program);
+    for (final p in schedule.loop) {
+      add(p);
+    }
+    final now = _now();
+    for (final p in schedule.fixed) {
+      final s = p.startAt;
+      if (s == null) continue;
+      if (p.repeatDaily || p.repeatWeekly || (s.isAfter(now.subtract(const Duration(hours: 1))) && s.isBefore(now.add(const Duration(hours: 24))))) add(p);
+    }
+    final json = jsonEncode(items);
+    if (json == _lastPlan) return;
+    _lastPlan = json;
+    offlinePlan(json);
+  }
 
   List<TvProgram>? _progs;
   TvChannel? _chan;
@@ -99,7 +131,12 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final end = _slotEnd;
-      if ((end != null && !_now().isBefore(end)) || tvYoutubeMuted != _muted) setState(() {});
+      final st = offlineStatus();
+      final offKey = st == null ? '' : '${st.ready}/${st.total}/${st.busy}';
+      if ((end != null && !_now().isBefore(end)) || tvYoutubeMuted != _muted || offKey != _offKey) {
+        _offKey = offKey;
+        setState(() {});
+      }
     });
   }
 
@@ -186,6 +223,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         _syncImmersive(immersive);
         if (!canPlay) return _Offline(live: live);
         final next = slot == null ? null : schedule.after(slot);
+        if (!onAir) _sendPlan(schedule, slot, next, size);
+        final offSt = onAir ? null : offlineStatus();
         final youtube = slot != null && slot.program.isYoutube;
         // Ce qui s'affiche sous la TV : le direct, ou le programme en cours.
         final LiveStream l = onAir
@@ -291,6 +330,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     if (l.messageTitle != null) ...[
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
+                    ],
+                    if (offSt != null && offSt.total > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Réserve hors connexion · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''} prêt${offSt.ready > 1 ? 's' : ''}${offSt.busy ? ' · téléchargement en cours' : ''}',
+                        style: const TextStyle(color: AppColors.muted, fontSize: 11.5),
+                      ),
                     ],
                     if (next != null && next.program.title.isNotEmpty) ...[
                       const SizedBox(height: 2),
