@@ -148,6 +148,138 @@
       try { if (cur && cur.player) { cur.player.unMute(); cur.player.setVolume(100); cur.player.playVideo(); } } catch (x) {}
     };
   })();
+  // ─── Chaîne programmée (vidéos envoyées) : UN lecteur pour toute la visite ───
+  // Les deux écrans vidéo sont créés une seule fois et ne sont jamais détruits :
+  // - changement de programme : la vidéo suivante est préparée à l'avance sur le 2e écran, puis on bascule ;
+  // - changement de page : la TV continue en coulisse (sans le son), on la retrouve sans rechargement ;
+  // - le son, autorisé une fois par un toucher, reste autorisé.
+  (function () {
+    var host = null, park = null, vids = [], cur = 0, want = false, muted = false, t0 = 0, start0 = 0;
+    var spin = null, chip = null, stallT = null, lastSeek = 0, lastPos = -1, still = 0, awayT = null, waitT = null;
+    function now() { return performance.now(); }
+    function expected() { return start0 + (now() - t0) / 1000; }
+    function mk() {
+      var v = document.createElement('video');
+      v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.playsInline = true;
+      v.preload = 'auto'; v.autoplay = false; v.controls = false;
+      v.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:0;transition:opacity .35s';
+      v.addEventListener('waiting', function () { if (v === vids[cur]) { clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && (v.paused || v.readyState < 3)) spin.style.display = 'flex'; }, 1500); } });
+      v.addEventListener('playing', function () { if (v === vids[cur]) { clearTimeout(waitT); if (spin) spin.style.display = 'none'; v.style.opacity = '1'; } });
+      // Un déplacement de l'écran (page qui se réorganise, téléphone tourné) peut mettre la vidéo en pause : elle repart aussitôt.
+      v.addEventListener('pause', function () { if (v === vids[cur] && want && !v.ended) setTimeout(function () { if (want && v.paused) doPlay(v); }, 60); });
+      return v;
+    }
+    function ensure() {
+      if (vids.length) return;
+      park = document.createElement('div');
+      park.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none;z-index:-1';
+      document.body.appendChild(park);
+      vids = [mk(), mk()];
+      spin = document.createElement('div');
+      spin.style.cssText = 'position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none';
+      spin.innerHTML = '<div style="padding:10px 14px;border-radius:12px;background:rgba(0,0,0,.6);color:#C9D2F5;font:12px Poppins,sans-serif;display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvspin .8s linear infinite"></span>Chargement…</div>';
+      chip = document.createElement('div');
+      chip.style.cssText = 'position:absolute;left:50%;top:8px;transform:translateX(-50%);display:none;padding:5px 10px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font:12px Poppins,sans-serif;pointer-events:none';
+      chip.textContent = '🔇 Touchez pour le son';
+      var st = document.createElement('style'); st.textContent = '@keyframes ctvspin{to{transform:rotate(360deg)}}'; document.head.appendChild(st);
+      [vids[0], vids[1], spin, chip].forEach(function (e) { park.appendChild(e); });
+    }
+    // Les écrans vont dans la TV quand elle est affichée, sinon dans une « coulisse » invisible (jamais retirés de la page).
+    function place() {
+      var target = host && host.isConnected ? host : park;
+      [vids[0], vids[1], spin, chip].forEach(function (e) { if (e.parentNode !== target) target.appendChild(e); });
+      if (target === host) { vids[cur].muted = muted; if (chip) chip.style.display = muted ? 'block' : 'none'; }
+      if (want && vids[cur].paused) doPlay(vids[cur]);
+    }
+    function waitConnected() {
+      var h = host, n = 0;
+      (function poll() { if (h !== host) return; if (h.isConnected) return place(); if (n++ < 100) setTimeout(poll, 30); })();
+    }
+    function doPlay(v) {
+      v.muted = muted || !host || !host.isConnected;
+      var p = v.play();
+      if (p && p.catch) p.catch(function (e) {
+        if (e && e.name === 'NotAllowedError') { muted = true; v.muted = true; v.play().catch(function () {}); }
+      });
+      if (chip) chip.style.display = muted && host && host.isConnected ? 'block' : 'none';
+    }
+    function show(v) {
+      var other = vids[1 - cur];
+      v.style.opacity = '1';
+      if (other !== v) { other.style.opacity = '0'; setTimeout(function () { if (other !== vids[cur]) other.pause(); }, 400); }
+    }
+    function seekTo(v, s) { try { if (isFinite(s) && s > 0.5 && (!v.duration || s < v.duration - 1)) v.currentTime = s; } catch (e) {} lastSeek = now(); }
+    function load(v, url) {
+      v.__u = url; v.__ready = false;
+      v.addEventListener('loadedmetadata', function once() { v.removeEventListener('loadedmetadata', once); v.__ready = true; if (v === vids[cur]) { seekTo(v, expected()); doPlay(v); } }, { once: true });
+      v.src = url;
+      try { v.load && !v.__hls && v.load(); } catch (e) {}
+    }
+    // Premier toucher : le son est autorisé pour les deux écrans, une fois pour toutes.
+    function unlock() {
+      ensure();
+      muted = false;
+      vids.forEach(function (v) {
+        if (v === vids[cur] && want) { v.muted = !host || !host.isConnected; v.play().catch(function () {}); }
+        else if (v.__u) { var was = v.muted; v.muted = true; v.play().then(function () { if (v !== vids[cur]) v.pause(); v.muted = was; }).catch(function () {}); }
+      });
+      if (chip) chip.style.display = 'none';
+    }
+    document.addEventListener('pointerdown', unlock, true);
+    document.addEventListener('touchend', unlock, true);
+    window.conacceFileHost = function (el) {
+      ensure(); host = el; clearTimeout(awayT); waitConnected();
+    };
+    window.conacceFilePlay = function (url, startSec, key) {
+      ensure(); want = true; clearTimeout(awayT);
+      t0 = now(); start0 = startSec;
+      var v = vids[cur];
+      if (v.__u === url) {
+        if (Math.abs(v.currentTime - expected()) > 12 && v.__ready) seekTo(v, expected());
+        if (v.paused) doPlay(v);
+        show(v); place(); return;
+      }
+      var o = vids[1 - cur];
+      if (o.__u === url) {            // déjà préparée : bascule immédiate
+        cur = 1 - cur;
+        if (o.__ready) { seekTo(o, expected()); doPlay(o); }
+        show(o); v.style.opacity = '0'; setTimeout(function () { v.pause(); }, 400);
+        place(); return;
+      }
+      v.style.opacity = '0';
+      clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && v.paused) spin.style.display = 'flex'; }, 1500);
+      load(v, url); place();
+    };
+    // Prépare le programme suivant sur l'écran libre (quelques dizaines de secondes avant).
+    window.conacceFilePreload = function (url) {
+      ensure();
+      var o = vids[1 - cur];
+      if (o.__u === url) return;
+      o.pause(); o.muted = true; o.style.opacity = '0';
+      load(o, url);
+    };
+    // La TV quitte l'écran (autre page) : elle continue sans le son quelques minutes, puis se met en pause.
+    window.conacceFileAway = function () {
+      host = null; if (!vids.length) return;
+      place();
+      vids[cur].muted = true;
+      clearTimeout(awayT);
+      awayT = setTimeout(function () { want = false; vids.forEach(function (v) { v.pause(); }); }, 5 * 60 * 1000);
+    };
+    window.conacceFileUnmute = function () { unlock(); };
+    // Surveillance douce : recalage sur l'horaire et relance après un long blocage.
+    setInterval(function () {
+      if (!vids.length || !want) return;
+      var v = vids[cur];
+      if (!v.__ready) return;
+      if (v.paused && !v.ended) doPlay(v);
+      var pos = v.currentTime;
+      if (Math.abs(pos - lastPos) < 0.05) still++; else still = 0;
+      lastPos = pos;
+      if (!v.paused && Math.abs(pos - expected()) > 20 && now() - lastSeek > 60000) seekTo(v, expected());
+      if (still >= 8 && v.__u) { still = 0; var u = v.__u; v.__u = null; load(v, u); }  // ≈ 40 s sans image : on recharge
+    }, 5000);
+  })();
   // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre
   // pendant qu'on utilise d'autres applis.
   function conacceVideo() {

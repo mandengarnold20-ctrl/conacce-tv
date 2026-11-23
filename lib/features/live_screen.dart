@@ -11,6 +11,7 @@ import '../core/media/audio_player_service.dart';
 import '../core/media/embed_video.dart';
 import '../core/media/hls_video_player.dart';
 import '../core/media/tv_youtube.dart';
+import '../core/media/tv_file.dart';
 import '../core/media/web_fullscreen.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
@@ -43,7 +44,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   bool? _bigOverride;
   bool? _lastLandscape;
 
-  void _toggleBig(bool now) => setState(() => _bigOverride = !now);
+  void _toggleBig(bool now) => setState(() => _bigOverride = now ? false : true);
   // L'écran TV entier (vidéo + habillage) : déplacé tel quel quand on tourne le téléphone,
   // la vidéo ne se recharge pas et le logo / bandeau restent dessus.
   final _screenKey = GlobalKey();
@@ -137,7 +138,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           _lastLandscape = landscape;
           _bigOverride = null;
         }
-        final immersive = canPlay && onTv && !_audioOnly && (_bigOverride ?? landscape);
+        // Téléphone tourné : toujours en grand. Debout : en grand seulement avec le bouton « Agrandir ».
+        final immersive = canPlay && onTv && !_audioOnly && (landscape || _bigOverride == true);
         _syncImmersive(immersive);
         if (!canPlay) return _Offline(live: live);
         final next = slot == null ? null : schedule.after(slot);
@@ -159,13 +161,16 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         } else if (youtube) {
           player = TvYoutubeSurface(key: _tvKey, videoId: slot!.program.youtubeId!, slotKey: slot.key, position: () => slot!.positionAt(_now()));
         } else {
-          player = HlsVideoPlayer(
-            key: ValueKey(slot!.key),
-            url: _phoneQuality(slot.program.fileUrl, size),
-            isLive: true,
-            startAt: () => slot!.positionAt(_now()),
+          final nx = next?.program;
+          player = TvFileSurface(
+            key: const ValueKey('tv-file'),
+            url: _phoneQuality(slot!.program.fileUrl, size),
+            slotKey: slot.key,
+            position: () => slot!.positionAt(_now()),
+            remaining: () => slot!.end.difference(_now()),
+            nextUrl: nx != null && !nx.isYoutube ? _phoneQuality(nx.fileUrl, size) : null,
             expanded: immersive,
-            onExpand: () => _toggleBig(immersive),
+            onExpand: landscape ? null : () => _toggleBig(immersive),
           );
         }
         // Téléphone tourné : la vidéo occupe tout l'écran.

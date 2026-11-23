@@ -2178,7 +2178,6 @@ async function showRegie() {
       h('header', {}, h('span', {}, 'Playlist en boucle'), meta),
       can.program ? h('div', { class: 'rg-tools' },
         h('button', { class: 'btn small primary', onclick: () => pickFiles('loop') }, 'Ajouter des vidéos'),
-        h('button', { class: 'btn small', onclick: () => askLinks('loop') }, 'Coller des liens YouTube'),
         h('span', { class: 'rg-small' }, 'Tourne sans fin quand rien n’est prévu.')) : null,
       ups, rows, can.program ? h('div', { class: 'rg-drop' }, 'Glissez-déposez vos vidéos ici (plusieurs à la fois)') : null);
     if (can.program) dropZone(pan, 'loop');
@@ -2199,8 +2198,7 @@ async function showRegie() {
       can.program ? h('div', { class: 'rg-tools' },
         h('label', { class: 'inl' }, 'Début à', timeIn),
         h('label', { class: 'inl' }, weekly, 'Chaque semaine'),
-        h('button', { class: 'btn small primary', onclick: () => pickFiles('week') }, 'Ajouter des vidéos'),
-        h('button', { class: 'btn small', onclick: () => askLinks('week') }, 'Coller des liens YouTube')) : null,
+        h('button', { class: 'btn small primary', onclick: () => pickFiles('week') }, 'Ajouter des vidéos')) : null,
       ups, rows, can.program ? h('div', { class: 'rg-drop' }, 'Glissez-déposez ici : les vidéos s’enchaînent à partir de l’heure indiquée') : null);
     if (can.program) dropZone(pan, 'week');
     R.weekUI = { rows, meta, ups, timeIn, title };
