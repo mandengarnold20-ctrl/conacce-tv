@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/analytics.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/responsive.dart';
@@ -27,9 +25,7 @@ class CommentsScreen extends ConsumerWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Commentaires', style: AppTheme.title(size: 26, weight: FontWeight.w800)),
             const SizedBox(height: 4),
-            const Text('Votre avis, votre témoignage, un encouragement : écrivez à Conacce TV.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
-            const SizedBox(height: 14),
-            const _WallComposer(),
+            const Text('Les commentaires laissés sur Conacce TV, avec le pays de chacun.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
           ]),
         ),
         Expanded(
@@ -37,7 +33,7 @@ class CommentsScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => const _Empty('Connexion impossible pour le moment.'),
             data: (items) => items.isEmpty
-                ? const _Empty('Soyez le premier à laisser un commentaire.')
+                ? const _Empty('Aucun commentaire pour le moment.\nÉcrivez sous la TV : votre message apparaîtra ici.')
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
                     itemCount: items.length,
@@ -51,142 +47,14 @@ class CommentsScreen extends ConsumerWidget {
   }
 }
 
-class _WallComposer extends StatefulWidget {
-  const _WallComposer();
-
-  @override
-  State<_WallComposer> createState() => _WallComposerState();
-}
-
-class _WallComposerState extends State<_WallComposer> {
-  final _name = TextEditingController();
-  final _body = TextEditingController();
-  String? _country;
-  bool _sending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    SharedPreferences.getInstance().then((p) {
-      if (!mounted) return;
-      final saved = p.getString('comment_name');
-      if (saved != null) _name.text = saved;
-      setState(() => _country = p.getString('comment_country'));
-    });
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _body.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send() async {
-    final name = _name.text.trim();
-    final body = _body.text.trim();
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (name.isEmpty) {
-      messenger?.showSnackBar(const SnackBar(content: Text('Indiquez votre prénom.')));
-      return;
-    }
-    if (body.isEmpty) return;
-    setState(() => _sending = true);
-    try {
-      await sendWallComment(name: name, body: body, countryCode: _country, visitorId: await Analytics.visitorId());
-      final p = await SharedPreferences.getInstance();
-      p.setString('comment_name', name);
-      if (_country != null) p.setString('comment_country', _country!);
-      _body.clear();
-      if (mounted) FocusScope.of(context).unfocus();
-    } catch (e) {
-      final wait = e.toString().contains('Patientez');
-      messenger?.showSnackBar(SnackBar(content: Text(wait ? 'Patientez quelques secondes avant un nouveau message.' : 'Message non envoyé. Vérifiez votre connexion.')));
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
-  Future<void> _pickCountry() async {
-    final code = await showModalBottomSheet<String>(
+/// Choisir son pays (liste avec drapeaux et recherche).
+Future<String?> pickCountry(BuildContext context) => showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.navyDeep,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => const _CountrySheet(),
     );
-    if (code != null) setState(() => _country = code);
-  }
-
-  InputDecoration _deco(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.muted, fontSize: 14),
-        isDense: true,
-        filled: true,
-        fillColor: const Color(0x330B1463),
-        counterText: '',
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22FFFFFF))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0x22FFFFFF))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.sunGold)),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _name,
-            maxLength: 40,
-            textCapitalization: TextCapitalization.words,
-            style: const TextStyle(fontSize: 14),
-            decoration: _deco('Votre prénom'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: _pickCountry,
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: const Color(0x330B1463), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x22FFFFFF))),
-            alignment: Alignment.center,
-            child: Text(
-              _country == null ? 'Pays' : '${countryFlag(_country)}  ${countryName(_country) ?? _country}',
-              style: TextStyle(color: _country == null ? AppColors.muted : Colors.white, fontSize: 13),
-            ),
-          ),
-        ),
-      ]),
-      const SizedBox(height: 8),
-      Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _body,
-            maxLength: 1000,
-            minLines: 1,
-            maxLines: 5,
-            style: const TextStyle(fontSize: 14),
-            decoration: _deco('Écrivez votre commentaire'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: _sending ? null : _send,
-          child: Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(gradient: AppColors.sunGradient, shape: BoxShape.circle),
-            child: _sending
-                ? const Padding(padding: EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.navy))
-                : const Icon(Icons.send_rounded, color: AppColors.navy, size: 20),
-          ),
-        ),
-      ]),
-    ]);
-  }
-}
 
 class _CountrySheet extends StatefulWidget {
   const _CountrySheet();

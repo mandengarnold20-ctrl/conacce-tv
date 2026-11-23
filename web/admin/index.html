@@ -1477,8 +1477,8 @@ async function showWall() {
   const main = $('#main');
   const { data, error } = await sb.from('wall_comments').select('*').order('created_at', { ascending: false }).limit(1000);
   if (current !== 'wall') return;
-  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Mur de commentaires'),
-    h('p', { class: 'intro' }, 'Les messages laissés dans l’onglet « Commentaires » de l’appli. Ils restent visibles ; supprimez ceux qui ne conviennent pas.'))));
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Commentaires'),
+    h('p', { class: 'intro' }, 'Les commentaires écrits sous la TV, avec le pays de chacun. Ils s’affichent une minute sous la TV, puis restent dans l’onglet « Commentaires » de l’appli. Supprimez ceux qui ne conviennent pas.'))));
   if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
   if (!data.length) return main.append(h('div', { class: 'empty' }, 'Aucun message pour le moment.'));
   const list = h('div', { class: 'list' });
@@ -3086,7 +3086,7 @@ const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
   ['live', 'Diffusion', 'TV en direct'], ['regie', '', 'Régie TV (programmation)'], ['radio', '', 'Radio Dunamis FM'],
   ['sermons', 'Contenus', 'Vidéos (CCA, CIU, cultes)'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique (masquée)'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie CCA / CIU'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
-  ['wall', 'Échanges', 'Mur de commentaires'], ['comments', '', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
+  ['wall', 'Échanges', 'Commentaires'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe et sauvegarde'],
 ];
 let current = null, me = null;

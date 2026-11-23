@@ -90,6 +90,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   bool _stalled = false;
   bool _autoMuted = false;
   DateTime _lastResync = DateTime.fromMillisecondsSinceEpoch(0);
+  /// Appel téléphonique : la vidéo continue sans le son, puis le son revient seul.
+  bool _callMuted = false;
+  DateTime _tryUnmuteAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   static bool _autoplayBlocked(String? d) => d != null && (d.contains('NotAllowed') || d.contains('user didn') || d.contains('interact'));
 
@@ -139,6 +142,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     _lastPosition = v.position;
     if (progressing) {
       _stalledTicks = 0;
+      if (_callMuted && !_autoMuted && DateTime.now().isAfter(_tryUnmuteAt)) {
+        // Fin probable de l'appel : on remet le son (s'il est encore refusé, on repassera en muet).
+        _callMuted = false;
+        video.setVolume(1);
+      }
       if (_stalled) setState(() => _stalled = false);
       // Chaîne programmée : si la vidéo a pris du retard (connexion lente), on la recale sur l'horaire.
       final expected = widget.startAt?.call();
@@ -155,6 +163,12 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     if (!v.isPlaying && !v.isBuffering && !v.isCompleted) {
       _stalledTicks = 0;
       if (_stalled) setState(() => _stalled = false);
+      // Le téléphone coupe le son pendant un appel : la TV ne s'arrête pas, elle continue en muet.
+      if (v.volume > 0) {
+        _callMuted = true;
+        video.setVolume(0);
+      }
+      _tryUnmuteAt = DateTime.now().add(const Duration(seconds: 10));
       video.play();
       return;
     }

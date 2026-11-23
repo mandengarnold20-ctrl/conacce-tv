@@ -9,29 +9,54 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/analytics.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
+import '../data/countries.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
+import 'comments_screen.dart';
 
-/// Fil des messages du jour, entre la phrase d'accueil et la zone pour écrire.
-/// Le plus récent est en bas, juste au-dessus de la zone pour écrire ; les plus anciens
-/// remontent et s'effacent en passant sous la phrase d'accueil.
-class LiveCommentsFeed extends ConsumerWidget {
+/// Sous la TV : chaque commentaire s'affiche une minute puis disparaît.
+/// Il reste ensuite pour toujours dans l'onglet « Commentaires » (sauf s'il est effacé dans la régie).
+class LiveCommentsFeed extends ConsumerStatefulWidget {
   const LiveCommentsFeed({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final comments = ref.watch(liveCommentsProvider).valueOrNull ?? const <LiveComment>[];
+  ConsumerState<LiveCommentsFeed> createState() => _LiveCommentsFeedState();
+}
+
+class _LiveCommentsFeedState extends ConsumerState<LiveCommentsFeed> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offset = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
+    final since = DateTime.now().add(offset).subtract(const Duration(minutes: 1));
+    final comments = (ref.watch(wallCommentsProvider).valueOrNull ?? const <WallComment>[])
+        .where((c) => c.createdAt.isAfter(since))
+        .toList();
     if (comments.isEmpty) {
       return const Align(
         alignment: Alignment.bottomLeft,
         child: Padding(
           padding: EdgeInsets.fromLTRB(22, 14, 20, 6),
-          child: Text('Soyez le premier à laisser un commentaire.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          child: Text('Laissez un commentaire : il s’affiche ici une minute.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
         ),
       );
     }
     // Fondu en haut : l'espace invisible sous la phrase d'accueil.
-    // Petite zone (environ deux messages) : la TV et la phrase gardent toute la place.
     return SizedBox(
       height: 130,
       child: ShaderMask(
@@ -198,14 +223,17 @@ class LiveComposer extends StatefulWidget {
 class _ComposerState extends State<LiveComposer> {
   final _name = TextEditingController();
   final _body = TextEditingController();
+  String? _country;
   bool _sending = false;
 
   @override
   void initState() {
     super.initState();
     SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
       final saved = p.getString('comment_name');
-      if (saved != null && mounted) _name.text = saved;
+      if (saved != null) _name.text = saved;
+      setState(() => _country = p.getString('comment_country'));
     });
   }
 
@@ -227,8 +255,10 @@ class _ComposerState extends State<LiveComposer> {
     if (body.isEmpty) return;
     setState(() => _sending = true);
     try {
-      await sendLiveComment(name: name, body: body, visitorId: await Analytics.visitorId());
-      (await SharedPreferences.getInstance()).setString('comment_name', name);
+      await sendWallComment(name: name, body: body, countryCode: _country, visitorId: await Analytics.visitorId());
+      final p = await SharedPreferences.getInstance();
+      p.setString('comment_name', name);
+      if (_country != null) p.setString('comment_country', _country!);
       _body.clear();
       if (mounted) FocusScope.of(context).unfocus();
     } catch (e) {
@@ -254,13 +284,34 @@ class _ComposerState extends State<LiveComposer> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      TextField(
-        controller: _name,
-        maxLength: 40,
-        textCapitalization: TextCapitalization.words,
-        style: const TextStyle(fontSize: 14),
-        decoration: _deco('Votre prénom').copyWith(counterText: ''),
-      ),
+      Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _name,
+            maxLength: 40,
+            textCapitalization: TextCapitalization.words,
+            style: const TextStyle(fontSize: 14),
+            decoration: _deco('Votre prénom').copyWith(counterText: ''),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () async {
+            final code = await pickCountry(context);
+            if (code != null) setState(() => _country = code);
+          },
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(color: const Color(0x330B1463), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0x22FFFFFF))),
+            alignment: Alignment.center,
+            child: Text(
+              _country == null ? 'Votre pays' : '${countryFlag(_country)}  ${countryName(_country) ?? _country}',
+              style: TextStyle(color: _country == null ? AppColors.muted : Colors.white, fontSize: 13),
+            ),
+          ),
+        ),
+      ]),
       const SizedBox(height: 8),
       Row(children: [
         Expanded(
@@ -295,7 +346,7 @@ class _ComposerState extends State<LiveComposer> {
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.comment});
 
-  final LiveComment comment;
+  final WallComment comment;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +359,7 @@ class _Bubble extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
+          if (comment.countryCode != null) ...[Text(countryFlag(comment.countryCode), style: const TextStyle(fontSize: 13)), const SizedBox(width: 6)],
           Expanded(
             child: Text(comment.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 12, color: AppColors.sunYellow)),
           ),
