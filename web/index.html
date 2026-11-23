@@ -400,13 +400,13 @@
   <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(function (rs) {
-      var old = rs.filter(function (r) { var w = r.active || r.waiting || r.installing; return w && /flutter_service_worker/.test(w.scriptURL); });
+      // Réserve hors connexion en pause : on retire tous les anciens modules du navigateur.
+      var old = rs;
       if (!old.length) return;
       Promise.all(old.map(function (r) { return r.unregister(); }))
-        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.filter(function (n) { return /^flutter/.test(n); }).map(function (n) { return caches.delete(n); })); }) : null; })
+        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.filter(function (n) { return /^(flutter|ctv-)/.test(n); }).map(function (n) { return caches.delete(n); })); }) : null; })
         .then(function () { try { if (!sessionStorage.getItem('maj')) { sessionStorage.setItem('maj', '1'); location.reload(); } } catch (e) {} });
     });
-    window.addEventListener('load', function () { navigator.serviceWorker.register('ctv-sw.js').catch(function () {}); });
     navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.type === 'ctv-offline') window.conacceOfflineStatus = e.data.status; });
   }
   window.conacceOfflineStatus = null;
@@ -414,7 +414,7 @@
   // Données mobiles signalées par le téléphone (Android) ou mode « économie de données » : on n'en télécharge pas.
   window.conacceOfflinePlan = function (json) {
     try {
-      if (!('serviceWorker' in navigator)) return;
+      return; // réserve hors connexion en pause
       var c = navigator.connection;
       if (c && (c.saveData || c.type === 'cellular')) return;
       var items = JSON.parse(json);
