@@ -106,7 +106,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       if (_stalled) setState(() => _stalled = false);
       // Chaîne programmée : si la vidéo a pris du retard (connexion lente), on la recale sur l'horaire.
       final expected = widget.startAt?.call();
-      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 6) && expected < v.duration) {
+      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 12) && expected < v.duration) {
         video.seekTo(expected);
       }
       return;

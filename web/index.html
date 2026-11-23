@@ -34,11 +34,15 @@
       if (el.__hls) { el.__hls.destroy(); el.__hls = null; el.__hlsSrc = null; }
       // iPhone (iOS 17.1+) compris : hls.js gère mieux les coupures réseau que le lecteur natif.
       if (typeof url !== 'string' || !/\.m3u8(\?|$)/i.test(url)) return false;
+      // Programme enregistré (Cloudflare videodelivery) : grosse réserve d'avance pour ne jamais saccader.
+      var vod = /videodelivery\.net|\/videos?\//i.test(url);
       var hls = new Hls({
         lowLatencyMode: false,          // un peu plus de retard, beaucoup moins de coupures
         liveSyncDurationCount: 4,       // marge de 4 segments derrière le direct
         liveMaxLatencyDurationCount: 12,
-        maxBufferLength: 30,
+        capLevelToPlayerSize: true,     // qualité adaptée à la taille de l'écran
+        maxBufferLength: vod ? 120 : 30,
+        maxMaxBufferLength: vod ? 600 : 60,
         backBufferLength: 30,
         manifestLoadingMaxRetry: 20, manifestLoadingRetryDelay: 1000,
         levelLoadingMaxRetry: 20, levelLoadingRetryDelay: 1000,
@@ -124,7 +128,7 @@
               if (e.data === 1) {
                 // Même image partout : on rattrape un éventuel retard de chargement.
                 var gap = e.target.getCurrentTime() - expected();
-                if (Math.abs(gap) > 2.5) e.target.seekTo(expected(), true);
+                if (Math.abs(gap) > 8) e.target.seekTo(expected(), true);
                 reveal();
               } else if (e.data === 0) {
                 wrap.style.opacity = '0';  // fin de vidéo : écran noir propre jusqu'au programme suivant
