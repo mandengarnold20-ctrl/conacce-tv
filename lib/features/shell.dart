@@ -17,8 +17,8 @@ import 'sermons_screen.dart';
 import 'works_screen.dart';
 import 'worship_screen.dart';
 
-/// Menu de l'appli : Accueil, TV, Radio, Commentaires, CCA, CIU, Audio, Œuvres, Contact, Vidéos.
-enum AppTab { home, tv, radio, comments, cca, ciu, audio, works, contact, videos }
+/// Menu de l'appli : Accueil, TV, Radio, Commentaires, CCA, CIU, Audio, Œuvres, Vidéos (cultes), Contact.
+enum AppTab { home, tv, radio, comments, cca, ciu, audio, works, videos, contact }
 
 final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
@@ -107,7 +107,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), CommentsScreen(), OrgScreen.cca(), OrgScreen.ciu(), WorshipScreen.audio(), WorksScreen(), ContactScreen(asTab: true), SermonsScreen()];
+  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), CommentsScreen(), OrgScreen.cca(), OrgScreen.ciu(), WorshipScreen.audio(), WorksScreen(), SermonsScreen.cultes(), ContactScreen(asTab: true)];
 
   @override
   void initState() {
@@ -132,14 +132,13 @@ class _AppShellState extends ConsumerState<AppShell> {
       (const Icon(Icons.school_outlined), 'CIU'),
       (const Icon(Icons.headphones_outlined), 'Audio'),
       (const Icon(Icons.menu_book_outlined), 'Œuvres'),
-      (const Icon(Icons.mail_outline_rounded), 'Contact'),
       (const Icon(Icons.video_library_outlined), 'Vidéos'),
+      (const Icon(Icons.mail_outline_rounded), 'Contact'),
     ];
     // Filigrane du logo CONACCE Chaplains : seulement sur les pages qui parlent de la Conacce.
     final showMark = switch (tab) {
       AppTab.home || AppTab.tv || AppTab.contact => true,
       AppTab.cca => true,
-      AppTab.videos => ref.watch(videoSectionProvider) == 'conacce',
       _ => false,
     };
     final body = WaveBackground(

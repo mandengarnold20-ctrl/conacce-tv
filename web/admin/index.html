@@ -707,7 +707,7 @@ async function loadRefs() {
 const ENT = {
   sermons: {
     table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.in('section', ['cultes', 'conacce', 'ciu']),
-    intro: 'Vidéos CCA et CIU (rangées par pays dans leurs onglets) et cultes (onglet « Vidéos », en fin de menu). Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
+    intro: 'Vidéos CCA et CIU (rangées par pays dans leurs onglets) et cultes (onglet « Vidéos » de l’appli). Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
     sub: r => [label(SECTIONS, r.section || 'cultes'), !isCulte(r) && countryLabel(r.country), isCulte(r) ? label(CATS, r.category) : label(VCATS, r.category === 'spots' ? 'spots' : 'autre'), isCulte(r) && r.speaker, isCulte(r) && r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),

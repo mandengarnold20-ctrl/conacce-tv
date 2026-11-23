@@ -28,7 +28,12 @@ void openSermon(BuildContext context, Sermon s, {DownloadedTrack? offline}) {
 
 /// Onglet Cultes : enregistrements publiés par l'église, comme une chaîne vidéo.
 class SermonsScreen extends ConsumerStatefulWidget {
-  const SermonsScreen({super.key});
+  const SermonsScreen({super.key}) : cultesOnly = false;
+
+  /// Onglet « Vidéos » du menu : uniquement les cultes.
+  const SermonsScreen.cultes({super.key}) : cultesOnly = true;
+
+  final bool cultesOnly;
 
   @override
   ConsumerState<SermonsScreen> createState() => _SermonsScreenState();
@@ -59,13 +64,13 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
   void _onSearch(String v) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
-      setState(() => _results = v.trim().length < 2 ? null : searchSermons(v.trim(), section: ref.read(videoSectionProvider)));
+      setState(() => _results = v.trim().length < 2 ? null : searchSermons(v.trim(), section: widget.cultesOnly ? 'cultes' : ref.read(videoSectionProvider)));
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final section = ref.watch(videoSectionProvider);
+    final section = widget.cultesOnly ? 'cultes' : ref.watch(videoSectionProvider);
     final isCultes = section == 'cultes';
     final picked = ref.watch(sermonCategoryProvider);
     // Un filtre qui n'existe pas dans la rubrique affichée revient à « Tous ».
@@ -121,7 +126,13 @@ class _SermonsScreenState extends ConsumerState<SermonsScreen> {
         // Deux pages : les cultes et les vidéos Conacce
         Padding(
           padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 14, 20, 12),
-          child: Row(children: [
+          child: widget.cultesOnly
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Vidéos', style: AppTheme.title(size: 26, weight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  const Text('Les cultes enregistrés, à revoir quand vous voulez.', style: TextStyle(color: AppColors.mist, fontSize: 13)),
+                ])
+              : Row(children: [
             // La Conacce et ses projets d'abord, les cultes ensuite.
             Expanded(child: _SectionTab(label: 'Conacce', selected: section == 'conacce', onTap: () => _setSection('conacce'))),
             const SizedBox(width: 8),
