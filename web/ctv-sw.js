@@ -6,13 +6,16 @@
 // La régie (/admin/) et la base de données passent toujours par internet.
 
 const VCACHE = 'ctv-video-v1';
-const SCACHE = 'ctv-shell-v1';
+const SCACHE = 'ctv-shell-v2';
 const INDEX_URL = new URL('__ctv_index__', self.registration.scope).href;
 const VIDEO_HOST = /(^|\.)videodelivery\.net$|\.cloudflarestream\.com$/;
 const CDN_HOST = /(^|\.)gstatic\.com$|^fonts\.googleapis\.com$|^cdn\.jsdelivr\.net$/;
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', (e) => e.waitUntil(
+  caches.keys().then((k) => Promise.all(k.filter((n) => n.startsWith('ctv-shell-') && n !== SCACHE).map((n) => caches.delete(n))))
+    .then(() => self.clients.claim())
+));
 
 const uidOf = (u) => (u.pathname.match(/[0-9a-f]{32}/) || [])[0] || null;
 
@@ -49,20 +52,32 @@ self.addEventListener('fetch', (e) => {
 
 async function networkFirst(req) {
   const c = await caches.open(SCACHE);
-  try {
-    // Toujours vérifier auprès du site : une nouvelle version de l'appli arrive dès l'ouverture.
-    const r = await fetch(new Request(req, { cache: 'no-cache' }));
-    if (r && r.ok && r.type !== 'opaque') c.put(req, r.clone()).catch(() => {});
-    return r;
-  } catch (e) {
+  const fromCache = async () => {
     const hit = await c.match(req, { ignoreSearch: true });
     if (hit) return hit;
     if (req.mode === 'navigate') {
-      const home = await c.match(new URL('./', self.registration.scope).href, { ignoreSearch: true })
-        || await c.match(new URL('index.html', self.registration.scope).href, { ignoreSearch: true });
-      if (home) return home;
+      return (await c.match(new URL('./', self.registration.scope).href, { ignoreSearch: true }))
+        || (await c.match(new URL('index.html', self.registration.scope).href, { ignoreSearch: true }));
     }
-    throw e;
+    return null;
+  };
+  try {
+    // Ouverture de l'appli : la page passe telle quelle (iPhone compris). Les fichiers de l'appli
+    // sont toujours vérifiés auprès du site : une nouvelle version arrive dès l'ouverture.
+    let net;
+    if (req.mode === 'navigate') net = fetch(req);
+    else net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).catch(() => fetch(req));
+    // Réseau très lent : au bout de 12 s, on ouvre la copie gardée (si elle existe).
+    const r = await Promise.race([
+      net,
+      new Promise((res) => setTimeout(() => fromCache().then((h) => h && res(h)), 12000)),
+    ]);
+    if (r && r.ok && r.type === 'basic') c.put(req, r.clone()).catch(() => {});
+    return r;
+  } catch (e) {
+    const hit = await fromCache();
+    if (hit) return hit;
+    return fetch(req);
   }
 }
 async function cacheFirst(req) {
