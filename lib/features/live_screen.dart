@@ -54,8 +54,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   void _sendPlan(TvSchedule schedule, TvSlot? slot, TvSlot? next, Size size) {
     final seen = <String>{};
     final items = <Map<String, String>>[];
+    // Réserve réservée aux téléphones (une seule qualité, ≈ 480p) ; ordinateur et tablette lisent en direct
+    // et une liste vide efface ce qui aurait été gardé.
+    final phone = size.shortestSide < 600;
     void add(TvProgram? p) {
-      if (p == null || p.isYoutube || p.videoUrl.trim().isEmpty) return;
+      if (!phone || p == null || p.isYoutube || p.videoUrl.trim().isEmpty) return;
       final url = _phoneQuality(p.fileUrl, size);
       if (seen.add(url)) items.add({'url': url, 'title': p.title});
     }
@@ -331,7 +334,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
                     ],
-                    if (offSt != null && offSt.total > 0) ...[
+                    if (offSt != null && offSt.total > 0 && size.shortestSide < 600) ...[
                       const SizedBox(height: 2),
                       Text(
                         'Réserve hors connexion · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''} prêt${offSt.ready > 1 ? 's' : ''}${offSt.busy ? ' · téléchargement en cours' : ''}',
