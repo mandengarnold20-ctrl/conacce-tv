@@ -24,7 +24,14 @@ class HlsVideoPlayer extends StatefulWidget {
     this.isFile = false,
     this.onStarted,
     this.startAt,
+    this.onExpand,
+    this.expanded = false,
   });
+
+  /// Bouton d'agrandissement : passe la TV en grand dans l'appli (vidéo + logo + bandeau ensemble).
+  /// Sans ce rappel, on utilise le plein écran du téléphone.
+  final VoidCallback? onExpand;
+  final bool expanded;
 
   final String url;
   /// [url] est un chemin de fichier téléchargé (lecture hors connexion).
@@ -136,17 +143,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       // Chaîne programmée : si la vidéo a pris du retard (connexion lente), on la recale sur l'horaire.
       final expected = widget.startAt?.call();
       // (au plus une fois par minute : sur une connexion lente, on ne relance pas le chargement en boucle)
-      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 12) && expected < v.duration &&
-          DateTime.now().difference(_lastResync) > const Duration(seconds: 60)) {
+      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 30) && expected < v.duration &&
+          DateTime.now().difference(_lastResync) > const Duration(minutes: 2)) {
         _lastResync = DateTime.now();
         video.seekTo(expected);
       }
       return;
     }
-    final manualPause = !v.isPlaying && !v.isBuffering && !v.isCompleted;
-    if (manualPause) {
+    // La TV n'a pas de bouton pause : si le téléphone a mis la vidéo en pause tout seul
+    // (appel, autre appli, écran verrouillé), elle repart dès que possible.
+    if (!v.isPlaying && !v.isBuffering && !v.isCompleted) {
       _stalledTicks = 0;
       if (_stalled) setState(() => _stalled = false);
+      video.play();
       return;
     }
     _stalledTicks++;
@@ -154,7 +163,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       if (!_stalled) setState(() => _stalled = true);
       video.play();
     }
-    if (_stalledTicks >= 5) {
+    // Vidéo programmée : on laisse le temps de charger (≈ 30 s) avant de tout recharger ;
+    // un rechargement repart de zéro et coûte plus cher qu'une attente sur une connexion lente.
+    if (_stalledTicks >= (widget.startAt != null ? 10 : 5)) {
       _stalledTicks = 0;
       _retry();
     }
@@ -211,6 +222,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
         // Sur le web, le plein écran passe par le lecteur natif du téléphone (bouton dédié).
         allowFullScreen: !kIsWeb,
         showControlsOnInitialize: false,
+        // TV : pas de commandes (pas de pause, pas de barre) — comme une vraie chaîne ;
+        // un toucher fait seulement apparaître le bouton d'agrandissement.
+        showControls: !widget.isLive,
         // Plein écran en paysage, puis retour au portrait de l'appli.
         deviceOrientationsOnEnterFullScreen: const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight],
         deviceOrientationsAfterFullScreen: DeviceOrientation.values,
@@ -262,7 +276,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       child: ColoredBox(
         color: Colors.black,
         child: _error != null
-            ? (widget.isLive ? const _Reconnecting() : _ErrorView(onRetry: _retry))
+            ? (widget.isLive ? _Reconnecting(vod: widget.startAt != null) : _ErrorView(onRetry: _retry))
             : _chewie == null
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
                 : Listener(
@@ -275,7 +289,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                         : null,
                     child: Stack(fit: StackFit.expand, children: [
                       Chewie(controller: _chewie!),
-                      if (widget.isLive && _stalled) const IgnorePointer(child: _Reconnecting()),
+                      if (widget.isLive && _stalled) IgnorePointer(child: _Reconnecting(vod: widget.startAt != null)),
                       if (_autoMuted)
                         const Positioned(
                           left: 0,
@@ -308,9 +322,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                                 color: const Color(0x80000000),
                                 shape: const CircleBorder(),
                                 child: IconButton(
-                                  tooltip: 'Plein écran',
-                                  icon: const Icon(Icons.fullscreen_rounded, color: Colors.white),
-                                  onPressed: requestVideoFullscreen,
+                                  tooltip: widget.expanded ? 'Réduire' : 'Agrandir',
+                                  icon: Icon(widget.expanded ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: Colors.white),
+                                  onPressed: widget.onExpand ?? requestVideoFullscreen,
                                 ),
                               ),
                             ),
@@ -325,19 +339,22 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
 
 /// Petite coupure du direct : message discret pendant la reconnexion automatique.
 class _Reconnecting extends StatelessWidget {
-  const _Reconnecting();
+  const _Reconnecting({this.vod = false});
+
+  /// Vidéo programmée (pas un direct) : simple chargement.
+  final bool vod;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Color(0x99000000), borderRadius: BorderRadius.all(Radius.circular(12))),
+        decoration: const BoxDecoration(color: Color(0x99000000), borderRadius: BorderRadius.all(Radius.circular(12))),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sunYellow)),
-            SizedBox(height: 8),
-            Text('Reconnexion au direct…', style: TextStyle(color: AppColors.mist, fontSize: 12)),
+            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.sunYellow)),
+            const SizedBox(height: 8),
+            Text(vod ? 'Chargement…' : 'Reconnexion au direct…', style: const TextStyle(color: AppColors.mist, fontSize: 12)),
           ]),
         ),
       ),

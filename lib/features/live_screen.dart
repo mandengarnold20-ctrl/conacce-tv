@@ -37,6 +37,13 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   // Même lecteur en mode normal et en grand écran : la vidéo continue sans coupure.
   final _playerKey = GlobalKey();
   final _tvKey = GlobalKey();
+
+  /// Bouton « Agrandir » : la TV en grand dans l'appli (vidéo + logo + bandeau d'un seul bloc).
+  /// null = automatique (en grand quand le téléphone est tourné).
+  bool? _bigOverride;
+  bool? _lastLandscape;
+
+  void _toggleBig(bool now) => setState(() => _bigOverride = !now);
   // L'écran TV entier (vidéo + habillage) : déplacé tel quel quand on tourne le téléphone,
   // la vidéo ne se recharge pas et le logo / bandeau restent dessus.
   final _screenKey = GlobalKey();
@@ -71,6 +78,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(immersiveProvider.notifier).state = value;
     });
+  }
+
+  /// Téléphone : vidéo en 480p (Cloudflare) pour qu'elle passe sans s'arrêter sur les connexions mobiles.
+  /// Tablette, ordinateur et TV gardent la qualité automatique (jusqu'à 1080p).
+  static String _phoneQuality(String url, Size size) {
+    final cf = url.contains('videodelivery.net') || url.contains('cloudflarestream.com');
+    if (!cf || size.shortestSide >= 600 || url.contains('clientBandwidthHint')) return url;
+    return '$url${url.contains('?') ? '&' : '?'}clientBandwidthHint=1.5';
   }
 
   Future<void> _toggleAudio(LiveStream live) async {
@@ -117,7 +132,12 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         final slot = onAir || channel.isStopped ? null : schedule.at(now);
         _slotEnd = slot?.end;
         final canPlay = onAir || slot != null;
-        final immersive = canPlay && onTv && landscape && !_audioOnly;
+        // Tourner le téléphone remet le mode automatique.
+        if (_lastLandscape != landscape) {
+          _lastLandscape = landscape;
+          _bigOverride = null;
+        }
+        final immersive = canPlay && onTv && !_audioOnly && (_bigOverride ?? landscape);
         _syncImmersive(immersive);
         if (!canPlay) return _Offline(live: live);
         final next = slot == null ? null : schedule.after(slot);
@@ -135,11 +155,18 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               ? EmbedVideo(key: ValueKey(embed), embedUrl: embed, sourceUrl: l.liveUrl!)
               : _ExternalLive(url: l.liveUrl!, source: l.source);
         } else if (onAir) {
-          player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView);
+          player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView, expanded: immersive, onExpand: () => _toggleBig(immersive));
         } else if (youtube) {
           player = TvYoutubeSurface(key: _tvKey, videoId: slot!.program.youtubeId!, slotKey: slot.key, position: () => slot!.positionAt(_now()));
         } else {
-          player = HlsVideoPlayer(key: ValueKey(slot!.key), url: slot.program.fileUrl, isLive: true, startAt: () => slot!.positionAt(_now()));
+          player = HlsVideoPlayer(
+            key: ValueKey(slot!.key),
+            url: _phoneQuality(slot.program.fileUrl, size),
+            isLive: true,
+            startAt: () => slot!.positionAt(_now()),
+            expanded: immersive,
+            onExpand: () => _toggleBig(immersive),
+          );
         }
         // Téléphone tourné : la vidéo occupe tout l'écran.
         // Habillage de la chaîne (logo, bandeau, bande artiste) par-dessus l'image.
@@ -182,7 +209,15 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       ),
                     ),
                 ]);
-        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: screen));
+        if (immersive) {
+          // Un geste vers le bas (ou le bouton « Réduire ») ramène l'écran normal.
+          return GestureDetector(
+            onVerticalDragEnd: (d) {
+              if ((d.primaryVelocity ?? 0) > 300) setState(() => _bigOverride = false);
+            },
+            child: ColoredBox(color: Colors.black, child: Center(child: screen)),
+          );
+        }
         // La TV toujours entière en haut ; la page défile, rien n'est coupé.
         // Sous la phrase d'accueil : un petit fil de commentaires, puis la zone pour écrire.
         return ListView(
