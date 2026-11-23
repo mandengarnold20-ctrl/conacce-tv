@@ -241,6 +241,26 @@ Future<void> sendLiveComment({required String name, required String body, requir
   await _db.from('live_comments').insert({'name': name.trim(), 'body': body.trim(), 'visitor_id': visitorId});
 }
 
+/// Mur de commentaires : les 300 derniers messages, mis à jour en direct.
+final wallCommentsProvider = StreamProvider.autoDispose<List<WallComment>>((ref) {
+  return _db
+      .from('wall_comments')
+      .stream(primaryKey: ['id'])
+      .order('created_at', ascending: false)
+      .limit(300)
+      .map((rows) => rows.map(WallComment.fromMap).toList());
+});
+
+/// Publie un message sur le mur de commentaires.
+Future<void> sendWallComment({required String name, required String body, required String visitorId, String? countryCode}) async {
+  await _db.from('wall_comments').insert({
+    'name': name.trim(),
+    'body': body.trim(),
+    'visitor_id': visitorId,
+    if (countryCode != null) 'country_code': countryCode,
+  });
+}
+
 /// Envoie un message à la CONACCE (messagerie).
 Future<void> sendMessage({
   required String name,

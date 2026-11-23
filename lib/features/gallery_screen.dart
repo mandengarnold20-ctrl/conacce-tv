@@ -119,6 +119,16 @@ class _Empty extends StatelessWidget {
       );
 }
 
+/// Ouvre une photo en grand (on glisse pour passer aux suivantes).
+void openPhotoViewer(BuildContext context, List<GalleryPhoto> items, int initial) {
+  Navigator.of(context).push(PageRouteBuilder(
+    opaque: false,
+    barrierColor: Colors.black,
+    pageBuilder: (_, __, ___) => _PhotoViewer(items: items, initial: initial),
+    transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
+  ));
+}
+
 /// Photo en grand : on glisse pour passer à la suivante, on pince pour zoomer.
 class _PhotoViewer extends StatefulWidget {
   const _PhotoViewer({required this.items, required this.initial});

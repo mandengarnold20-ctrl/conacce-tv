@@ -123,11 +123,14 @@ class Sermon {
     this.isDownloadable = true,
     this.viewCount = 0,
     this.section = 'cultes',
+    this.country,
   });
 
   final String id;
   final String title;
   final SermonCategory category;
+  /// Pays (code ISO, ex. « BJ ») pour CCA et CIU ; vide = International.
+  final String? country;
   /// « cultes » (onglet Cultes) ou « conacce » (Vidéos Conacce).
   final String section;
   final String? description;
@@ -208,6 +211,7 @@ class Sermon {
         isDownloadable: m['is_downloadable'] as bool? ?? true,
         viewCount: (m['view_count'] as num?)?.toInt() ?? 0,
         section: m['section'] as String? ?? 'cultes',
+        country: m['country'] as String?,
         createdAt: DateTime.parse(m['created_at'] as String).toLocal(),
       );
 
@@ -226,6 +230,7 @@ class Sermon {
         'is_downloadable': isDownloadable,
         'view_count': viewCount,
         'section': section,
+        'country': country,
         'created_at': createdAt.toUtc().toIso8601String(),
       };
 }
@@ -292,7 +297,11 @@ class HomeBanner {
 
 /// Réglages (table app_settings, id = 1).
 class AppSettings {
-  const AppSettings({this.manOfGodName, this.donationUrl, this.whatsappUrl, this.facebookUrl, this.youtubeUrl, this.contactEmail, this.websiteUrl});
+  const AppSettings({this.manOfGodName, this.donationUrl, this.whatsappUrl, this.facebookUrl, this.youtubeUrl, this.contactEmail, this.websiteUrl, this.showCountriesCca = true, this.showCountriesCiu = true});
+
+  /// Choix de la régie : barre des pays (drapeaux) dans CCA et dans CIU.
+  final bool showCountriesCca;
+  final bool showCountriesCiu;
 
   final String? manOfGodName;
   final String? donationUrl;
@@ -308,6 +317,8 @@ class AppSettings {
 
   factory AppSettings.fromMap(Map<String, dynamic> m) => AppSettings(
         manOfGodName: m['man_of_god_name'] as String?,
+        showCountriesCca: m['show_countries_cca'] as bool? ?? true,
+        showCountriesCiu: m['show_countries_ciu'] as bool? ?? true,
         donationUrl: m['donation_url'] as String?,
         whatsappUrl: m['whatsapp_url'] as String?,
         facebookUrl: m['facebook_url'] as String?,
@@ -351,7 +362,10 @@ String? parseYoutubeId(String? url) {
 
 /// Photo de la galerie (Conacce Chaplains ou CIU).
 class GalleryPhoto {
-  const GalleryPhoto({required this.id, required this.album, required this.imageUrl, this.caption, this.takenOn});
+  const GalleryPhoto({required this.id, required this.album, required this.imageUrl, this.caption, this.takenOn, this.country});
+
+  /// Pays (code ISO) ; vide = International.
+  final String? country;
 
   final String id;
   /// « conacce » (Conacce Chaplains) ou « ciu ».
@@ -366,5 +380,25 @@ class GalleryPhoto {
         imageUrl: m['image_url'] as String,
         caption: m['caption'] as String?,
         takenOn: m['taken_on'] == null ? null : DateTime.tryParse(m['taken_on'] as String),
+        country: m['country'] as String?,
+      );
+}
+
+/// Message du mur de commentaires (page « Commentaires »).
+class WallComment {
+  const WallComment({required this.id, required this.name, required this.body, required this.createdAt, this.countryCode});
+
+  final String id;
+  final String name;
+  final String body;
+  final String? countryCode;
+  final DateTime createdAt;
+
+  factory WallComment.fromMap(Map<String, dynamic> m) => WallComment(
+        id: m['id'] as String,
+        name: (m['name'] as String?)?.trim() ?? '',
+        body: (m['body'] as String?)?.trim() ?? '',
+        countryCode: m['country_code'] as String?,
+        createdAt: DateTime.tryParse(m['created_at'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       );
 }

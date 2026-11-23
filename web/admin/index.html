@@ -664,12 +664,17 @@ async function detectDuration(v) {
 
 // ─── Listes de choix ───
 const CATS = [['special', 'Culte spécial'], ['tempsForts', 'Temps forts'], ['spots', 'Spots'], ['dimanche', 'Culte du dimanche'], ['enseignement', 'Enseignement'], ['priere', 'Prière'], ['autre', 'Autre']];
-const SECTIONS = [['conacce', 'Vidéos Conacce'], ['ciu', 'Vidéos CIU'], ['cultes', 'Cultes']];
+const SECTIONS = [['conacce', 'CCA (Conacce Chaplains Afrique)'], ['ciu', 'CIU (Conacce International University)'], ['cultes', 'Cultes (onglet Vidéos)']];
+const COUNTRIES = [["AF", "Afghanistan"], ["ZA", "Afrique du Sud"], ["AL", "Albanie"], ["DZ", "Algérie"], ["DE", "Allemagne"], ["AD", "Andorre"], ["AO", "Angola"], ["AI", "Anguilla"], ["AG", "Antigua-et-Barbuda"], ["SA", "Arabie saoudite"], ["AR", "Argentine"], ["AM", "Arménie"], ["AW", "Aruba"], ["AU", "Australie"], ["AT", "Autriche"], ["AZ", "Azerbaïdjan"], ["BS", "Bahamas"], ["BH", "Bahreïn"], ["BD", "Bangladesh"], ["BB", "Barbade"], ["BE", "Belgique"], ["BZ", "Belize"], ["BJ", "Bénin"], ["BM", "Bermudes"], ["BT", "Bhoutan"], ["BY", "Biélorussie"], ["BO", "Bolivie"], ["BA", "Bosnie-Herzégovine"], ["BW", "Botswana"], ["BR", "Brésil"], ["BN", "Brunei"], ["BG", "Bulgarie"], ["BF", "Burkina Faso"], ["BI", "Burundi"], ["KH", "Cambodge"], ["CM", "Cameroun"], ["CA", "Canada"], ["CV", "Cap-Vert"], ["CL", "Chili"], ["CN", "Chine"], ["CY", "Chypre"], ["CO", "Colombie"], ["KM", "Comores"], ["CG", "Congo-Brazzaville"], ["CD", "Congo-Kinshasa"], ["KP", "Corée du Nord"], ["KR", "Corée du Sud"], ["CR", "Costa Rica"], ["CI", "Côte d’Ivoire"], ["HR", "Croatie"], ["CU", "Cuba"], ["CW", "Curaçao"], ["DK", "Danemark"], ["DJ", "Djibouti"], ["DM", "Dominique"], ["EG", "Égypte"], ["AE", "Émirats arabes unis"], ["EC", "Équateur"], ["ER", "Érythrée"], ["ES", "Espagne"], ["EE", "Estonie"], ["SZ", "Eswatini"], ["VA", "État de la Cité du Vatican"], ["US", "États-Unis"], ["ET", "Éthiopie"], ["FJ", "Fidji"], ["FI", "Finlande"], ["FR", "France"], ["GA", "Gabon"], ["GM", "Gambie"], ["GE", "Géorgie"], ["GS", "Géorgie du Sud-et-les Îles Sandwich du Sud"], ["GH", "Ghana"], ["GI", "Gibraltar"], ["GR", "Grèce"], ["GD", "Grenade"], ["GL", "Groenland"], ["GP", "Guadeloupe"], ["GU", "Guam"], ["GT", "Guatemala"], ["GG", "Guernesey"], ["GN", "Guinée"], ["GQ", "Guinée équatoriale"], ["GW", "Guinée-Bissau"], ["GY", "Guyana"], ["GF", "Guyane française"], ["HT", "Haïti"], ["HN", "Honduras"], ["HU", "Hongrie"], ["CX", "Île Christmas"], ["IM", "Île de Man"], ["NF", "Île Norfolk"], ["AX", "Îles Åland"], ["KY", "Îles Caïmans"], ["CC", "Îles Cocos"], ["CK", "Îles Cook"], ["FO", "Îles Féroé"], ["FK", "Îles Malouines"], ["MP", "Îles Mariannes du Nord"], ["MH", "Îles Marshall"], ["PN", "Îles Pitcairn"], ["SB", "Îles Salomon"], ["TC", "Îles Turques-et-Caïques"], ["VG", "Îles Vierges britanniques"], ["VI", "Îles Vierges des États-Unis"], ["IN", "Inde"], ["ID", "Indonésie"], ["IQ", "Irak"], ["IR", "Iran"], ["IE", "Irlande"], ["IS", "Islande"], ["IL", "Israël"], ["IT", "Italie"], ["JM", "Jamaïque"], ["JP", "Japon"], ["JE", "Jersey"], ["JO", "Jordanie"], ["KZ", "Kazakhstan"], ["KE", "Kenya"], ["KG", "Kirghizstan"], ["KI", "Kiribati"], ["XK", "Kosovo"], ["KW", "Koweït"], ["RE", "La Réunion"], ["LA", "Laos"], ["LS", "Lesotho"], ["LV", "Lettonie"], ["LB", "Liban"], ["LR", "Liberia"], ["LY", "Libye"], ["LI", "Liechtenstein"], ["LT", "Lituanie"], ["LU", "Luxembourg"], ["MK", "Macédoine du Nord"], ["MG", "Madagascar"], ["MY", "Malaisie"], ["MW", "Malawi"], ["MV", "Maldives"], ["ML", "Mali"], ["MT", "Malte"], ["MA", "Maroc"], ["MQ", "Martinique"], ["MU", "Maurice"], ["MR", "Mauritanie"], ["YT", "Mayotte"], ["MX", "Mexique"], ["FM", "Micronésie"], ["MD", "Moldavie"], ["MC", "Monaco"], ["MN", "Mongolie"], ["ME", "Monténégro"], ["MS", "Montserrat"], ["MZ", "Mozambique"], ["MM", "Myanmar (Birmanie)"], ["NA", "Namibie"], ["NR", "Nauru"], ["NP", "Népal"], ["NI", "Nicaragua"], ["NE", "Niger"], ["NG", "Nigeria"], ["NU", "Niue"], ["NO", "Norvège"], ["NC", "Nouvelle-Calédonie"], ["NZ", "Nouvelle-Zélande"], ["OM", "Oman"], ["UG", "Ouganda"], ["UZ", "Ouzbékistan"], ["PK", "Pakistan"], ["PW", "Palaos"], ["PA", "Panama"], ["PG", "Papouasie-Nouvelle-Guinée"], ["PY", "Paraguay"], ["NL", "Pays-Bas"], ["BQ", "Pays-Bas caribéens"], ["PE", "Pérou"], ["PH", "Philippines"], ["PL", "Pologne"], ["PF", "Polynésie française"], ["PR", "Porto Rico"], ["PT", "Portugal"], ["QA", "Qatar"], ["HK", "R.A.S. chinoise de Hong Kong"], ["MO", "R.A.S. chinoise de Macao"], ["CF", "République centrafricaine"], ["DO", "République dominicaine"], ["RO", "Roumanie"], ["GB", "Royaume-Uni"], ["RU", "Russie"], ["RW", "Rwanda"], ["EH", "Sahara occidental"], ["BL", "Saint-Barthélemy"], ["KN", "Saint-Christophe-et-Niévès"], ["SM", "Saint-Marin"], ["MF", "Saint-Martin"], ["SX", "Saint-Martin (partie néerlandaise)"], ["PM", "Saint-Pierre-et-Miquelon"], ["VC", "Saint-Vincent-et-les Grenadines"], ["SH", "Sainte-Hélène"], ["LC", "Sainte-Lucie"], ["SV", "Salvador"], ["WS", "Samoa"], ["AS", "Samoa américaines"], ["ST", "Sao Tomé-et-Principe"], ["SN", "Sénégal"], ["RS", "Serbie"], ["SC", "Seychelles"], ["SL", "Sierra Leone"], ["SG", "Singapour"], ["SK", "Slovaquie"], ["SI", "Slovénie"], ["SO", "Somalie"], ["SD", "Soudan"], ["SS", "Soudan du Sud"], ["LK", "Sri Lanka"], ["SE", "Suède"], ["CH", "Suisse"], ["SR", "Suriname"], ["SJ", "Svalbard et Jan Mayen"], ["SY", "Syrie"], ["TJ", "Tadjikistan"], ["TW", "Taïwan"], ["TZ", "Tanzanie"], ["TD", "Tchad"], ["CZ", "Tchéquie"], ["PS", "Territoires palestiniens"], ["TH", "Thaïlande"], ["TL", "Timor oriental"], ["TG", "Togo"], ["TK", "Tokelau"], ["TO", "Tonga"], ["TT", "Trinité-et-Tobago"], ["TN", "Tunisie"], ["TM", "Turkménistan"], ["TR", "Turquie"], ["TV", "Tuvalu"], ["UA", "Ukraine"], ["UY", "Uruguay"], ["VU", "Vanuatu"], ["VE", "Venezuela"], ["VN", "Viêt Nam"], ["WF", "Wallis-et-Futuna"], ["YE", "Yémen"], ["ZM", "Zambie"], ["ZW", "Zimbabwe"]];
+const COUNTRY_OPTS = [['', '🌍 International (sans pays)'], ...COUNTRIES.map(([c, n]) => [c, flagOf(c) + ' ' + n])];
+function flagOf(c) { return c && c.length === 2 ? String.fromCodePoint(...[...c.toUpperCase()].map(x => 0x1F1E6 + x.charCodeAt(0) - 65)) : ''; }
+const countryLabel = c => c ? flagOf(c) + ' ' + ((COUNTRIES.find(x => x[0] === c) || [])[1] || c) : '🌍 International';
+
 // Vidéos Conacce et CIU : pas de catégories de culte, seulement « Vidéo » ou « Spot ».
 const VCATS = [['autre', 'Vidéo'], ['spots', 'Spot']];
 const isCulte = v => (v.section || 'cultes') === 'cultes';
 const WORSHIP = [['louange', 'Louange'], ['adoration', 'Adoration']];
-const ALBUMS = [['conacce', 'Conacce Chaplains'], ['ciu', 'CIU']];
+const ALBUMS = [['conacce', 'CCA (Conacce Chaplains Afrique)'], ['ciu', 'CIU']];
 // Vignette automatique des vidéos YouTube
 function ytId(u) {
   try {
@@ -702,13 +707,14 @@ async function loadRefs() {
 const ENT = {
   sermons: {
     table: 'sermons', title: 'Vidéos', one: 'une vidéo', icon: '', where: q => q.in('section', ['cultes', 'conacce', 'ciu']),
-    intro: 'Vidéos Conacce, vidéos CIU et cultes. Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
+    intro: 'Vidéos CCA et CIU (rangées par pays dans leurs onglets) et cultes (onglet « Vidéos », en fin de menu). Le plus simple : collez le lien YouTube ou Facebook de la vidéo, elle se lit directement dans l’appli. Vous pouvez aussi envoyer un fichier ou un lien .m3u8 Cloudflare.',
     select: '*', order: ['created_at', false], empty: 'Aucun culte pour le moment. Cliquez sur « + Ajouter ».',
     name: r => r.title, img: r => r.thumbnail_url || ytThumb(r.video_url),
-    sub: r => [label(SECTIONS, r.section || 'cultes'), isCulte(r) ? label(CATS, r.category) : label(VCATS, r.category === 'spots' ? 'spots' : 'autre'), isCulte(r) && r.speaker, isCulte(r) && r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
+    sub: r => [label(SECTIONS, r.section || 'cultes'), !isCulte(r) && countryLabel(r.country), isCulte(r) ? label(CATS, r.category) : label(VCATS, r.category === 'spots' ? 'spots' : 'autre'), isCulte(r) && r.speaker, isCulte(r) && r.preached_on && new Date(r.preached_on + 'T12:00').toLocaleDateString('fr-FR'), fmtDur(r.duration), r.view_count ? r.view_count + ' vues' : ''].filter(Boolean).join(' · '),
     badges: r => [ytId(r.video_url) ? ['YouTube'] : isFb(r.video_url) ? ['Facebook'] : r.video_url && ['Vidéo'], r.audio_url && ['Audio'], r.is_featured && ['Grand écran', 'green'], !r.is_published && ['Brouillon', 'red']].filter(Boolean),
     fields: [
       { k: 'section', label: 'Page de l’appli', type: 'select', opts: SECTIONS, def: 'conacce', req: true, help: '« Vidéos Conacce », « Vidéos CIU » ou « Cultes » (onglet Vidéos de l’appli).' },
+      { k: 'country', label: 'Pays', type: 'select', opts: COUNTRY_OPTS, def: '', show: v => !isCulte(v), help: 'Dans l’appli, la vidéo apparaît sous ce pays (avec son drapeau) dans CCA ou CIU.' },
       { k: 'title', label: 'Titre de la vidéo', type: 'text', req: true },
       { k: 'category', label: 'Catégorie', type: 'select', opts: CATS, def: 'special', req: true, show: isCulte, help: 'Dans l’appli, les filtres sont : Culte spécial, Temps forts, Spots.' },
       { k: 'category', label: 'Type', type: 'select', opts: VCATS, def: 'autre', show: v => !isCulte(v), help: '« Spot » : la vidéo apparaît aussi dans le filtre « Spots ».' },
@@ -827,14 +833,15 @@ const ENT = {
   },
   gallery: {
     table: 'gallery_photos', title: 'Galerie photo', one: 'une photo', icon: '',
-    intro: 'Les photos de la Conacce Chaplains et de la CIU, visibles dans l’onglet « Galerie » de l’appli. Vous pouvez en envoyer plusieurs d’un coup.',
+    intro: 'Les photos de la CCA et de la CIU, rangées par pays dans l’appli (onglets CCA et CIU, partie « Galerie »). Vous pouvez en envoyer plusieurs d’un coup.',
     select: '*', order: ['created_at', false], empty: 'Aucune photo pour le moment. Choisissez l’album puis « Envoyer des photos ».',
     name: r => r.caption || 'Photo sans légende', img: r => r.image_url,
-    sub: r => [label(ALBUMS, r.album), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' · '),
+    sub: r => [label(ALBUMS, r.album), countryLabel(r.country), r.taken_on && new Date(r.taken_on + 'T12:00').toLocaleDateString('fr-FR')].filter(Boolean).join(' · '),
     badges: r => [!r.is_published && ['Masquée', 'red']].filter(Boolean),
     bulk: true,
     fields: [
       { k: 'album', label: 'Album', type: 'select', opts: ALBUMS, def: 'conacce', req: true },
+      { k: 'country', label: 'Pays', type: 'select', opts: COUNTRY_OPTS, def: '', help: 'La photo apparaît sous ce pays (avec son drapeau) dans CCA ou CIU.' },
       { k: 'image_url', label: 'Photo', type: 'image', req: true },
       { k: 'caption', label: 'Légende (facultatif)', type: 'text' },
       { k: 'taken_on', label: 'Date (facultatif)', type: 'date' },
@@ -1221,12 +1228,13 @@ async function shrinkImage(file, max = 2000) {
 
 function bulkBox(key) {
   const album = h('select', {}, ALBUMS.map(([v, l]) => h('option', { value: v }, l)));
+  const country = h('select', {}, COUNTRY_OPTS.map(([v, l]) => h('option', { value: v }, l)));
   const input = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'hidden' });
   const btn = h('button', { class: 'btn primary', type: 'button', onclick: () => input.click() }, 'Envoyer des photos');
   input.addEventListener('change', async () => {
     const files = [...input.files]; input.value = '';
     if (!files.length) return;
-    const where = label(ALBUMS, album.value);
+    const where = label(ALBUMS, album.value) + ' · ' + countryLabel(country.value);
     let ok = 0, fail = 0;
     btn.disabled = true; uploading++;
     const status = h('div', { class: 'progress' });
@@ -1235,7 +1243,7 @@ function bulkBox(key) {
       status.textContent = `Envoi ${i + 1} / ${files.length} dans « ${where} »…`;
       try {
         const url = await upload('images', await shrinkImage(f), () => {});
-        const { error } = await sb.from('gallery_photos').insert({ album: album.value, image_url: url });
+        const { error } = await sb.from('gallery_photos').insert({ album: album.value, country: country.value || null, image_url: url });
         if (error) throw error;
         ok++;
       } catch (e) { fail++; console.warn(e); }
@@ -1244,7 +1252,7 @@ function bulkBox(key) {
     toast(fail ? `${ok} photo(s) ajoutée(s), ${fail} en échec.` : `${ok} photo(s) ajoutée(s) dans « ${where} ».`, !!fail && !ok);
     if (current === key) show(key);
   });
-  return h('div', { class: 'bulk' }, album, btn, input);
+  return h('div', { class: 'bulk' }, album, country, btn, input);
 }
 
 async function remove(key, r) {
@@ -1402,6 +1410,8 @@ async function showSettings() {
     switchRow('Conacce TV en direct', 'live_stream', liveRes.data, 'is_live', 'hls_url', 'Collez d’abord le lien vidéo (.m3u8) dans « TV en direct ».'),
     switchRow('Radio Dunamis FM', 'radio', radioRes.data, 'is_on_air', 'stream_url', 'Collez d’abord le lien du flux audio dans « Radio Dunamis FM ».'));
   const fields = [
+    { k: 'show_countries_cca', label: 'CCA : afficher les pays (drapeaux) pour trier vidéos et photos', type: 'checkbox', def: true, help: 'Décoché : toutes les vidéos et photos CCA s’affichent ensemble, sans barre des pays.' },
+    { k: 'show_countries_ciu', label: 'CIU : afficher les pays (drapeaux) pour trier vidéos et photos', type: 'checkbox', def: true },
     { k: 'man_of_god_name', label: 'Nom de l’homme de Dieu (affiché dans Œuvres d’Or)', type: 'text' },
     { k: 'donation_url', label: 'Lien de don (page de paiement externe)', type: 'url', help: 'Ajoute le bouton « Soutenir » à la TV en direct. Le don s’ouvre dans le navigateur (règle Apple).' },
     { k: 'whatsapp_url', label: 'Lien WhatsApp', type: 'url' },
@@ -1460,6 +1470,33 @@ async function showComments() {
     }
     main.append(list);
   }
+}
+
+// ─── Mur de commentaires (onglet « Commentaires » de l'appli) ───
+async function showWall() {
+  const main = $('#main');
+  const { data, error } = await sb.from('wall_comments').select('*').order('created_at', { ascending: false }).limit(1000);
+  if (current !== 'wall') return;
+  main.append(h('div', { class: 'head' }, h('div', {}, h('h1', {}, 'Mur de commentaires'),
+    h('p', { class: 'intro' }, 'Les messages laissés dans l’onglet « Commentaires » de l’appli. Ils restent visibles ; supprimez ceux qui ne conviennent pas.'))));
+  if (error) return main.append(h('div', { class: 'empty bad' }, friendly(error)));
+  if (!data.length) return main.append(h('div', { class: 'empty' }, 'Aucun message pour le moment.'));
+  const list = h('div', { class: 'list' });
+  for (const c of data) {
+    const del = h('button', { class: 'btn small danger' }, 'Supprimer');
+    const when = new Date(c.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const row = h('div', { class: 'item', style: 'grid-template-columns:1fr auto' },
+      h('div', {}, h('div', { class: 't' }, c.name + (c.country_code ? ' · ' + countryLabel(c.country_code) : '') + ' · ' + when), h('div', { class: 's', style: 'white-space:pre-wrap' }, c.body)),
+      h('div', { class: 'acts' }, del));
+    del.addEventListener('click', async () => {
+      if (!confirm('Supprimer ce message ? Il disparaîtra de l’appli.')) return;
+      const { error } = await sb.from('wall_comments').delete().eq('id', c.id);
+      if (error) return toast(friendly(error), true);
+      row.remove(); toast('Message supprimé');
+    });
+    list.append(row);
+  }
+  main.append(list);
 }
 
 // ─── Messagerie (messages du monde entier) ───
@@ -3048,8 +3085,8 @@ async function showTeam() {
 const NAV = [
   ['dash', 'Général', 'Tableau de bord'],
   ['live', 'Diffusion', 'TV en direct'], ['regie', '', 'Régie TV (programmation)'], ['radio', '', 'Radio Dunamis FM'],
-  ['sermons', 'Contenus', 'Vidéos'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie photo'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
-  ['comments', 'Échanges', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
+  ['sermons', 'Contenus', 'Vidéos (CCA, CIU, cultes)'], ['featured', '', 'Grand écran de l’accueil'], ['worship', '', 'Musique (masquée)'], ['audio', '', 'Audio'], ['gallery', '', 'Galerie CCA / CIU'], ['works', '', 'Œuvres d’Or'], ['banners', '', 'Affiches de l’accueil'],
+  ['wall', 'Échanges', 'Mur de commentaires'], ['comments', '', 'Commentaires du direct'], ['inbox', '', 'Messagerie (contact)'],
   ['settings', 'Paramètres', 'Réglages'], ['team', '', 'Équipe et sauvegarde'],
 ];
 let current = null, me = null;
@@ -3064,7 +3101,7 @@ function show(key, arg) {
   const main = $('#main'); main.textContent = ''; window.scrollTo(0, 0);
   const app = $('.app'); if (app) app.classList.toggle('studio', key === 'regie' || key === 'team');
   if (ENT[key]) return showList(key);
-  ({ regie: showRegie, dash: showDash, live: showLive, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
+  ({ regie: showRegie, dash: showDash, live: showLive, wall: showWall, comments: showComments, inbox: showInbox, radio: showRadio, settings: showSettings, team: showTeam })[key](arg);
 }
 
 function shell(user) {

@@ -8,15 +8,17 @@ import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/providers.dart';
 import 'home_screen.dart';
+import 'comments_screen.dart';
 import 'contact_screen.dart';
-import 'gallery_screen.dart';
 import 'live_screen.dart';
+import 'org_screen.dart';
 import 'radio_screen.dart';
 import 'sermons_screen.dart';
 import 'works_screen.dart';
 import 'worship_screen.dart';
 
-enum AppTab { home, tv, radio, sermons, worship, audio, gallery, works, contact }
+/// Menu de l'appli : Accueil, TV, Radio, Commentaires, CCA, CIU, Audio, Œuvres, Contact, Vidéos.
+enum AppTab { home, tv, radio, comments, cca, ciu, audio, works, contact, videos }
 
 final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
@@ -105,7 +107,7 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), SermonsScreen(), WorshipScreen(), WorshipScreen.audio(), GalleryScreen(), WorksScreen(), ContactScreen(asTab: true)];
+  static const _pages = [HomeScreen(), LiveScreen(), RadioScreen(), CommentsScreen(), OrgScreen.cca(), OrgScreen.ciu(), WorshipScreen.audio(), WorksScreen(), ContactScreen(asTab: true), SermonsScreen()];
 
   @override
   void initState() {
@@ -120,22 +122,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     void select(int i) => ref.read(currentTabProvider.notifier).state = AppTab.values[i];
 
     Widget badge(IconData icon) => Badge(isLabelVisible: isLive, backgroundColor: AppColors.live, smallSize: 8, child: Icon(icon));
+    // Icônes fines (au trait), comme une appli moderne ; l'onglet choisi s'allume en jaune.
     final items = <(Widget, String)>[
-      (const Icon(Icons.home_rounded), 'Accueil'),
-      (badge(Icons.live_tv_rounded), 'TV'),
-      (const Icon(Icons.radio_rounded), 'Radio'),
-      (const Icon(Icons.video_library_rounded), 'Vidéos'),
-      (const Icon(Icons.music_note_rounded), 'Musique'),
-      (const Icon(Icons.headphones_rounded), 'Audio'),
-      (const Icon(Icons.photo_library_rounded), 'Galerie'),
-      (const Icon(Icons.menu_book_rounded), 'Œuvres'),
-      (const Icon(Icons.mail_rounded), 'Contact'),
+      (const Icon(Icons.home_outlined), 'Accueil'),
+      (badge(Icons.live_tv_outlined), 'TV'),
+      (const Icon(Icons.radio_outlined), 'Radio'),
+      (const Icon(Icons.forum_outlined), 'Commentaires'),
+      (const Icon(Icons.public_outlined), 'CCA'),
+      (const Icon(Icons.school_outlined), 'CIU'),
+      (const Icon(Icons.headphones_outlined), 'Audio'),
+      (const Icon(Icons.menu_book_outlined), 'Œuvres'),
+      (const Icon(Icons.mail_outline_rounded), 'Contact'),
+      (const Icon(Icons.video_library_outlined), 'Vidéos'),
     ];
     // Filigrane du logo CONACCE Chaplains : seulement sur les pages qui parlent de la Conacce.
     final showMark = switch (tab) {
       AppTab.home || AppTab.tv || AppTab.contact => true,
-      AppTab.sermons => ref.watch(videoSectionProvider) == 'conacce',
-      AppTab.gallery => ref.watch(galleryAlbumProvider) == 'conacce',
+      AppTab.cca => true,
+      AppTab.videos => ref.watch(videoSectionProvider) == 'conacce',
       _ => false,
     };
     final body = WaveBackground(
@@ -217,58 +221,62 @@ class _ScrollNavBarState extends State<_ScrollNavBar> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    // Jusqu'à 5 onglets visibles d'un coup ; au-delà, on fait glisser la barre.
-    final itemWidth = width / (widget.items.length < 5 ? widget.items.length : 5.4);
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00080F43), Color(0xD9080F43), AppColors.navyDeep], stops: [0, .35, 1]),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 70,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: widget.items.length,
-            itemBuilder: (context, i) {
-              final (icon, label) = widget.items[i];
-              final selected = i == widget.selected;
-              return SizedBox(
-                key: _key(i),
-                width: itemWidth,
-                child: Semantics(
-                  button: true,
-                  selected: selected,
-                  label: label,
-                  child: InkResponse(
-                    onTap: () => widget.onSelect(i),
-                    radius: 36,
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        width: 54,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: selected ? AppColors.sunYellow : Colors.transparent,
-                          borderRadius: BorderRadius.circular(16),
+    // Barre flottante arrondie : 5 onglets visibles, on glisse au doigt pour les autres.
+    const margin = 14.0;
+    final inner = width - margin * 2 - 8;
+    final itemWidth = inner / (widget.items.length <= 5 ? widget.items.length : 5.4);
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: margin),
+        child: Container(
+          height: 66,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xF20A1150),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: const Color(0x26FFFFFF)),
+            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: widget.items.length,
+              itemBuilder: (context, i) {
+                final (icon, label) = widget.items[i];
+                final selected = i == widget.selected;
+                final color = selected ? AppColors.sunYellow : const Color(0xFFC9D2F5);
+                return SizedBox(
+                  key: _key(i),
+                  width: itemWidth,
+                  child: Semantics(
+                    button: true,
+                    selected: selected,
+                    label: label,
+                    child: InkResponse(
+                      onTap: () => widget.onSelect(i),
+                      radius: 34,
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        AnimatedScale(
+                          duration: const Duration(milliseconds: 220),
+                          scale: selected ? 1.12 : 1,
+                          child: IconTheme(data: IconThemeData(size: 24, color: color), child: icon),
                         ),
-                        child: IconTheme(data: IconThemeData(size: 22, color: selected ? AppColors.navy : AppColors.muted), child: Center(child: icon)),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: selected ? AppColors.sunYellow : AppColors.muted,
-                            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          )),
-                    ]),
+                        const SizedBox(height: 5),
+                        Text(label,
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            softWrap: false,
+                            style: TextStyle(fontSize: 10.5, color: color, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
+                      ]),
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),

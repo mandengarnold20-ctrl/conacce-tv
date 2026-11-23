@@ -95,7 +95,7 @@ class HomeScreen extends ConsumerWidget {
               if ((sermons.valueOrNull?.length ?? 0) > 0) ...[
                 SectionTitle('Cultes enregistrés', onSeeAll: () {
                   ref.read(videoSectionProvider.notifier).state = 'cultes';
-                  _go(ref, AppTab.sermons);
+                  _go(ref, AppTab.videos);
                 }),
                 SizedBox(
                   height: 178,
