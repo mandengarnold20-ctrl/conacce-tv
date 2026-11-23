@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -113,10 +114,27 @@ class LogoShine extends StatefulWidget {
 }
 
 class _LogoShineState extends State<LogoShine> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 6))..repeat();
+  // Le reflet passe en 1,8 s puis l'image reste immobile 4 s : rien n'est redessiné pendant la pause
+  // (plus léger pour le téléphone, surtout par-dessus la vidéo).
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+  Timer? _pause;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addStatusListener((st) {
+      if (st == AnimationStatus.completed) _pause = Timer(const Duration(seconds: 4), _sweep);
+    });
+    _pause = Timer(const Duration(seconds: 3), _sweep);
+  }
+
+  void _sweep() {
+    if (mounted) _c.forward(from: 0);
+  }
 
   @override
   void dispose() {
+    _pause?.cancel();
     _c.dispose();
     super.dispose();
   }
@@ -130,15 +148,14 @@ class _LogoShineState extends State<LogoShine> with SingleTickerProviderStateMix
         borderRadius: BorderRadius.circular(widget.radius),
         child: SizedBox(
           width: widget.width,
-          child: Stack(
+          child: RepaintBoundary(child: Stack(
             children: [
               Image.asset('assets/images/logo.png', width: widget.width, fit: BoxFit.fitWidth),
               Positioned.fill(
                 child: AnimatedBuilder(
                   animation: _c,
                   builder: (context, _) {
-                    // Le reflet passe pendant les 30 % finaux de chaque cycle.
-                    final t = ((_c.value - .7) / .3).clamp(0.0, 1.0);
+                    final t = _c.value;
                     final x = -1.6 + t * 3.6;
                     return IgnorePointer(
                       child: DecoratedBox(
@@ -156,7 +173,7 @@ class _LogoShineState extends State<LogoShine> with SingleTickerProviderStateMix
                 ),
               ),
             ],
-          ),
+          )),
         ),
       ),
     );

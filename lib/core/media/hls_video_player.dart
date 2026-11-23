@@ -81,6 +81,27 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   /// - si l'image reste figée, on relance doucement la lecture, puis on recharge le direct
   ///   seulement après ~15 s sans aucune image.
   bool _stalled = false;
+  bool _autoMuted = false;
+  DateTime _lastResync = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static bool _autoplayBlocked(String? d) => d != null && (d.contains('NotAllowed') || d.contains('user didn') || d.contains('interact'));
+
+  Future<void> _startMuted() async {
+    final video = _video;
+    if (video == null) return;
+    if (!_autoMuted) setState(() => _autoMuted = true);
+    try {
+      await video.setVolume(0);
+      await video.play();
+    } catch (_) {}
+  }
+
+  void _unmute() {
+    if (!_autoMuted) return;
+    setState(() => _autoMuted = false);
+    _video?.setVolume(1);
+    _video?.play();
+  }
 
   void _keepAlive() {
     if (!mounted) return;
@@ -88,6 +109,14 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     final video = _video;
     final v = video?.value;
     if (video == null || v == null) return;
+    if (v.hasError && _autoplayBlocked(v.errorDescription)) {
+      // Le téléphone refuse de lancer le son tout seul : on continue en muet,
+      // un toucher sur l'image remet le son. Pas de « Reconnexion » pour rien.
+      _stalledTicks = 0;
+      if (_stalled) setState(() => _stalled = false);
+      _startMuted();
+      return;
+    }
     if (v.hasError) {
       // Le lecteur a perdu le fil : on recharge le direct après ~6 s.
       _stalledTicks++;
@@ -106,7 +135,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
       if (_stalled) setState(() => _stalled = false);
       // Chaîne programmée : si la vidéo a pris du retard (connexion lente), on la recale sur l'horaire.
       final expected = widget.startAt?.call();
-      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 12) && expected < v.duration) {
+      // (au plus une fois par minute : sur une connexion lente, on ne relance pas le chargement en boucle)
+      if (expected != null && (v.position - expected).abs() > const Duration(seconds: 12) && expected < v.duration &&
+          DateTime.now().difference(_lastResync) > const Duration(seconds: 60)) {
+        _lastResync = DateTime.now();
         video.seekTo(expected);
       }
       return;
@@ -235,10 +267,34 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
                 : Listener(
                     // Un toucher sur la vidéo fait apparaître le bouton plein écran.
-                    onPointerDown: kIsWeb ? (_) => _revealFullscreen() : null,
+                    onPointerDown: kIsWeb
+                        ? (_) {
+                            _unmute();
+                            _revealFullscreen();
+                          }
+                        : null,
                     child: Stack(fit: StackFit.expand, children: [
                       Chewie(controller: _chewie!),
                       if (widget.isLive && _stalled) const IgnorePointer(child: _Reconnecting()),
+                      if (_autoMuted)
+                        const Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 8,
+                          child: IgnorePointer(
+                            child: Center(child: DecoratedBox(
+                              decoration: BoxDecoration(color: Color(0x99000000), borderRadius: BorderRadius.all(Radius.circular(14))),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(Icons.volume_off_rounded, color: Colors.white, size: 16),
+                                  SizedBox(width: 6),
+                                  Text('Touchez pour le son', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                ]),
+                              ),
+                            )),
+                          ),
+                        ),
                       if (kIsWeb)
                         Positioned(
                           left: 8,

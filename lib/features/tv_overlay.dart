@@ -151,7 +151,7 @@ class _TvOverlayState extends State<TvOverlay> {
               right: 0,
               bottom: 0,
               height: tickerH,
-              child: _Ticker(text: tickerText, speed: b.tickerSpeed, theme: b.tickerTheme, height: tickerH, branding: b),
+              child: RepaintBoundary(child: _Ticker(text: tickerText, speed: b.tickerSpeed, theme: b.tickerTheme, height: tickerH, branding: b)),
             ),
         ]);
       }),
@@ -175,7 +175,30 @@ class _Band extends StatefulWidget {
 }
 
 class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
-  late final AnimationController _flow = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
+  // Le dégradé ne bouge que pendant que la bande est à l'écran (rien à calculer le reste du temps).
+  late final AnimationController _flow = AnimationController(vsync: this, duration: const Duration(seconds: 9));
+
+  void _syncFlow() {
+    if (widget.visible && !_flow.isAnimating) {
+      _flow.repeat(reverse: true);
+    } else if (!widget.visible && _flow.isAnimating) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted && !widget.visible) _flow.stop();
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _syncFlow();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Band old) {
+    super.didUpdateWidget(old);
+    if (old.visible != widget.visible) _syncFlow();
+  }
 
   @override
   void dispose() {

@@ -524,8 +524,7 @@
   .ov-tick.th-blanc { background: #fff; color: #0B1463; } .ov-tick.th-noir { background: rgba(0,0,0,.85); color: #F9CA22; }
   .ov-info { display: flex; align-items: center; padding: 0 .45em; font-weight: 800; color: #0B1463; font-size: .42em; }
   .ov-wrap { flex: 1; overflow: hidden; display: flex; align-items: center; }
-  .ov-track { display: flex; white-space: nowrap; font-size: .52em; font-weight: 500; animation: ovt 20s linear infinite; }
-  @keyframes ovt { from { transform: translateX(0); } to { transform: translateX(calc(-1 * var(--cycle, 300px))); } }
+  .ov-track { display: flex; white-space: nowrap; font-size: .52em; font-weight: 500; }
 
   /* Logo officiel + reflet lumineux (comme dans l'appli) */
   .logo-shine { position: relative; display: inline-block; overflow: hidden; border-radius: 5px; line-height: 0; }
@@ -1968,15 +1967,19 @@ async function showRegie() {
     ovTick.style.height = th + 'px'; ovTick.style.fontSize = th + 'px';
     const tkey = text + '|' + B.ticker.speed + '|' + Math.round(th) + '|' + B.font.name + B.font.url;
     if (text && ovTrack.__k !== tkey) {
-      ovTrack.__k = tkey; ovTrack.textContent = '';
+      ovTrack.__k = tkey; ovTrack.__cycle = 0; ovTrack.textContent = '';
+      if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; }
       const gap = th * 3;
       for (let i = 0; i < 8; i++) ovTrack.append(h('span', { style: `padding-right:${gap}px` }, text));
-      requestAnimationFrame(() => {
-        const cycle = ovTrack.firstChild ? ovTrack.firstChild.getBoundingClientRect().width : 300;
+    }
+    // Le défilement démarre dès que l'écran Antenne est visible (mesure du texte réelle, jamais à 0).
+    if (text && !ovTrack.__anim) {
+      const cycle = ovTrack.firstChild ? ovTrack.firstChild.getBoundingClientRect().width : 0;
+      if (cycle > 0) {
         const pps = [0, 30, 45, 65, 90, 125][B.ticker.speed] * (th / 22);
-        ovTrack.style.setProperty('--cycle', cycle + 'px');
-        ovTrack.style.animationDuration = Math.max(2, cycle / pps) + 's';
-      });
+        ovTrack.__anim = ovTrack.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${cycle}px)` }],
+          { duration: Math.max(2, cycle / pps) * 1000, iterations: Infinity });
+      }
     }
     // Bande artiste
     const p = T.sl && T.sl.p;

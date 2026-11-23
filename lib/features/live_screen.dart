@@ -37,6 +37,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   // Même lecteur en mode normal et en grand écran : la vidéo continue sans coupure.
   final _playerKey = GlobalKey();
   final _tvKey = GlobalKey();
+  // L'écran TV entier (vidéo + habillage) : déplacé tel quel quand on tourne le téléphone,
+  // la vidéo ne se recharge pas et le logo / bandeau restent dessus.
+  final _screenKey = GlobalKey();
 
   // Chaîne programmée : on change de programme pile à l'heure prévue.
   Duration _clock = Duration.zero;
@@ -141,16 +144,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         // Téléphone tourné : la vidéo occupe tout l'écran.
         // Habillage de la chaîne (logo, bandeau, bande artiste) par-dessus l'image.
         final overlay = Positioned.fill(child: TvOverlay(branding: branding, now: _now, slot: slot));
-        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: Stack(children: [player, if (onTv) overlay])));
-        // La TV toujours entière en haut ; la page défile, rien n'est coupé.
-        // Sous la phrase d'accueil : un petit fil de commentaires, puis la zone pour écrire.
-        return ListView(
-          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: 110),
-          children: [
-            MaxWidth(
-              maxWidth: bigScreen ? size.width : 1000,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Stack(children: [
+        final screen = Stack(key: _screenKey, children: [
                   if (_audioOnly)
                     AspectRatio(
                       aspectRatio: 16 / 9,
@@ -187,7 +181,17 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                         ]),
                       ),
                     ),
-                ]),
+                ]);
+        if (immersive) return ColoredBox(color: Colors.black, child: Center(child: screen));
+        // La TV toujours entière en haut ; la page défile, rien n'est coupé.
+        // Sous la phrase d'accueil : un petit fil de commentaires, puis la zone pour écrire.
+        return ListView(
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top, bottom: 110),
+          children: [
+            MaxWidth(
+              maxWidth: bigScreen ? size.width : 1000,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                screen,
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
