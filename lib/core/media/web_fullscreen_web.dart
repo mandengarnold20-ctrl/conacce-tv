@@ -31,3 +31,14 @@ void togglePictureInPicture() {
     _conaccePip();
   } catch (_) {}
 }
+
+@JS('conacceImmersive')
+external void _conacceImmersive(JSBoolean on);
+
+/// TV en grand (téléphone tourné) : la page entière (vidéo + logo + bandeau) passe en plein écran
+/// au premier toucher, là où le navigateur le permet (Android). Les barres du navigateur disparaissent.
+void setPageImmersive(bool on) {
+  try {
+    _conacceImmersive(on.toJS);
+  } catch (_) {}
+}

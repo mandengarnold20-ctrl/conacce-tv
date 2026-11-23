@@ -56,7 +56,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final items = <Map<String, String>>[];
     // Réserve réservée aux téléphones (une seule qualité, ≈ 480p) ; ordinateur et tablette lisent en direct
     // et une liste vide efface ce qui aurait été gardé.
-    final phone = size.shortestSide < 600;
+    final phone = isPhone(context);
     void add(TvProgram? p) {
       if (!phone || p == null || p.isYoutube || p.videoUrl.trim().isEmpty) return;
       final url = _phoneQuality(p.fileUrl, size);
@@ -153,6 +153,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   /// Prévient la coque de l'appli qu'il faut cacher (ou réafficher) les menus.
   void _syncImmersive(bool value) {
     if (ref.read(immersiveProvider) == value) return;
+    setPageImmersive(value);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(immersiveProvider.notifier).state = value;
     });
@@ -160,9 +161,22 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   /// Téléphone : vidéo en 480p (Cloudflare) pour qu'elle passe sans s'arrêter sur les connexions mobiles.
   /// Tablette, ordinateur et TV gardent la qualité automatique (jusqu'à 1080p).
-  static String _phoneQuality(String url, Size size) {
+  /// Téléphone : on regarde la taille de la fenêtre ET celle de l'écran de l'appareil
+  /// (Safari en « version ordinateur » annonce une fenêtre plus grande que le téléphone).
+  static bool isPhone(BuildContext context) {
+    if (MediaQuery.sizeOf(context).shortestSide < 600) return true;
+    try {
+      final d = View.of(context).display;
+      final s = d.size / d.devicePixelRatio;
+      return s.shortestSide > 0 && s.shortestSide < 600;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _phoneQuality(String url, Size size) {
     final cf = url.contains('videodelivery.net') || url.contains('cloudflarestream.com');
-    if (!cf || size.shortestSide >= 600 || url.contains('clientBandwidthHint')) return url;
+    if (!cf || !isPhone(context) || url.contains('clientBandwidthHint')) return url;
     return '$url${url.contains('?') ? '&' : '?'}clientBandwidthHint=1.5';
   }
 
@@ -196,7 +210,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
     final onTv = ref.watch(currentTabProvider) == AppTab.tv;
     final size = MediaQuery.sizeOf(context);
-    final landscape = size.width > size.height && size.shortestSide < 600;
+    final phone = isPhone(context);
+    final landscape = size.width > size.height && phone;
     // Smart TV / ordinateur (1920×1080) : la TV prend toute la largeur de l'écran.
     final bigScreen = size.width >= 1280 && size.width > size.height;
     return live.when(
@@ -334,10 +349,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
                     ],
-                    if (offSt != null && offSt.total > 0 && size.shortestSide < 600) ...[
+                    if (offSt != null && offSt.total > 0 && phone) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'Réserve hors connexion · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''} prêt${offSt.ready > 1 ? 's' : ''}${offSt.busy ? ' · téléchargement en cours' : ''}',
+                        'Réserve hors connexion · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''} prêt${offSt.ready > 1 ? 's' : ''}',
                         style: const TextStyle(color: AppColors.muted, fontSize: 11.5),
                       ),
                     ],

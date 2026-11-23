@@ -156,7 +156,8 @@
   (function () {
     var host = null, park = null, vids = [], cur = 0, want = false, muted = false, t0 = 0, start0 = 0;
     var spin = null, chip = null, stallT = null, lastSeek = 0, lastPos = -1, still = 0, awayT = null, waitT = null;
-    function now() { return performance.now(); }
+    // Horloge murale : elle continue d'avancer quand le téléphone met l'appli en veille.
+    function now() { return Date.now(); }
     function expected() { return start0 + (now() - t0) / 1000; }
     function mk() {
       var v = document.createElement('video');
@@ -279,6 +280,29 @@
       awayT = setTimeout(function () { want = false; vids.forEach(function (v) { v.pause(); }); }, 5 * 60 * 1000);
     };
     window.conacceFileUnmute = function () { unlock(); };
+    // Retour dans l'appli (après être allé ailleurs) : le téléphone a souvent suspendu la vidéo.
+    // On reprend tout de suite au bon moment de la grille, sans avoir à actualiser.
+    var hiddenAt = 0;
+    function reload(v) { if (!v.__u) return; var u = v.__u; v.__u = null; still = 0; spinText(); if (spin) spin.style.display = 'flex'; load(v, u); }
+    function revive() {
+      if (!vids.length || !want) return;
+      var v = vids[cur], away = hiddenAt ? now() - hiddenAt : 0;
+      hiddenAt = 0; still = 0;
+      var fine = v.__ready && !v.paused && v.readyState >= 3 && Math.abs(v.currentTime - expected()) < 8;
+      if (fine) return;
+      if (away > 15000 || !v.__ready || v.readyState < 2) reload(v);
+      else { seekTo(v, expected()); doPlay(v); }
+      // Toujours bloquée quelques secondes plus tard : on recharge.
+      setTimeout(function () {
+        var w = vids[cur];
+        if (want && w === v && (w.paused || w.readyState < 3 || Math.abs(w.currentTime - expected()) > 15)) reload(w);
+      }, 6000);
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) hiddenAt = now(); else setTimeout(revive, 300);
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) setTimeout(revive, 300); });
+    window.addEventListener('focus', function () { setTimeout(revive, 300); });
     // Surveillance douce : recalage sur l'horaire et relance après un long blocage.
     setInterval(function () {
       if (!vids.length || !want) return;
@@ -289,7 +313,7 @@
       if (Math.abs(pos - lastPos) < 0.05) still++; else still = 0;
       lastPos = pos;
       if (!v.paused && Math.abs(pos - expected()) > 20 && now() - lastSeek > 60000) seekTo(v, expected());
-      if (still >= 8 && v.__u) { still = 0; var u = v.__u; v.__u = null; load(v, u); }  // ≈ 40 s sans image : on recharge
+      if (still >= 6 && v.__u && !document.hidden) reload(v);  // ≈ 30 s sans image : on recharge
     }, 5000);
   })();
   // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre
@@ -326,6 +350,25 @@
       for (var i = 0; i < vs.length; i++) { vs[i].setAttribute('playsinline', ''); vs[i].setAttribute('webkit-playsinline', ''); vs[i].playsInline = true; }
     }); });
   }).observe(document.documentElement, { childList: true, subtree: true });
+  // TV en grand (téléphone tourné) : toute la page passe en plein écran au premier toucher
+  // (Android). Le logo et le bandeau restent collés à l'image. L'iPhone ne le permet pas dans Safari :
+  // il faut ajouter l'appli à l'écran d'accueil pour ne plus voir les barres.
+  (function () {
+    var on = false, de = document.documentElement;
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement; }
+    function enter() {
+      if (!on || isIOS || fsEl()) return;
+      var f = de.requestFullscreen || de.webkitRequestFullscreen;
+      if (!f) return;
+      try { var p = f.call(de, { navigationUI: 'hide' }); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    document.addEventListener('pointerup', enter, true);
+    window.conacceImmersive = function (v) {
+      on = !!v;
+      if (!on && fsEl()) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
+    };
+  })();
   window.conacceFullscreen = function () {
     var v = document.querySelector('video');
     if (!v) return;
