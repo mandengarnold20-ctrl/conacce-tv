@@ -50,7 +50,8 @@ self.addEventListener('fetch', (e) => {
 async function networkFirst(req) {
   const c = await caches.open(SCACHE);
   try {
-    const r = await fetch(req);
+    // Toujours vérifier auprès du site : une nouvelle version de l'appli arrive dès l'ouverture.
+    const r = await fetch(new Request(req, { cache: 'no-cache' }));
     if (r && r.ok && r.type !== 'opaque') c.put(req, r.clone()).catch(() => {});
     return r;
   } catch (e) {
