@@ -64,7 +64,7 @@ class OrgScreen extends ConsumerWidget {
     Widget countryChip(String? code) {
       final selected = country == code;
       final label = code == null ? 'Tous les pays' : code.isEmpty ? 'International' : (countryName(code) ?? code);
-      final flag = code == null ? '' : code.isEmpty ? '🌍' : countryFlag(code);
+      final flag = code == null || code.isEmpty ? '' : countryFlag(code);
       return Padding(
         padding: const EdgeInsets.only(right: 8),
         child: ChoiceChip(
