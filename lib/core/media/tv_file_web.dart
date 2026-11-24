@@ -113,7 +113,7 @@ class _TvFileSurfaceState extends State<TvFileSurface> {
   void _reveal() {
     _btnTimer?.cancel();
     if (!_showBtn) setState(() => _showBtn = true);
-    _btnTimer = Timer(const Duration(seconds: 5), () {
+    _btnTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showBtn = false);
     });
   }

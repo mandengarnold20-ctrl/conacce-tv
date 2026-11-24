@@ -59,14 +59,22 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   int _stalledTicks = 0;
   bool _wasPlayingBeforeHidden = false;
 
-  // Bouton plein écran (web) : visible 10 s après un toucher sur la vidéo.
+  // Bouton d'agrandissement : visible quelques secondes après un toucher sur la vidéo.
   bool _showFullscreen = false;
+
+  /// Le bouton existe : sur le web (plein écran du téléphone en secours, sauf pour la TV),
+  /// dans l'appli seulement quand l'écran TV le demande (la VOD garde les commandes du lecteur).
+  bool get _hasExpand => kIsWeb ? (widget.onExpand != null || !widget.isLive) : widget.onExpand != null;
+
+  // Plusieurs lecteurs peuvent se croiser (changement de programme) : on ne remet
+  // l'appli en vertical que quand plus aucun lecteur n'est à l'écran.
+  static int _onScreen = 0;
   Timer? _fullscreenTimer;
 
   void _revealFullscreen() {
     _fullscreenTimer?.cancel();
     if (!_showFullscreen) setState(() => _showFullscreen = true);
-    _fullscreenTimer = Timer(const Duration(seconds: 10), () {
+    _fullscreenTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showFullscreen = false);
     });
   }
@@ -76,6 +84,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Tant que la vidéo est à l'écran, on autorise la rotation du téléphone.
+    _onScreen++;
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _init();
     if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 3), (_) => _keepAlive());
@@ -279,7 +288,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();
     // L'appli reprend l'affichage vertical.
-    SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    _onScreen--;
+    if (_onScreen <= 0) {
+      _onScreen = 0;
+      SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp]);
+    }
     super.dispose();
   }
 
@@ -295,12 +308,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                 ? const Center(child: CircularProgressIndicator(color: AppColors.sunYellow))
                 : Listener(
                     // Un toucher sur la vidéo fait apparaître le bouton plein écran.
-                    onPointerDown: kIsWeb
-                        ? (_) {
-                            _unmute();
-                            _revealFullscreen();
-                          }
-                        : null,
+                    onPointerDown: (_) {
+                      if (kIsWeb) _unmute();
+                      if (_hasExpand) _revealFullscreen();
+                    },
                     child: Stack(fit: StackFit.expand, children: [
                       Chewie(controller: _chewie!),
                       if (widget.isLive && _stalled) IgnorePointer(child: _Reconnecting(vod: widget.startAt != null)),
@@ -323,7 +334,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
                             )),
                           ),
                         ),
-                      if (kIsWeb)
+                      if (_hasExpand)
                         Positioned(
                           left: 8,
                           top: 8,

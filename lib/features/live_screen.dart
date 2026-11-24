@@ -257,7 +257,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
               ? EmbedVideo(key: ValueKey(embed), embedUrl: embed, sourceUrl: l.liveUrl!)
               : _ExternalLive(url: l.liveUrl!, source: l.source);
         } else if (onAir) {
-          player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView, expanded: immersive, onExpand: () => _toggleBig(immersive));
+          player = HlsVideoPlayer(key: _playerKey, url: l.hlsUrl!, isLive: true, onStarted: Analytics.liveView, expanded: immersive, onExpand: landscape ? null : () => _toggleBig(immersive));
         } else if (youtube) {
           player = TvYoutubeSurface(key: _tvKey, videoId: slot!.program.youtubeId!, slotKey: slot.key, position: () => slot!.positionAt(_now()));
         } else {
@@ -292,6 +292,21 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                   else
                     player,
                   if (!_audioOnly && onTv) overlay,
+                  // Programme YouTube : la vidéo garde les touchers pour elle, le bouton reste donc affiché.
+                  if (youtube && onTv && !_audioOnly && !landscape)
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: Material(
+                        color: const Color(0x66000000),
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: immersive ? 'Réduire' : 'Agrandir',
+                          icon: Icon(immersive ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded, color: Colors.white70),
+                          onPressed: () => _toggleBig(immersive),
+                        ),
+                      ),
+                    ),
                   if (onAir && !_audioOnly && (l.speaker != null || l.messageTitle != null))
                     Positioned(
                       left: 12,
