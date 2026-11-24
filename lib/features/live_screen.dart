@@ -61,7 +61,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   }
 
   /// Touches de la télécommande sur la chaîne en plein écran.
-  KeyEventResult _tvKey(FocusNode node, KeyEvent e) {
+  KeyEventResult _onRemoteKey(FocusNode node, KeyEvent e) {
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
     final k = e.logicalKey;
     // Retour : on quitte le plein écran pour le menu (Samsung / LG dans le navigateur : Échap / Retour).
@@ -72,7 +72,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       }
       return KeyEventResult.ignored; // Android : géré par le bouton Retour du système (PopScope)
     }
-    const info = {
+    final info = <LogicalKeyboardKey>{
       LogicalKeyboardKey.select, LogicalKeyboardKey.enter, LogicalKeyboardKey.numpadEnter, LogicalKeyboardKey.gameButtonA,
       LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowDown, LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight,
       LogicalKeyboardKey.info, LogicalKeyboardKey.contextMenu,
@@ -386,7 +386,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
             },
             child: Focus(
               autofocus: true,
-              onKeyEvent: _tvKey,
+              onKeyEvent: _onRemoteKey,
               child: ColoredBox(
                 color: Colors.black,
                 child: Stack(fit: StackFit.expand, children: [
