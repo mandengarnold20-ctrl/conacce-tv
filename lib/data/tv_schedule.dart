@@ -74,6 +74,29 @@ class TvProgram {
       );
 }
 
+/// Jour spécial (Noël, Pâques, congrès…) préparé dans la régie.
+/// Pendant sa plage horaire, si [replaceRegular], les rendez-vous qui se répètent
+/// (chaque jour, chaque semaine) ne passent pas : seule la journée spéciale passe.
+class TvSpecialDay {
+  const TvSpecialDay({required this.id, required this.name, required this.startsAt, required this.endsAt, this.replaceRegular = true});
+
+  final String id;
+  final String name;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final bool replaceRegular;
+
+  bool covers(DateTime t) => !t.isBefore(startsAt) && t.isBefore(endsAt);
+
+  factory TvSpecialDay.fromMap(Map<String, dynamic> m) => TvSpecialDay(
+        id: m['id'] as String,
+        name: m['name'] as String? ?? '',
+        startsAt: DateTime.parse(m['starts_at'] as String).toUtc(),
+        endsAt: DateTime.parse(m['ends_at'] as String).toUtc(),
+        replaceRegular: m['replace_regular'] as bool? ?? true,
+      );
+}
+
 /// Ce qui passe à un moment donné : le programme, son heure de début et de fin.
 class TvSlot {
   const TvSlot(this.program, this.start, this.end);
@@ -95,14 +118,21 @@ class TvSlot {
 /// La grille de la chaîne : boucle continue + rendez-vous à heure fixe.
 /// Calcul identique sur tous les téléphones, à partir de l'heure du serveur.
 class TvSchedule {
-  TvSchedule(List<TvProgram> programs, {DateTime? anchor})
+  TvSchedule(List<TvProgram> programs, {DateTime? anchor, List<TvSpecialDay> specialDays = const []})
       : anchor = anchor ?? defaultAnchor,
+        _blackouts = specialDays.where((d) => d.replaceRegular).toList(),
         fixed = programs.where((p) => p.isFixed && p.duration > Duration.zero).toList(),
         loop = (programs.where((p) => !p.isFixed && p.duration > Duration.zero).toList()
           ..sort((a, b) => a.position != b.position ? a.position.compareTo(b.position) : a.id.compareTo(b.id)));
 
   final List<TvProgram> fixed;
   final List<TvProgram> loop;
+
+  /// Jours spéciaux qui remplacent la grille habituelle.
+  final List<TvSpecialDay> _blackouts;
+
+  /// Un rendez-vous qui se répète ne passe pas pendant un jour spécial « remplaçant ».
+  bool _hidden(DateTime start) => _blackouts.any((d) => d.covers(start));
 
   /// Point de départ commun de la boucle (le même pour tout le monde).
   /// Réglé par la régie : « Play » après « Stop » fait repartir la playlist du n° 1.
@@ -120,6 +150,7 @@ class TvSchedule {
         for (final d in [days - 1, days, days + 1]) {
           if (d < 0) continue;
           final start = s.add(Duration(days: d));
+          if (_hidden(start)) continue;
           yield TvSlot(p, start, start.add(p.duration));
         }
         continue;
@@ -129,6 +160,7 @@ class TvSchedule {
         for (final w in [weeks - 1, weeks, weeks + 1]) {
           if (w < 0) continue;
           final start = s.add(Duration(days: 7 * w));
+          if (_hidden(start)) continue;
           yield TvSlot(p, start, start.add(p.duration));
         }
         continue;

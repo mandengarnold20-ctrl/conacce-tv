@@ -117,6 +117,13 @@ final tvProgramsProvider = StreamProvider<List<TvProgram>>((ref) {
       );
 });
 
+/// Jours spéciaux (Noël, Pâques, congrès…) : gardés aussi dans le téléphone pour la lecture hors connexion.
+final tvSpecialDaysProvider = StreamProvider<List<TvSpecialDay>>((ref) {
+  return _withOfflineCopy('ctv_special_days', () => _db.from('tv_special_days').stream(primaryKey: ['id'])).map(
+        (rows) => rows.map(TvSpecialDay.fromMap).toList(),
+      );
+});
+
 /// État de la chaîne (régie) : à l'antenne, en pause ou arrêtée.
 /// Habillage de la chaîne (logo, bandeau, bande artiste), mis à jour en direct par la régie.
 final brandingProvider = StreamProvider<Branding>((ref) {

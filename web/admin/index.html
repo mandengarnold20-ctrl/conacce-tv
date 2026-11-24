@@ -1593,7 +1593,9 @@ const startOfDay = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return 
 const timeOfDay = t => t - startOfDay(t);
 
 // La grille : exactement le même calcul que l'appli (heure du serveur, boucle + rendez-vous).
-function tvSchedule(programs, anchorMs) {
+// Jours spéciaux « remplaçants » : les rendez-vous qui se répètent ne passent pas pendant leur plage.
+const specialHides = (specials, t) => (specials || []).some(d => d.replace_regular !== false && t >= Date.parse(d.starts_at) && t < Date.parse(d.ends_at));
+function tvSchedule(programs, anchorMs, specials) {
   const ok = programs.filter(p => p.is_active !== false && p.duration > 0);
   const fixed = ok.filter(p => p.start_at);
   const loop = ok.filter(p => !p.start_at).sort((a, b) => (a.position - b.position) || (a.id < b.id ? -1 : 1));
@@ -1604,7 +1606,7 @@ function tvSchedule(programs, anchorMs) {
       const step = p.repeat_daily ? DAY_MS : p.repeat_weekly ? 7 * DAY_MS : 0;
       if (!step) { out.push({ p, start: s, end: s + d }); continue; }
       const k = Math.trunc((t - s) / step);
-      for (const n of [k - 1, k, k + 1]) { if (n < 0) continue; const st = s + n * step; out.push({ p, start: st, end: st + d }); }
+      for (const n of [k - 1, k, k + 1]) { if (n < 0) continue; const st = s + n * step; if (specialHides(specials, st)) continue; out.push({ p, start: st, end: st + d }); }
     }
     return out;
   };
@@ -1751,7 +1753,7 @@ async function showRegie() {
   const main = F.main;
   const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
   const R = {
-    programs: [], channel: { status: 'playing', anchor: '2026-01-01T00:00:00Z' }, live: null, offset: 0,
+    programs: [], specials: [], channel: { status: 'playing', anchor: '2026-01-01T00:00:00Z' }, live: null, offset: 0,
     day: dayIdx(Date.now()), weekly: true, mute: store('rg_mute') !== '0', vol: Number(store('rg_vol') || 80),
     air: { key: null }, prev: null, ready: {}, alive: true, timeEdited: false, q: '', kind: 'all',
   };
@@ -1812,7 +1814,8 @@ async function showRegie() {
   const nowLine = h('div', { class: 'tl-now hidden' }, h('span', {}, 'MAINTENANT'));
   const gridSec = h('section', { class: 'st-card', id: 'grille', 'aria-label': 'Grille' },
     h('div', { class: 'st-card-head' }, gridTitle, h('span', { class: 'rg-small' }, can.program ? 'Glissez une vidéo de la liste sur la grille ; glissez un rendez-vous pour changer son heure.' : 'Touchez un bloc pour le voir dans l’aperçu.'), h('span', { class: 'grow' }),
-      can.program ? h('button', { class: 'btn small', onclick: () => templatesBox() }, 'Modèles de journées') : null, dayTabs),
+      can.program ? h('button', { class: 'btn small', onclick: () => templatesBox() }, 'Modèles de journées') : null,
+      can.program ? h('button', { class: 'btn small', onclick: () => specialBox() }, '★ Jours spéciaux') : null, dayTabs),
     h('div', { class: 'tl-scroll' }, h('div', { class: 'tl' }, ticks, h('div', { class: 'tl-wrap' }, lane, nowLine))),
     h('div', { class: 'tl-legend' },
       h('span', {}, h('i', { class: 'sun' }), 'Rendez-vous (plan de la semaine)'),
@@ -2265,6 +2268,7 @@ async function showRegie() {
       if (p.repeat_daily) at = s0 + timeOfDay(s);
       else if (p.repeat_weekly) { if (dayIdx(s) === i) at = s0 + timeOfDay(s); }
       else if (s >= s0 && s < s1) at = s;
+      if (at != null && (p.repeat_daily || p.repeat_weekly) && specialHides(R.specials, at)) at = null; // jour spécial
       if (at != null) out.push({ p, at, end: at + p.duration * 1000 });
     }
     return out.sort((a, b) => a.at - b.at);
@@ -2305,12 +2309,14 @@ async function showRegie() {
   }
   function drawGrid() {
     const s0 = dayStart(R.day);
-    gridTitle.textContent = 'Grille du ' + new Date(s0).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const spOf = i => (R.specials || []).find(d => { const m = dayStart(i) + DAY_MS / 2; return m >= Date.parse(d.starts_at) && m < Date.parse(d.ends_at); });
+    const spToday = spOf(R.day);
+    gridTitle.textContent = 'Grille du ' + new Date(s0).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + (spToday ? ` · ★ ${spToday.name}` : '');
     dayTabs.textContent = '';
     RG_DAYS.forEach((d, i) => {
       const n = dayItems(i).length;
       dayTabs.append(h('button', { role: 'tab', 'aria-selected': i === R.day ? 'true' : 'false', class: i === R.day ? 'on' : '', onclick: () => { R.day = i; R.timeEdited = false; draw(); } },
-        d + (n ? ` · ${n}` : ''), h('small', {}, i === dayIdx(now()) ? 'aujourd’hui' : new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }))));
+        (spOf(i) ? '★ ' : '') + d + (n ? ` · ${n}` : ''), h('small', {}, spOf(i) ? spOf(i).name : i === dayIdx(now()) ? 'aujourd’hui' : new Date(dayStart(i)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }))));
     });
     lane.textContent = '';
     for (const b of dayBlocks(R.day)) {
@@ -2453,6 +2459,72 @@ async function showRegie() {
     document.body.append(m);
   }
 
+  // ── Calendrier des jours spéciaux (Noël, Pâques, congrès…) ──
+  async function specialBox() {
+    const [sp, tp] = await Promise.all([
+      sb.from('tv_special_days').select('*').order('starts_at'),
+      sb.from('tv_day_templates').select('*').order('name'),
+    ]);
+    if (sp.error) return toast(/tv_special_days/.test(sp.error.message) ? 'Base pas encore à jour (migration v18).' : friendly(sp.error), true);
+    const templates = tp.data || [];
+    const pad2 = n => String(n).padStart(2, '0');
+    const isoDay = t => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+    const dateIn = h('input', { type: 'date', 'aria-label': 'Date du jour spécial', min: isoDay(now()), value: isoDay(now() + DAY_MS) });
+    const nameIn = h('input', { type: 'text', placeholder: 'Ex. : Noël, Pâques, Congrès 2027…', 'aria-label': 'Nom du jour spécial', maxlength: 60 });
+    const tplSel = h('select', { 'aria-label': 'Modèle de journée' },
+      h('option', { value: '' }, 'Aucun modèle (je placerai les vidéos sur la grille)'),
+      templates.map(t => h('option', { value: t.id }, `${t.name} · ${(t.items || []).length} rendez-vous`)));
+    const repl = h('input', { type: 'checkbox', checked: true });
+    const list = h('div', { class: 'tp-list' });
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() }, h('div', { class: 'tp' },
+      h('h2', {}, '★ Jours spéciaux'),
+      h('div', { class: 'rg-small' }, 'Préparez à l’avance une journée particulière. Ce jour-là, elle passe automatiquement à la place de la grille habituelle, chez tous les spectateurs (même ceux qui regardent sans internet, si l’appli a eu le temps de se mettre à jour).'),
+      can.program ? h('div', { class: 'tp-sec' },
+        h('b', {}, 'Nouveau jour spécial'),
+        h('div', { class: 'row' }, dateIn, nameIn),
+        h('div', { class: 'row' }, tplSel),
+        h('label', { class: 'row' }, repl, h('span', {}, 'Remplacer les rendez-vous habituels (chaque jour / chaque semaine) ce jour-là')),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: async () => {
+          const name = nameIn.value.trim(); if (!name) return toast('Donnez un nom au jour spécial.', true);
+          if (!dateIn.value) return toast('Choisissez la date.', true);
+          const [y, mo, dd] = dateIn.value.split('-').map(Number);
+          const s0 = new Date(y, mo - 1, dd).getTime(), s1 = new Date(y, mo - 1, dd + 1).getTime();
+          if (s1 <= now()) return toast('Cette date est déjà passée.', true);
+          if ((sp.data || []).some(d => Date.parse(d.starts_at) < s1 && Date.parse(d.ends_at) > s0)) return toast('Un jour spécial existe déjà à cette date.', true);
+          const tpl = templates.find(t => t.id === tplSel.value);
+          const { data: row, error } = await sb.from('tv_special_days').insert({ name, starts_at: new Date(s0).toISOString(), ends_at: new Date(s1).toISOString(), replace_regular: repl.checked, template_id: tpl ? tpl.id : null }).select().single();
+          if (error) return toast(friendly(error), true);
+          let n = 0;
+          for (const it of (tpl ? tpl.items || [] : [])) {
+            const { minute, ...rest } = it;
+            try { await insertProgram({ ...rest, position: 0, start_at: new Date(s0 + minute * 60000).toISOString(), repeat_daily: false, repeat_weekly: false, special_day_id: row.id }); n++; }
+            catch (e) { toast(friendly(e), true); break; }
+          }
+          toast(`★ « ${name} » prévu le ${new Date(s0).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}${tpl ? ` · ${n} rendez-vous placés` : ''}.`);
+          m.remove(); reload();
+        } }, 'Prévoir ce jour spécial'))) : null,
+      h('div', { class: 'tp-sec' }, h('b', {}, 'Jours spéciaux prévus'), list),
+      h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Fermer'))));
+    const rows = (sp.data || []).filter(d => Date.parse(d.ends_at) > now() - 7 * DAY_MS);
+    if (!rows.length) list.append(h('div', { class: 'rg-small' }, 'Aucun jour spécial prévu.'));
+    for (const d of rows) {
+      const n = R.programs.filter(p => p.special_day_id === d.id).length;
+      const past = Date.parse(d.ends_at) <= now(), live = Date.parse(d.starts_at) <= now() && !past;
+      list.append(h('div', { class: 'tp-item' },
+        h('span', { class: 't' }, h('b', {}, `★ ${d.name}`), h('small', {},
+          `${new Date(Date.parse(d.starts_at)).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${n} rendez-vous · ${d.replace_regular !== false ? 'remplace la grille habituelle' : 's’ajoute à la grille habituelle'}${live ? ' · EN COURS' : past ? ' · passé' : ''}`)),
+        can.program ? h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer le jour spécial ' + d.name, onclick: async () => {
+          if (!(await confirmBox(`Supprimer le jour spécial « ${d.name} » et ses ${n} rendez-vous ? La grille habituelle reprendra ce jour-là.`, 'Supprimer', true))) return;
+          const del = await sb.from('tv_programs').delete().eq('special_day_id', d.id);
+          if (del.error) return toast(friendly(del.error), true);
+          const { error } = await sb.from('tv_special_days').delete().eq('id', d.id);
+          if (error) return toast(friendly(error), true);
+          toast(`« ${d.name} » supprimé.`); m.remove(); reload(); specialBox();
+        } }, '✕') : null));
+    }
+    document.body.append(m);
+  }
+
   // ── Notifications sur l'ordinateur pour les alertes graves ──
   let lastSerious = new Set();
   function notifyNew(out) {
@@ -2472,7 +2544,7 @@ async function showRegie() {
   // ── Affichage des listes ──
   const match = p => (R.kind === 'all' || (p.kind || 'clip') === R.kind) && (!R.q.trim() || norm(p.title + ' ' + (p.artist || '') + ' ' + (p.song || '')).includes(norm(R.q.trim())));
   function draw() {
-    R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor));
+    R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor), R.specials);
     const loop = R.sched.loop;
     const L = R.loopUI; L.rows.textContent = '';
     L.meta.textContent = `${loop.length} programme${loop.length > 1 ? 's' : ''} · ${fmtHms(loop.reduce((a, p) => a + p.duration, 0)) || '0:00'}`;
@@ -2869,13 +2941,15 @@ async function showRegie() {
 
   // ── Données ──
   async function reload() {
-    const [pr, ch] = await Promise.all([
+    const [pr, ch, sp] = await Promise.all([
       sb.from('tv_programs').select('*').order('position').order('created_at'),
       sb.from('tv_channel').select('*').eq('id', 1).maybeSingle(),
+      sb.from('tv_special_days').select('*').order('starts_at'),
     ]);
     if (!R.alive) return;
     if (pr.error) return toast(friendly(pr.error), true);
     R.programs = pr.data || [];
+    R.specials = sp.error ? [] : (sp.data || []);
     if (ch.data) R.channel = ch.data;
     draw();
     checkReady();
@@ -2917,6 +2991,7 @@ async function showRegie() {
   const liveTimer = setInterval(probeLive, 15000);
   const rt = sb.channel('regie-' + Date.now())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_programs' }, () => reload())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_special_days' }, () => reload())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_channel' }, p => { if (p.new && p.new.id) { R.channel = p.new; draw(); } })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'live_stream' }, () => loadLive().then(() => tick(true)))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tv_branding' }, p => { if (Date.now() - brandEdit > 4000 && p.new && p.new.config) { R.brand = normBrand(p.new.config); buildHab(); } })

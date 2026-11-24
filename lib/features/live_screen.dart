@@ -249,6 +249,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final programs = _progs ?? liveProgs;
     final channel = _chan ?? liveChan;
     final branding = ref.watch(brandingProvider).valueOrNull ?? const Branding();
+    // Base pas encore à jour, ou hors connexion sans copie : pas de jour spécial.
+    final specialDays = ref.watch(tvSpecialDaysProvider).valueOrNull ?? const <TvSpecialDay>[];
     _clock = ref.watch(serverClockOffsetProvider).valueOrNull ?? Duration.zero;
     _muted = tvYoutubeMuted;
     // Le son s'arrête dès qu'on quitte la page TV (sauf en « audio seul »).
@@ -264,7 +266,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       data: (live) {
         // Un vrai direct (OBS) passe devant la programmation ; sinon, la chaîne 24 h/24.
         final onAir = live != null && live.canPlay;
-        final schedule = TvSchedule(programs, anchor: channel.anchor);
+        final schedule = TvSchedule(programs, anchor: channel.anchor, specialDays: specialDays);
         final now = _now();
         // Régie : chaîne arrêtée = écran d'attente ; en pause = « Nous revenons dans un instant ».
         if (!onAir && channel.isPaused && !schedule.isEmpty) {
@@ -434,6 +436,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                         child: Text('HD', style: AppTheme.title(size: 12, weight: FontWeight.w800, color: AppColors.navy)),
                       ),
                     ]),
+                    // Jour spécial en cours (Noël, Pâques, congrès…) : son nom sous la TV.
+                    for (final d in specialDays.where((d) => d.covers(now.toUtc())).take(1)) ...[
+                      const SizedBox(height: 4),
+                      Text('★ ${d.name}', style: const TextStyle(color: AppColors.sunYellow, fontSize: 13, fontWeight: FontWeight.w700)),
+                    ],
                     if (l.messageTitle != null) ...[
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
