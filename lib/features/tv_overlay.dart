@@ -124,7 +124,7 @@ class _TvOverlayState extends State<TvOverlay> {
     // Texte d'annonce pendant une pub, ou « Suite de votre programme » à la reprise du film.
     final TvScreenText? screenText = slot?.adBreak?.text ?? slot?.resumeBreak?.resume;
     final screenTextOn = slot != null && screenText != null &&
-        screenText.visibleAt(now.difference(slot.segStart).inMilliseconds / 1000.0);
+        screenText.visibleAt(now.difference(slot.textFrom).inMilliseconds / 1000.0);
 
     return IgnorePointer(
       child: LayoutBuilder(builder: (context, c) {

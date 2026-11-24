@@ -131,11 +131,13 @@ class TvScreenText {
 
 /// Une coupure publicitaire dans un film.
 class TvAdBreak {
-  const TvAdBreak({required this.at, required this.adId, this.text, this.resume});
+  const TvAdBreak({required this.at, required this.adIds, this.text, this.resume});
 
   /// Instant de la coupure dans le film.
   final Duration at;
-  final String adId;
+
+  /// Les spots de l'écran publicitaire, dans l'ordre (autant qu'on veut).
+  final List<String> adIds;
   final TvScreenText? text;
   final TvScreenText? resume;
 
@@ -143,10 +145,12 @@ class TvAdBreak {
     if (v is! List) return const [];
     final out = <TvAdBreak>[];
     for (final b in v) {
-      if (b is! Map || b['at'] is! num || b['ad'] is! String) continue;
+      if (b is! Map || b['at'] is! num) continue;
+      final ids = b['ads'] is List ? (b['ads'] as List).whereType<String>().toList() : <String>[if (b['ad'] is String) b['ad'] as String];
+      if (ids.isEmpty) continue;
       out.add(TvAdBreak(
         at: Duration(milliseconds: ((b['at'] as num) * 1000).round()),
-        adId: b['ad'] as String,
+        adIds: ids,
         text: TvScreenText.from(b['txt'], defText: 'Publicité'),
         resume: TvScreenText.from(b['res'], defText: 'Suite de votre programme sur Conacce TV', defY: 0.82, defLen: 6),
       ));
@@ -181,7 +185,9 @@ class TvSpecialDay {
 
 /// Ce qui passe à un moment donné : le programme, son heure de début et de fin.
 class TvSlot {
-  const TvSlot(this.program, this.start, this.end, {this.parent, this.adBreak, this.resumeBreak, DateTime? segStart}) : _segStart = segStart;
+  const TvSlot(this.program, this.start, this.end, {this.parent, this.adBreak, this.resumeBreak, DateTime? segStart, DateTime? textFrom})
+      : _segStart = segStart,
+        _textFrom = textFrom;
 
   /// La vidéo qui passe (le film, ou la pub pendant une coupure).
   final TvProgram program;
@@ -202,6 +208,10 @@ class TvSlot {
 
   /// Heure réelle où ce morceau a commencé à l'antenne.
   DateTime get segStart => _segStart ?? start;
+
+  /// Début de l'écran publicitaire (le texte d'annonce se compte depuis là, sur tous les spots).
+  final DateTime? _textFrom;
+  DateTime get textFrom => _textFrom ?? segStart;
 
   /// Le programme à afficher (titre) : le film, même pendant sa pub.
   TvProgram get show => parent ?? program;
@@ -235,8 +245,10 @@ class TvSchedule {
   /// Les publicités utilisées par un film (pour la réserve hors connexion).
   Iterable<TvProgram> adsOf(TvProgram p) sync* {
     for (final b in p.adBreaks) {
-      final ad = _byId[b.adId];
-      if (ad != null) yield ad;
+      for (final id in b.adIds) {
+        final ad = _byId[id];
+        if (ad != null) yield ad;
+      }
     }
   }
 
@@ -308,22 +320,26 @@ class TvSchedule {
     var air = Duration.zero; // temps d'antenne écoulé depuis le début du passage
     var film = Duration.zero; // position dans le film
     TvAdBreak? prev;
-    TvSlot clip(DateTime start, DateTime segStart, DateTime segEnd, TvProgram prog, {TvAdBreak? ad, TvAdBreak? res}) {
+    TvSlot clip(DateTime start, DateTime segStart, DateTime segEnd, TvProgram prog, {TvAdBreak? ad, TvAdBreak? res, DateTime? textFrom}) {
       final end = segEnd.isAfter(base.end) ? base.end : segEnd;
-      return TvSlot(prog, start, end, parent: prog == p ? null : p, adBreak: ad, resumeBreak: res, segStart: segStart);
+      return TvSlot(prog, start, end, parent: prog == p ? null : p, adBreak: ad, resumeBreak: res, segStart: segStart, textFrom: textFrom);
     }
 
     for (final b in p.adBreaks) {
       if (b.at <= film || b.at >= p.duration) continue;
-      final ad = _byId[b.adId];
-      if (ad == null || ad.duration <= Duration.zero) continue;
+      final spots = [for (final id in b.adIds) if (_byId[id] != null && _byId[id]!.duration > Duration.zero) _byId[id]!];
+      if (spots.isEmpty) continue;
       // Morceau de film jusqu'à la coupure.
       final s0 = base.start.add(air), s1 = s0.add(b.at - film);
       if (t.isBefore(s1)) return clip(s0.subtract(film), s0, s1, p, res: prev);
-      // La pub.
-      final a1 = s1.add(ad.duration);
-      if (t.isBefore(a1)) return clip(s1, s1, a1, ad, ad: b);
-      air += (b.at - film) + ad.duration;
+      // L'écran publicitaire : les spots l'un après l'autre.
+      var a0 = s1;
+      for (final ad in spots) {
+        final a1 = a0.add(ad.duration);
+        if (t.isBefore(a1)) return clip(a0, a0, a1, ad, ad: b, textFrom: s1);
+        a0 = a1;
+      }
+      air += (b.at - film) + a0.difference(s1);
       film = b.at;
       prev = b;
     }

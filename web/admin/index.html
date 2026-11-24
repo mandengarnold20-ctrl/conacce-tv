@@ -1634,6 +1634,8 @@ const clampN = (v, a, b, d) => { v = Number(v); return isFinite(v) ? Math.min(b,
 const adTxt = (o, def, resume) => ({ on: !o || o.on !== false, t: (o && (o.t || '').trim()) || def,
   x: clampN(o && o.x, 0, 1, 0.05), y: clampN(o && o.y, 0, 1, resume ? 0.82 : 0.08), s: clampN(o && o.s, 1, 20, resume ? 4.5 : 5),
   d: clampN(o && o.d, 0, 3600, 0), l: clampN(o && o.l, 0, 3600, resume ? 6 : 0) });
+// Les spots d'une coupure (ancienne forme : un seul spot dans « ad »).
+const adsOfBreak = b => Array.isArray(b && b.ads) ? b.ads.filter(Boolean) : (b && b.ad ? [b.ad] : []);
 // Durée à l'antenne : le film + ses pubs.
 const airDur = p => p.duration + (p.air_extra || 0);
 function tvSchedule(programs, anchorMs, specials, repeat = true) {
@@ -1680,12 +1682,14 @@ function tvSchedule(programs, anchorMs, specials, repeat = true) {
     let air = 0, film = 0, prev = null;
     const seg = (start, s0, s1, q, extra) => ({ p: q, start, end: Math.min(s1, sl.end), segStart: s0, parent: q === p ? null : p, ...extra });
     for (const b of brks) {
-      const ad = byId.get(b.ad); if (!ad || !(ad.duration > 0) || b.at <= film) continue;
+      const spots = adsOfBreak(b).map(id => byId.get(id)).filter(a => a && a.duration > 0);
+      if (!spots.length || b.at <= film) continue;
       const s0 = sl.start + air * 1000, s1 = s0 + (b.at - film) * 1000;
       if (t < s1) return seg(s0 - film * 1000, s0, s1, p, { res: prev });
-      const a1 = s1 + ad.duration * 1000;
-      if (t < a1) return seg(s1, s1, a1, ad, { brk: b });
-      air += (b.at - film) + ad.duration; film = b.at; prev = b;
+      // Écran publicitaire : les spots l'un après l'autre.
+      let a0 = s1;
+      for (const ad of spots) { const a1 = a0 + ad.duration * 1000; if (t < a1) return seg(a0, a0, a1, ad, { brk: b, txtFrom: s1 }); a0 = a1; }
+      air += (b.at - film) + (a0 - s1) / 1000; film = b.at; prev = b;
     }
     const s0 = sl.start + air * 1000;
     return seg(s0 - film * 1000, s0, s0 + (p.duration - film) * 1000, p, { res: prev });
@@ -2219,7 +2223,7 @@ async function showRegie() {
       Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
       // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
       const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);
-      const sec = T.sl ? (t - (T.sl.segStart ?? T.sl.start)) / 1000 : 0;
+      const sec = T.sl ? (t - (T.sl.txtFrom ?? T.sl.segStart ?? T.sl.start)) / 1000 : 0;
       const vis = !!(st && st.on && st.t && sec >= st.d && (st.l <= 0 || sec < st.d + st.l));
       if (st) {
         if (ovTxt.textContent !== st.t) ovTxt.textContent = st.t;
@@ -2494,7 +2498,7 @@ async function showRegie() {
     for (const b of dayBlocks(R.day)) {
       const left = (b.from - s0) / DAY_MS * 100, width = Math.max(0.15, (b.to - b.from) / DAY_MS * 100);
       const label = b.kind === 'gap' ? 'Trou' : b.kind === 'loop' ? 'Playlist en boucle' : b.p.title;
-      const sub = b.kind === 'gap' ? `${hm(b.from)} → ${hm(b.to)} · écran d’attente` : b.kind === 'loop' ? `${hm(b.from)} → ${hm(b.to)} · ${b.items.length} programme${b.items.length > 1 ? 's' : ''}` : `${hm(b.from)} · ${fmtHms(b.p.duration)}`;
+      const sub = b.kind === 'gap' ? `${hm(b.from)} → ${hm(b.to)} · écran d’attente` : b.kind === 'loop' ? `${hm(b.from)} → ${hm(b.to)} · ${b.items.length} programme${b.items.length > 1 ? 's' : ''}` : `${hm(b.from)} · ${fmtHms(airDur(b.p))}${b.p.air_extra ? ' (pubs comprises)' : ''}`;
       const el = h(b.kind === 'gap' ? 'div' : 'button', { class: 'tl-b ' + b.kind + (b.kind === 'fixed' ? ' sun' : ''), style: `left:${left}%;width:${width}%`, title: label + ' · ' + sub,
         onclick: b.kind === 'gap' ? null : () => setPreview(b.kind === 'loop' ? b.items[0] : b.p) }, h('b', {}, label), h('small', {}, sub));
       lane.append(el);
@@ -2742,7 +2746,7 @@ async function showRegie() {
     P.rows.textContent = ''; P.meta.textContent = `${pubs.length} pub${pubs.length > 1 ? 's' : ''}`;
     if (!pubs.length) P.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Aucune publicité. Ajoutez les vidéos de vos annonceurs, puis placez-les dans un film avec le bouton « Pubs ».'));
     for (const p of pubs) {
-      const used = R.programs.filter(f => (f.ad_breaks || []).some(b => b.ad === p.id)).length;
+      const used = R.programs.filter(f => (f.ad_breaks || []).some(b => adsOfBreak(b).includes(p.id))).length;
       P.rows.append(row(p, 'PUB', [
         ['Aperçu', () => setPreview(p)],
         can.program ? ['Modifier', () => openForm('tv', p)] : null,
@@ -2814,7 +2818,9 @@ async function showRegie() {
   // ── Coupures publicitaires d'un film : l'instant est choisi dans le film ; texte d'annonce et message de reprise réglables ──
   function adBreaksBox(p) {
     const pubs = R.programs.filter(x => x.kind === 'pub' && x.duration > 0);
-    const brks = (p.ad_breaks || []).map(b => ({ at: b.at, ad: b.ad, txt: adTxt(b.txt, 'Publicité'), res: adTxt(b.res, RESUME_TXT, true) }));
+    const brks = (p.ad_breaks || []).map(b => ({ at: b.at, ads: adsOfBreak(b), txt: adTxt(b.txt, 'Publicité'), res: adTxt(b.res, RESUME_TXT, true) }));
+    const pubDur = id => (pubs.find(x => x.id === id) || {}).duration || 0;
+    const brkDur = b => b.ads.reduce((a, id) => a + pubDur(id), 0);
     let sel = 0;
     const v = h('video', { class: 'ab-vid', controls: true, playsinline: true, muted: true });
     let stop = null;
@@ -2845,8 +2851,8 @@ async function showRegie() {
       at = Math.round(at);
       if (at < 5 || at > p.duration - 5) return toast('Choisissez un instant entre le début et la fin du film (pas dans les 5 premières ou dernières secondes).', true);
       if (brks.some(b => Math.abs(b.at - at) < 10)) return toast('Il y a déjà une coupure à cet endroit.', true);
-      const last = brks.find(b => b.ad) || null;
-      brks.push({ at, ad: last ? last.ad : (pubs[0] ? pubs[0].id : ''), txt: last ? { ...last.txt } : adTxt(null, 'Publicité'), res: last ? { ...last.res } : adTxt(null, RESUME_TXT, true) });
+      const last = brks.find(b => b.ads.length) || null;
+      brks.push({ at, ads: last ? [...last.ads] : (pubs[0] ? [pubs[0].id] : []), txt: last ? { ...last.txt } : adTxt(null, 'Publicité'), res: last ? { ...last.res } : adTxt(null, RESUME_TXT, true) });
       brks.sort((a, b) => a.at - b.at); sel = brks.findIndex(b => b.at === at); drawList();
     }
     const num = (o, k, lab, min, max, step, unit) => h('label', { class: 'l', style: 'gap:4px' }, lab,
@@ -2858,18 +2864,32 @@ async function showRegie() {
         const tm = h('input', { class: 'tm', type: 'text', value: tmOf(b.at), 'aria-label': 'Instant de la coupure', onchange: e => {
           const x = secOf(e.target.value); if (x == null || x < 5 || x > p.duration - 5) { toast('Instant invalide (format h:mm:ss, à l’intérieur du film).', true); e.target.value = tmOf(b.at); return; }
           b.at = x; brks.sort((a, c) => a.at - c.at); sel = brks.indexOf(b); drawList(); } });
-        const adSel = h('select', { 'aria-label': 'Publicité', onchange: e => { b.ad = e.target.value; drawTotal(); } },
-          ...pubs.map(x => h('option', { value: x.id, selected: x.id === b.ad }, `${x.title} · ${fmtHms(x.duration)}`)));
-        if (!pubs.some(x => x.id === b.ad)) adSel.prepend(h('option', { value: '', selected: true }, '— choisir une pub —'));
+        // Écran publicitaire : autant de spots qu'on veut, dans l'ordre.
+        const spots = h('div', { style: 'display:grid;gap:4px' });
+        b.ads.forEach((id, k) => {
+          const x = pubs.find(q => q.id === id);
+          spots.append(h('div', { class: 'l' }, h('span', { class: 'rg-small', style: 'min-width:22px' }, `${k + 1}.`),
+            h('span', { style: 'flex:1;min-width:120px' }, x ? `${x.title} · ${fmtHms(x.duration)}` : '(spot supprimé)'),
+            h('button', { class: 'btn small ghost', disabled: k === 0, 'aria-label': 'Monter', onclick: e => { e.stopPropagation(); [b.ads[k - 1], b.ads[k]] = [b.ads[k], b.ads[k - 1]]; drawList(); } }, '▲'),
+            h('button', { class: 'btn small ghost', disabled: k === b.ads.length - 1, 'aria-label': 'Descendre', onclick: e => { e.stopPropagation(); [b.ads[k + 1], b.ads[k]] = [b.ads[k], b.ads[k + 1]]; drawList(); } }, '▼'),
+            h('button', { class: 'btn small ghost', 'aria-label': 'Retirer ce spot', onclick: e => { e.stopPropagation(); b.ads.splice(k, 1); drawList(); } }, '✕')));
+        });
+        const addSel = h('select', { 'aria-label': 'Ajouter un spot', onchange: e => { if (e.target.value) { b.ads.push(e.target.value); drawList(); } } },
+          h('option', { value: '' }, pubs.length ? '+ Ajouter un spot…' : 'Aucune pub enregistrée'),
+          ...pubs.map(x => h('option', { value: x.id }, `${x.title} · ${fmtHms(x.duration)}`)));
+        const addAll = pubs.length > 1 ? h('button', { class: 'btn small', onclick: e => { e.stopPropagation(); b.ads.push(...pubs.map(x => x.id)); drawList(); } }, '+ Tous les spots') : null;
+        const adSel = h('div', { style: 'display:grid;gap:6px' }, h('b', { style: 'font-size:12.5px' }, `Écran publicitaire · ${b.ads.length} spot${b.ads.length > 1 ? 's' : ''} · ${fmtHms(brkDur(b)) || '0:00'}`),
+          spots, h('div', { class: 'l' }, addSel, addAll));
         const tOn = h('input', { type: 'checkbox', checked: b.txt.on, onchange: e => { b.txt.on = e.target.checked; drawFrame(); } });
         const rOn = h('input', { type: 'checkbox', checked: b.res.on, onchange: e => { b.res.on = e.target.checked; drawFrame(); } });
         list.append(h('div', { class: 'ab-brk' + (i === sel ? ' sel' : ''), onclick: () => { if (sel !== i) { sel = i; [...list.children].forEach((c, k) => c.classList.toggle('sel', k === sel)); drawFrame(); } } },
           h('div', { class: 'l' }, h('b', {}, `Coupure ${i + 1}`), 'à', tm,
             p.source === 'file' ? h('button', { class: 'btn small', onclick: () => { try { v.currentTime = Math.max(0, b.at - 5); v.play().catch(() => {}); } catch (e) {} } }, 'Revoir') : null,
-            adSel, h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer la coupure', onclick: e => { e.stopPropagation(); brks.splice(i, 1); sel = Math.min(sel, brks.length - 1); drawList(); } }, '✕')),
+            h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer la coupure', onclick: e => { e.stopPropagation(); brks.splice(i, 1); sel = Math.min(sel, brks.length - 1); drawList(); } }, 'Supprimer la coupure')),
+          adSel,
           h('fieldset', {}, h('legend', {}, 'Texte pendant la pub'),
             h('label', { class: 'l' }, tOn, h('input', { type: 'text', value: b.txt.t, maxlength: 120, oninput: e => { b.txt.t = e.target.value; drawFrame(); } })),
-            h('div', { class: 'l' }, num(b.txt, 's', 'Taille', 1, 20, 0.5, '%'), num(b.txt, 'd', 'Apparaît après', 0, 600, 1, 's'), num(b.txt, 'l', 'pendant', 0, 600, 1, 's (0 = toute la pub)'))),
+            h('div', { class: 'l' }, num(b.txt, 's', 'Taille', 1, 20, 0.5, '%'), num(b.txt, 'd', 'Apparaît après', 0, 600, 1, 's'), num(b.txt, 'l', 'pendant', 0, 7200, 1, 's (0 = tout l’écran pub)'))),
           h('fieldset', {}, h('legend', {}, 'Message à la reprise du film'),
             h('label', { class: 'l' }, rOn, h('input', { type: 'text', value: b.res.t, maxlength: 120, oninput: e => { b.res.t = e.target.value; drawFrame(); } })),
             h('div', { class: 'l' }, num(b.res, 's', 'Taille', 1, 20, 0.5, '%'), num(b.res, 'l', 'Durée', 1, 120, 1, 's')))));
@@ -2877,7 +2897,7 @@ async function showRegie() {
       drawFrame(); drawTotal();
     }
     function drawTotal() {
-      const extra = brks.reduce((a, b) => a + ((pubs.find(x => x.id === b.ad) || {}).duration || 0), 0);
+      const extra = brks.reduce((a, b) => a + brkDur(b), 0);
       total.textContent = `À l’antenne : ${fmtHms(p.duration + extra)} (film ${fmtHms(p.duration)} + pubs ${fmtHms(extra) || '0:00'}). Les programmes suivants se décalent d’autant.`;
     }
     function drawFrame() {
@@ -2897,11 +2917,12 @@ async function showRegie() {
       frame.append(mk(b.txt, ''), mk(b.res, 'res'), h('small', {}, `Coupure ${sel + 1} · ${tmOf(b.at)}`));
     }
     async function save() {
-      if (brks.some(b => !pubs.some(x => x.id === b.ad))) return toast('Choisissez une pub pour chaque coupure.', true);
-      const clean = brks.map(b => ({ at: b.at, ad: b.ad,
+      brks.forEach(b => { b.ads = b.ads.filter(id => pubs.some(x => x.id === id)); });
+      if (brks.some(b => !b.ads.length)) return toast('Chaque coupure doit contenir au moins un spot.', true);
+      const clean = brks.map(b => ({ at: b.at, ads: b.ads, ad: b.ads[0],
         txt: { on: b.txt.on, t: (b.txt.t || '').trim(), x: b.txt.x, y: b.txt.y, s: b.txt.s, d: b.txt.d, l: b.txt.l },
         res: { on: b.res.on, t: (b.res.t || '').trim(), x: b.res.x, y: b.res.y, s: b.res.s, l: b.res.l } }));
-      const extra = clean.reduce((a, b) => a + pubs.find(x => x.id === b.ad).duration, 0);
+      const extra = clean.reduce((a, b) => a + b.ads.reduce((c, id) => c + pubDur(id), 0), 0);
       const { error } = await sb.from('tv_programs').update({ ad_breaks: clean, air_extra: extra }).eq('id', p.id);
       if (error) return toast(friendly(error), true);
       toast(clean.length ? `${clean.length} coupure${clean.length > 1 ? 's' : ''} pub enregistrée${clean.length > 1 ? 's' : ''} dans « ${p.title} ».` : `Plus de pub dans « ${p.title} ».`);
@@ -2970,7 +2991,7 @@ async function showRegie() {
       h('span', { class: 'th' }, th ? h('img', { src: th, alt: '', loading: 'lazy', onerror: e => e.target.remove() }) : null),
       h('span', { class: 't', title: p.title }, p.title, h('small', {},
         (p.artist ? p.artist + ' · ' : '') + (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') +
-        ((p.ad_breaks || []).length ? ` · ${p.ad_breaks.length} coupure${p.ad_breaks.length > 1 ? 's' : ''} pub (+${fmtHms(p.air_extra || 0) || '0:00'})` : '') + st)),
+        ((p.ad_breaks || []).length ? ` · ${p.ad_breaks.length} coupure${p.ad_breaks.length > 1 ? 's' : ''} pub, ${p.ad_breaks.reduce((a, b) => a + adsOfBreak(b).length, 0)} spot(s) (+${fmtHms(p.air_extra || 0) || '0:00'} à l’antenne)` : '') + st)),
       h('span', { class: 'd' }, h('span', { class: 'w', 'data-w': p.id }), fmtHms(p.duration)),
       h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t ? t + ' : ' + p.title : null }, l))));
   }
