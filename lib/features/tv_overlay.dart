@@ -121,6 +121,11 @@ class _TvOverlayState extends State<TvOverlay> {
           (b.bandEnd > 0 && total > b.bandEnd + b.bandAt + b.bandDur && inWindow(total - b.bandEnd));
     }
 
+    // Texte d'annonce pendant une pub, ou « Suite de votre programme » à la reprise du film.
+    final TvScreenText? screenText = slot?.adBreak?.text ?? slot?.resumeBreak?.resume;
+    final screenTextOn = slot != null && screenText != null &&
+        screenText.visibleAt(now.difference(slot.segStart).inMilliseconds / 1000.0);
+
     return IgnorePointer(
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth.isFinite ? c.maxWidth : 640.0;
@@ -181,6 +186,23 @@ class _TvOverlayState extends State<TvOverlay> {
                   k: k,
                   maxWidth: w * b.bandWidth / 100,
                   branding: b,
+                ),
+              ),
+            ),
+          if (screenText != null)
+            Positioned(
+              left: w * screenText.x,
+              top: h * screenText.y,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 450),
+                opacity: screenTextOn ? 1 : 0,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: (w * (1 - screenText.x) - margin).clamp(40.0, w).toDouble()),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10 * k, vertical: 5 * k),
+                    decoration: BoxDecoration(color: const Color(0xA6000000), borderRadius: BorderRadius.circular(6 * k)),
+                    child: Text(screenText.text, style: brandStyle(b, size: h * screenText.size / 100, weight: FontWeight.w700)),
+                  ),
                 ),
               ),
             ),

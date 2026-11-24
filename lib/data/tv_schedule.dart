@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'models.dart' show parseYoutubeId;
 
 /// Un programme de la chaîne Conacce TV (grille 24 h/24).
@@ -17,6 +19,9 @@ class TvProgram {
     this.showBand = true,
     this.kind = 'clip',
     this.isPriority = false,
+    this.adBreaks = const [],
+    this.airExtra = Duration.zero,
+    this.breaksSig = '',
   });
 
   final String id;
@@ -40,10 +45,23 @@ class TvProgram {
 
   /// clip, emission ou habillage (jingle, spot : jamais de bande).
   final String kind;
-  bool get hasBand => showBand && kind != 'habillage' && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
+  bool get hasBand => showBand && kind != 'habillage' && kind != 'pub' && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
 
   /// Rendez-vous prioritaire : passe à son heure exacte, même si un autre rendez-vous occupe ce moment.
   final bool isPriority;
+
+  /// Coupures publicitaires du film (instants choisis dans la régie).
+  final List<TvAdBreak> adBreaks;
+
+  /// Durée totale des pubs du film : il occupe l'antenne [duration] + [airExtra].
+  final Duration airExtra;
+  Duration get airDuration => duration + airExtra;
+
+  /// Empreinte des coupures (pour savoir si la régie les a changées).
+  final String breaksSig;
+
+  /// Une publicité : ne passe jamais seule, seulement pendant une coupure.
+  bool get isAd => kind == 'pub';
 
   bool get isFixed => startAt != null;
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -76,7 +94,66 @@ class TvProgram {
         showBand: m['show_band'] as bool? ?? true,
         kind: m['kind'] as String? ?? 'clip',
         isPriority: m['is_priority'] as bool? ?? false,
+        adBreaks: TvAdBreak.listFrom(m['ad_breaks']),
+        breaksSig: m['ad_breaks'] is List && (m['ad_breaks'] as List).isNotEmpty ? jsonEncode(m['ad_breaks']) : '',
+        airExtra: Duration(seconds: (m['air_extra'] as num?)?.toInt() ?? 0),
       );
+}
+
+/// Texte affiché à l'écran (annonce pendant la pub, ou « Suite de votre programme » à la reprise).
+/// [x], [y] : coin haut-gauche en fraction de l'écran ; [size] : hauteur du texte en % de l'écran ;
+/// [delay] : secondes après le début ; [length] : durée d'affichage (0 = tout le temps).
+class TvScreenText {
+  const TvScreenText({this.on = true, this.text = '', this.x = 0.05, this.y = 0.08, this.size = 5, this.delay = 0, this.length = 0});
+
+  final bool on;
+  final String text;
+  final double x, y, size, delay, length;
+
+  static double _d(Object? v, double def, double lo, double hi) => v is num ? v.toDouble().clamp(lo, hi).toDouble() : def;
+
+  static TvScreenText? from(Object? v, {String defText = '', double defY = 0.08, double defLen = 0}) {
+    if (v is! Map) return null;
+    return TvScreenText(
+      on: v['on'] != false,
+      text: (v['t'] as String?)?.trim().isNotEmpty == true ? (v['t'] as String).trim() : defText,
+      x: _d(v['x'], 0.05, 0, 1),
+      y: _d(v['y'], defY, 0, 1),
+      size: _d(v['s'], 5, 1, 20),
+      delay: _d(v['d'], 0, 0, 3600),
+      length: _d(v['l'], defLen, 0, 3600),
+    );
+  }
+
+  /// Affiché à [sec] secondes après le début de la séquence ?
+  bool visibleAt(double sec) => on && text.isNotEmpty && sec >= delay && (length <= 0 || sec < delay + length);
+}
+
+/// Une coupure publicitaire dans un film.
+class TvAdBreak {
+  const TvAdBreak({required this.at, required this.adId, this.text, this.resume});
+
+  /// Instant de la coupure dans le film.
+  final Duration at;
+  final String adId;
+  final TvScreenText? text;
+  final TvScreenText? resume;
+
+  static List<TvAdBreak> listFrom(Object? v) {
+    if (v is! List) return const [];
+    final out = <TvAdBreak>[];
+    for (final b in v) {
+      if (b is! Map || b['at'] is! num || b['ad'] is! String) continue;
+      out.add(TvAdBreak(
+        at: Duration(milliseconds: ((b['at'] as num) * 1000).round()),
+        adId: b['ad'] as String,
+        text: TvScreenText.from(b['txt'], defText: 'Publicité'),
+        resume: TvScreenText.from(b['res'], defText: 'Suite de votre programme sur Conacce TV', defY: 0.82, defLen: 6),
+      ));
+    }
+    out.sort((a, b) => a.at.compareTo(b.at));
+    return out;
+  }
 }
 
 /// Jour spécial (Noël, Pâques, congrès…) préparé dans la régie.
@@ -104,11 +181,30 @@ class TvSpecialDay {
 
 /// Ce qui passe à un moment donné : le programme, son heure de début et de fin.
 class TvSlot {
-  const TvSlot(this.program, this.start, this.end);
+  const TvSlot(this.program, this.start, this.end, {this.parent, this.adBreak, this.resumeBreak, DateTime? segStart}) : _segStart = segStart;
 
+  /// La vidéo qui passe (le film, ou la pub pendant une coupure).
   final TvProgram program;
+
+  /// Début « virtuel » : [positionAt] donne la position dans la vidéo (la suite d'un film reprend où il a été coupé).
   final DateTime start;
   final DateTime end;
+
+  /// Pendant une pub : le film coupé.
+  final TvProgram? parent;
+
+  /// Pendant une pub : la coupure (texte d'annonce).
+  final TvAdBreak? adBreak;
+
+  /// Suite d'un film après une pub : la coupure précédente (message « Suite de votre programme »).
+  final TvAdBreak? resumeBreak;
+  final DateTime? _segStart;
+
+  /// Heure réelle où ce morceau a commencé à l'antenne.
+  DateTime get segStart => _segStart ?? start;
+
+  /// Le programme à afficher (titre) : le film, même pendant sa pub.
+  TvProgram get show => parent ?? program;
 
   /// Identifiant unique de ce passage (le même programme peut repasser plus tard).
   String get key => '${program.id}@${start.millisecondsSinceEpoch}';
@@ -127,12 +223,22 @@ class TvSchedule {
       {DateTime? anchor, List<TvSpecialDay> specialDays = const [], this.loopRepeat = true})
       : anchor = anchor ?? defaultAnchor,
         _blackouts = specialDays.where((d) => d.replaceRegular).toList(),
-        fixed = programs.where((p) => p.isFixed && p.duration > Duration.zero).toList(),
-        loop = (programs.where((p) => !p.isFixed && p.duration > Duration.zero).toList()
+        _byId = {for (final p in programs) p.id: p},
+        fixed = programs.where((p) => p.isFixed && !p.isAd && p.duration > Duration.zero).toList(),
+        loop = (programs.where((p) => !p.isFixed && !p.isAd && p.duration > Duration.zero).toList()
           ..sort((a, b) => a.position != b.position ? a.position.compareTo(b.position) : a.id.compareTo(b.id)));
 
   final List<TvProgram> fixed;
   final List<TvProgram> loop;
+  final Map<String, TvProgram> _byId;
+
+  /// Les publicités utilisées par un film (pour la réserve hors connexion).
+  Iterable<TvProgram> adsOf(TvProgram p) sync* {
+    for (final b in p.adBreaks) {
+      final ad = _byId[b.adId];
+      if (ad != null) yield ad;
+    }
+  }
 
   /// Jours spéciaux qui remplacent la grille habituelle.
   final List<TvSpecialDay> _blackouts;
@@ -161,7 +267,7 @@ class TvSchedule {
           if (d < 0) continue;
           final start = s.add(Duration(days: d));
           if (_hidden(start)) continue;
-          yield TvSlot(p, start, start.add(p.duration));
+          yield TvSlot(p, start, start.add(p.airDuration));
         }
         continue;
       }
@@ -171,11 +277,11 @@ class TvSchedule {
           if (w < 0) continue;
           final start = s.add(Duration(days: 7 * w));
           if (_hidden(start)) continue;
-          yield TvSlot(p, start, start.add(p.duration));
+          yield TvSlot(p, start, start.add(p.airDuration));
         }
         continue;
       }
-      yield TvSlot(p, s, s.add(p.duration));
+      yield TvSlot(p, s, s.add(p.airDuration));
     }
   }
 
@@ -189,7 +295,44 @@ class TvSchedule {
   }
 
   /// Ce qui passe à [now] (null si la grille est vide ou s'il n'y a rien à cette heure).
+  /// Un film avec des coupures est découpé : morceau de film, pub, suite du film…
   TvSlot? at(DateTime now) {
+    final base = _baseAt(now);
+    return base == null ? null : _segment(base, now.toUtc());
+  }
+
+  /// Le morceau (film ou pub) d'un passage [base] qui passe à [t].
+  TvSlot _segment(TvSlot base, DateTime t) {
+    final p = base.program;
+    if (p.adBreaks.isEmpty) return base;
+    var air = Duration.zero; // temps d'antenne écoulé depuis le début du passage
+    var film = Duration.zero; // position dans le film
+    TvAdBreak? prev;
+    TvSlot clip(DateTime start, DateTime segStart, DateTime segEnd, TvProgram prog, {TvAdBreak? ad, TvAdBreak? res}) {
+      final end = segEnd.isAfter(base.end) ? base.end : segEnd;
+      return TvSlot(prog, start, end, parent: prog == p ? null : p, adBreak: ad, resumeBreak: res, segStart: segStart);
+    }
+
+    for (final b in p.adBreaks) {
+      if (b.at <= film || b.at >= p.duration) continue;
+      final ad = _byId[b.adId];
+      if (ad == null || ad.duration <= Duration.zero) continue;
+      // Morceau de film jusqu'à la coupure.
+      final s0 = base.start.add(air), s1 = s0.add(b.at - film);
+      if (t.isBefore(s1)) return clip(s0.subtract(film), s0, s1, p, res: prev);
+      // La pub.
+      final a1 = s1.add(ad.duration);
+      if (t.isBefore(a1)) return clip(s1, s1, a1, ad, ad: b);
+      air += (b.at - film) + ad.duration;
+      film = b.at;
+      prev = b;
+    }
+    final s0 = base.start.add(air);
+    return clip(s0.subtract(film), s0, s0.add(p.duration - film), p, res: prev);
+  }
+
+  /// Le passage (film entier, pubs comprises) à [now].
+  TvSlot? _baseAt(DateTime now) {
     final t = now.toUtc();
     // 1. Un rendez-vous en cours passe avant la boucle.
     TvSlot? current;
@@ -205,7 +348,7 @@ class TvSchedule {
     if (current != null) return current;
     // 2. Sinon, la boucle, qui tourne sans fin depuis [anchor].
     if (loop.isEmpty) return null;
-    final totalMs = loop.fold<int>(0, (a, p) => a + p.duration.inMilliseconds);
+    final totalMs = loop.fold<int>(0, (a, p) => a + p.airDuration.inMilliseconds);
     if (totalMs <= 0) return null;
     final raw = t.difference(anchor).inMilliseconds;
     // Boucle décochée : un seul tour de playlist, puis l'écran d'attente.
@@ -213,10 +356,10 @@ class TvSchedule {
     var inLoop = raw % totalMs;
     if (inLoop < 0) inLoop += totalMs;
     for (final p in loop) {
-      final d = p.duration.inMilliseconds;
+      final d = p.airDuration.inMilliseconds;
       if (inLoop < d) {
         final start = t.subtract(Duration(milliseconds: inLoop));
-        var end = start.add(p.duration);
+        var end = start.add(p.airDuration);
         // Un rendez-vous coupe la boucle à son heure exacte.
         final next = _nextFixedAfter(t);
         if (next != null && next.start.isBefore(end)) end = next.start;
@@ -230,8 +373,17 @@ class TvSchedule {
   /// Le prochain rendez-vous après [t] (affiché sur l'écran d'attente).
   TvSlot? nextFixedAfter(DateTime t) => _nextFixedAfter(t.toUtc());
 
-  /// Le programme suivant (pour « À suivre »).
+  /// Le morceau suivant (film, pub ou programme suivant).
   TvSlot? after(TvSlot slot) => at(slot.end.add(const Duration(milliseconds: 500)));
+
+  /// Le prochain programme différent (pour « À suivre » : on saute les pubs et la suite du même film).
+  TvSlot? nextShow(TvSlot slot) {
+    var s = after(slot);
+    for (var i = 0; i < 24 && s != null && (s.show.id == slot.show.id || s.program.isAd); i++) {
+      s = after(s);
+    }
+    return s;
+  }
 }
 
 /// État de la chaîne, piloté par la régie : à l'antenne, en pause ou arrêtée.

@@ -214,7 +214,7 @@
       v.preload = 'auto'; v.autoplay = false; v.controls = false;
       v.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:0;transition:opacity .8s';
       v.addEventListener('waiting', function () { if (v === vids[cur]) { clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && (v.paused || v.readyState < 3)) { spinText(); spin.style.display = 'flex'; } }, 1500); } });
-      v.addEventListener('playing', function () { if (v === vids[cur]) { clearTimeout(waitT); if (spin) spin.style.display = 'none'; v.style.opacity = '1'; } });
+      v.addEventListener('playing', function () { if (v === vids[cur]) { clearTimeout(waitT); if (spin) spin.style.display = 'none'; v.style.opacity = '1'; if (v.__fresh) { v.__fresh = false; rampIn(v); } } });
       // Un déplacement de l'écran (page qui se réorganise, téléphone tourné) peut mettre la vidéo en pause : elle repart aussitôt.
       v.addEventListener('pause', function () {
         if (v !== vids[cur] || !want || v.ended) return;
@@ -270,8 +270,24 @@
       });
       if (chip) chip.style.display = muted && host && host.isConnected ? 'block' : 'none';
     }
+    // Fondu du son : monte en douceur au début d'un morceau (reprise du film après une pub…).
+    function rampIn(v) {
+      clearInterval(v.__ramp); var k = 0;
+      try { v.volume = 0; } catch (e) {}
+      v.__ramp = setInterval(function () { k++; try { v.volume = Math.min(1, k / 10); } catch (e) {} if (k >= 10) clearInterval(v.__ramp); }, 100);
+    }
+    // … et baisse en douceur à la fin (coupure pub, fin du programme), avec l'image qui passe au noir.
+    window.conacceFileFade = function (sec) {
+      var v = vids[cur]; if (!v) return;
+      clearInterval(v.__ramp); var n = Math.max(2, Math.round(sec * 10)), k = 0, v0 = 1;
+      try { v0 = v.volume; } catch (e) {}
+      v.__ramp = setInterval(function () { k++; try { v.volume = Math.max(0, v0 * (1 - k / n)); } catch (e) {} if (k >= n) clearInterval(v.__ramp); }, 100);
+      v.style.transition = 'opacity ' + sec + 's'; v.style.opacity = '0';
+      setTimeout(function () { v.style.transition = 'opacity .8s'; }, sec * 1000 + 50);
+    };
     function show(v) {
       var other = vids[1 - cur];
+      rampIn(v);
       v.style.opacity = '1';
       if (other !== v) { other.style.opacity = '0'; setTimeout(function () { if (other !== vids[cur]) other.pause(); }, 400); }
     }
@@ -282,7 +298,7 @@
     var lastAhead = 0;
     function seekTo(v, s) { try { if (isFinite(s) && s > 0.5 && (!v.duration || s < v.duration - 1)) v.currentTime = s; } catch (e) {} lastSeek = now(); }
     function load(v, url) {
-      v.__u = url; v.__ready = false;
+      v.__u = url; v.__ready = false; v.__fresh = true;
       v.addEventListener('loadedmetadata', function once() { v.removeEventListener('loadedmetadata', once); v.__ready = true; if (v === vids[cur]) { seekTo(v, expected()); doPlay(v); } }, { once: true });
       v.src = url;
       try { v.load && !v.__hls && v.load(); } catch (e) {}

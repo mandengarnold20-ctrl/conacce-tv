@@ -14,6 +14,9 @@ external void _preload(JSString url);
 @JS('conacceFileAway')
 external void _away();
 
+@JS('conacceFileFade')
+external void _fadeOut(JSNumber seconds);
+
 const _viewType = 'conacce-tv-file';
 bool _registered = false;
 
@@ -69,6 +72,8 @@ class TvFileSurface extends StatefulWidget {
 
 class _TvFileSurfaceState extends State<TvFileSurface> {
   Timer? _timer;
+  Timer? _fadeTimer;
+  String? _faded;
   String? _preloaded;
   bool _showBtn = false;
   Timer? _btnTimer;
@@ -79,6 +84,15 @@ class _TvFileSurfaceState extends State<TvFileSurface> {
     _register();
     _start();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _maybePreload());
+    // Fin d'un morceau (coupure pub, fin du film) : le son baisse en douceur et l'image passe au noir.
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      final r = widget.remaining();
+      if (_faded == widget.slotKey || r > const Duration(milliseconds: 1300) || r.isNegative) return;
+      _faded = widget.slotKey;
+      try {
+        _fadeOut((r.inMilliseconds / 1000).clamp(0.2, 1.3).toJS);
+      } catch (_) {}
+    });
   }
 
   void _start() {
@@ -106,6 +120,7 @@ class _TvFileSurfaceState extends State<TvFileSurface> {
   @override
   void dispose() {
     _timer?.cancel();
+    _fadeTimer?.cancel();
     _btnTimer?.cancel();
     try {
       _away();

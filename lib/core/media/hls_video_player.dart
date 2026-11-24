@@ -24,6 +24,7 @@ class HlsVideoPlayer extends StatefulWidget {
     this.isFile = false,
     this.onStarted,
     this.startAt,
+    this.remaining,
     this.onExpand,
     this.expanded = false,
   });
@@ -43,6 +44,10 @@ class HlsVideoPlayer extends StatefulWidget {
 
   /// Chaîne programmée : position où la vidéo doit être en ce moment (même image pour tout le monde).
   final Duration Function()? startAt;
+
+  /// Chaîne programmée : temps restant avant la fin du morceau (coupure pub, fin du programme).
+  /// Le son monte en douceur au début et baisse en douceur à la fin.
+  final Duration Function()? remaining;
 
   @override
   State<HlsVideoPlayer> createState() => _HlsVideoPlayerState();
@@ -88,6 +93,28 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     _init();
     if (widget.isLive) _watchdog = Timer.periodic(const Duration(seconds: 3), (_) => _keepAlive());
+    if (widget.remaining != null) _fadeTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => _fadeTick());
+  }
+
+  // ── Fondu du son (début et fin d'un morceau) ──
+  Timer? _fadeTimer;
+  DateTime? _playingSince;
+  double _fadeVol = 1;
+
+  void _fadeTick() {
+    final video = _video;
+    final v = video?.value;
+    if (video == null || v == null || !v.isInitialized || !v.isPlaying || _autoMuted || _callMuted) return;
+    _playingSince ??= DateTime.now();
+    final since = DateTime.now().difference(_playingSince!).inMilliseconds;
+    final left = widget.remaining!().inMilliseconds;
+    var vol = 1.0;
+    if (left < 1200) vol = (left / 1200).clamp(0.0, 1.0).toDouble();
+    if (since < 1000) vol = vol < since / 1000 ? vol : since / 1000;
+    if ((vol - _fadeVol).abs() < 0.03 && vol != 0 && vol != 1) return;
+    if (vol == _fadeVol) return;
+    _fadeVol = vol;
+    video.setVolume(vol);
   }
 
   /// Surveille le direct sans jamais le couper pour rien :
@@ -284,6 +311,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   @override
   void dispose() {
     _watchdog?.cancel();
+    _fadeTimer?.cancel();
     _fullscreenTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();

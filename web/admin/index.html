@@ -524,6 +524,22 @@
   @container (max-width: 560px) { .hb-2, .hb-3 { grid-template-columns: 1fr; } .hb-msg { grid-template-columns: 1fr 1fr; } }
   .ov { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; --k: .6; }
   .ov-logo { position: absolute; border-radius: calc(3px * var(--k)); }
+  .ov-txt { position: absolute; padding: .25em .55em; border-radius: .3em; background: rgba(0,0,0,.65); color: #fff; font-weight: 700; line-height: 1.15; opacity: 0; transition: opacity .45s; }
+  .ov-txt.on { opacity: 1; }
+  .ab-wrap { width: min(860px, 100%) !important; max-height: 92vh; overflow-y: auto; }
+  .ab-vid { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; }
+  .ab-brk { border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px; display: grid; gap: 8px; }
+  .ab-brk.sel { border-color: #F9CA22; }
+  .ab-brk .l { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ab-brk .l > input[type=text], .ab-brk .l > select { flex: 1; min-width: 140px; }
+  .ab-brk .l input.tm { width: 92px; flex: none; }
+  .ab-brk .l input[type=number] { width: 70px; }
+  .ab-brk fieldset { border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 8px; display: grid; gap: 6px; margin: 0; }
+  .ab-brk legend { font-size: 12px; color: #B9C3EE; padding: 0 4px; }
+  .ab-frame { position: relative; width: 100%; max-width: 520px; aspect-ratio: 16/9; background: linear-gradient(135deg,#1B2560,#05081F); border-radius: 8px; overflow: hidden; touch-action: none; }
+  .ab-frame span { position: absolute; padding: .25em .55em; border-radius: .3em; background: rgba(0,0,0,.65); color: #fff; font-weight: 700; cursor: move; white-space: nowrap; border: 1.5px dashed #F9CA22; }
+  .ab-frame span.res { border-color: #7FB2FF; }
+  .ab-frame small { position: absolute; right: 6px; bottom: 4px; font-size: 10.5px; color: #9AA6DA; }
   /* Réglage du logo à la souris sur l'écran Antenne */
   .lg-safe { position: absolute; inset: 5%; border: 1.5px dashed rgba(249,202,34,.85); border-radius: 4px; pointer-events: none; z-index: 5; }
   .lg-safe span { position: absolute; left: 6px; top: 4px; font-size: 10.5px; font-weight: 700; color: #F9CA22; text-shadow: 0 1px 2px #000; letter-spacing: .04em; }
@@ -759,10 +775,10 @@ const ENT = {
     badges: r => [[r.source === 'youtube' ? 'Lien YouTube' : 'Vidéo téléversée'], r.start_at && ['Rendez-vous', 'green'], !r.is_active && ['Désactivé', 'red']].filter(Boolean),
     fields: [
       { k: 'title', label: 'Titre du programme', type: 'text', req: true, help: 'Affiché sous la TV : « En ce moment » et « À suivre ».' },
-      { k: 'kind', label: 'Type', type: 'select', opts: [['clip', 'Clip musical'], ['emission', 'Émission'], ['habillage', 'Habillage (jingle, spot)']], def: 'clip' },
+      { k: 'kind', label: 'Type', type: 'select', opts: [['clip', 'Clip musical'], ['emission', 'Émission'], ['habillage', 'Habillage (jingle, spot)'], ['pub', 'Publicité (passe seulement pendant les coupures d’un film)']], def: 'clip' },
       { k: 'artist', label: 'Haut de la bande : artiste (clip) ou nom de l’émission', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : ORO ft. Tope Alabi, ou « Culte du dimanche ». Affiché en haut de la bande, sur le dégradé.' },
       { k: 'song', label: 'Bas de la bande : titre de la chanson ou invité', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : Oh Lord, ou « Invité : Pasteur Jean ». Affiché en dessous, sur fond blanc.' },
-      { k: 'show_band', label: 'Afficher la bande sur ce programme', type: 'checkbox', def: true, show: v => v.kind !== 'habillage' },
+      { k: 'show_band', label: 'Afficher la bande sur ce programme', type: 'checkbox', def: true, show: v => v.kind !== 'habillage' && v.kind !== 'pub' },
       { k: 'source', label: 'Source', type: 'select', opts: [['youtube', 'Lien YouTube'], ['file', 'Vidéo téléversée (Cloudflare Stream)']], def: 'youtube' },
       { k: 'video_url', label: 'Lien de la vidéo', type: 'text', req: true, help: 'YouTube : collez le lien de la vidéo. Vidéo téléversée : envoyez-la dans Cloudflare (Stream › Téléverser, même plus de 2 Go, en 1920×1080), puis collez ici son lien ou son identifiant.' },
       { k: 'duration', label: 'Durée', type: 'duration', req: true, help: 'Touchez « Trouver la durée » : elle se remplit seule. La durée exacte permet d’enchaîner les vidéos sans trou.' },
@@ -1612,14 +1628,23 @@ const timeOfDay = t => t - startOfDay(t);
 // La grille : exactement le même calcul que l'appli (heure du serveur, boucle + rendez-vous).
 // Jours spéciaux « remplaçants » : les rendez-vous qui se répètent ne passent pas pendant leur plage.
 const specialHides = (specials, t) => (specials || []).some(d => d.replace_regular !== false && t >= Date.parse(d.starts_at) && t < Date.parse(d.ends_at));
+// Textes des coupures pub (annonce pendant la pub, message à la reprise du film).
+const RESUME_TXT = 'Suite de votre programme sur Conacce TV';
+const clampN = (v, a, b, d) => { v = Number(v); return isFinite(v) ? Math.min(b, Math.max(a, v)) : d; };
+const adTxt = (o, def, resume) => ({ on: !o || o.on !== false, t: (o && (o.t || '').trim()) || def,
+  x: clampN(o && o.x, 0, 1, 0.05), y: clampN(o && o.y, 0, 1, resume ? 0.82 : 0.08), s: clampN(o && o.s, 1, 20, resume ? 4.5 : 5),
+  d: clampN(o && o.d, 0, 3600, 0), l: clampN(o && o.l, 0, 3600, resume ? 6 : 0) });
+// Durée à l'antenne : le film + ses pubs.
+const airDur = p => p.duration + (p.air_extra || 0);
 function tvSchedule(programs, anchorMs, specials, repeat = true) {
-  const ok = programs.filter(p => p.is_active !== false && p.duration > 0);
+  const byId = new Map(programs.map(p => [p.id, p]));
+  const ok = programs.filter(p => p.is_active !== false && p.duration > 0 && p.kind !== 'pub');
   const fixed = ok.filter(p => p.start_at);
   const loop = ok.filter(p => !p.start_at).sort((a, b) => (a.position - b.position) || (a.id < b.id ? -1 : 1));
   const around = t => {
     const out = [];
     for (const p of fixed) {
-      const s = Date.parse(p.start_at), d = p.duration * 1000;
+      const s = Date.parse(p.start_at), d = airDur(p) * 1000;
       const step = p.repeat_daily ? DAY_MS : p.repeat_weekly ? 7 * DAY_MS : 0;
       if (!step) { out.push({ p, start: s, end: s + d }); continue; }
       const k = Math.trunc((t - s) / step);
@@ -1634,12 +1659,12 @@ function tvSchedule(programs, anchorMs, specials, repeat = true) {
     for (const sl of around(t)) if (t >= sl.start && t < sl.end && (!cur || (!!sl.p.is_priority !== !!cur.p.is_priority ? !!sl.p.is_priority : sl.start > cur.start))) cur = sl;
     if (cur) return cur;
     if (!loop.length) return null;
-    const total = loop.reduce((a, p) => a + p.duration * 1000, 0);
+    const total = loop.reduce((a, p) => a + airDur(p) * 1000, 0);
     // « Lire en boucle » décoché : un seul tour de playlist, puis l'écran d'attente.
     if (!repeat && (t < anchorMs || t - anchorMs >= total)) return null;
     let x = ((t - anchorMs) % total + total) % total;
     for (const p of loop) {
-      const d = p.duration * 1000;
+      const d = airDur(p) * 1000;
       if (x < d) { const start = t - x; let end = start + d; const n = nextFixed(t); if (n && n.start < end) end = n.start; return { p, start, end }; }
       x -= d;
     }
@@ -1647,7 +1672,25 @@ function tvSchedule(programs, anchorMs, specials, repeat = true) {
   };
   // Prochain moment où quelque chose recommence (fin d'un écran d'attente).
   const nextChange = t => { const n = nextFixed(t); let c = n ? n.start : null; if (!repeat && loop.length && t < anchorMs && (c == null || anchorMs < c)) c = anchorMs; return c; };
-  return { at, after: sl => at(sl.end + 500), nextFixed, nextChange, loop, fixed, repeat, empty: !ok.length };
+  // Ce qui passe vraiment à l'écran : un film avec des coupures est découpé (film, pub, suite du film…).
+  const play = t => {
+    const sl = at(t); if (!sl) return null;
+    const p = sl.p, brks = (p.ad_breaks || []).filter(b => b && b.at > 0 && b.at < p.duration).sort((a, b) => a.at - b.at);
+    if (!brks.length) return sl;
+    let air = 0, film = 0, prev = null;
+    const seg = (start, s0, s1, q, extra) => ({ p: q, start, end: Math.min(s1, sl.end), segStart: s0, parent: q === p ? null : p, ...extra });
+    for (const b of brks) {
+      const ad = byId.get(b.ad); if (!ad || !(ad.duration > 0) || b.at <= film) continue;
+      const s0 = sl.start + air * 1000, s1 = s0 + (b.at - film) * 1000;
+      if (t < s1) return seg(s0 - film * 1000, s0, s1, p, { res: prev });
+      const a1 = s1 + ad.duration * 1000;
+      if (t < a1) return seg(s1, s1, a1, ad, { brk: b });
+      air += (b.at - film) + ad.duration; film = b.at; prev = b;
+    }
+    const s0 = sl.start + air * 1000;
+    return seg(s0 - film * 1000, s0, s0 + (p.duration - film) * 1000, p, { res: prev });
+  };
+  return { at, play, after: sl => at(sl.end + 500), nextFixed, nextChange, loop, fixed, repeat, empty: !ok.length };
 }
 
 // Envoi direct vers Cloudflare Stream (protocole tus, par morceaux de 64 Mo, reprise automatique).
@@ -1854,18 +1897,18 @@ async function showRegie() {
   };
   drawChips();
   R.ptab = 'loop';
-  const loopPan = playlistPanel(), weekPan = weekPanel();
+  const loopPan = playlistPanel(), weekPan = weekPanel(), pubPan = pubPanel();
   const ptabs = h('div', { class: 'st-tabs', role: 'tablist', 'aria-label': 'Programmes' });
   const drawPtabs = () => {
     ptabs.textContent = '';
-    for (const [k, l] of [['loop', 'Playlist en boucle'], ['week', 'Plan du jour']])
+    for (const [k, l] of [['loop', 'Playlist en boucle'], ['week', 'Plan du jour'], ['pub', 'Publicités']])
       ptabs.append(h('button', { role: 'tab', class: R.ptab === k ? 'on' : '', 'aria-selected': String(R.ptab === k), onclick: () => { R.ptab = k; drawPtabs(); } }, l));
-    loopPan.classList.toggle('hidden', R.ptab !== 'loop'); weekPan.classList.toggle('hidden', R.ptab !== 'week');
+    loopPan.classList.toggle('hidden', R.ptab !== 'loop'); weekPan.classList.toggle('hidden', R.ptab !== 'week'); pubPan.classList.toggle('hidden', R.ptab !== 'pub');
   };
   drawPtabs();
   const progSec = h('section', { class: 'st-card', id: 'programmes', 'aria-label': 'Programmes' },
     h('div', { class: 'st-card-head' }, h('h2', {}, 'Programmes'), h('span', { class: 'grow' }), h('label', { class: 'st-search' }, icon('search', 15), qIn)),
-    ptabs, chips, loopPan, weekPan,
+    ptabs, chips, loopPan, weekPan, pubPan,
     h('div', { class: 'rg-foot' },
       h('div', { class: 'rg-small' }, 'Un direct passe toujours devant la programmation, qui reprend toute seule à la fin.'),
       can.program ? h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
@@ -2100,7 +2143,8 @@ async function showRegie() {
     const ovTrack = h('div', { class: 'ov-track' });
     const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
     const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
-    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTick);
+    const ovTxt = h('div', { class: 'ov-txt' });
+    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTxt, ovTick);
     box.append(ov);
     let bandHidden = null, bandWas = false, bandSwap = null;
       return function draw(t, T) {
@@ -2147,7 +2191,7 @@ async function showRegie() {
       }
       // Bande artiste / émission
       const p = T.sl && T.sl.p;
-      const has = !!(B.band.show && p && p.kind !== 'habillage' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
+      const has = !!(B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
       let on = false;
       if (has) {
         const pos = (t - T.sl.start) / 1000, total = p.duration;
@@ -2173,6 +2217,15 @@ async function showRegie() {
       ovBand.style.setProperty('--bk', bk.toFixed(3));
       Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText });
       Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
+      // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
+      const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);
+      const sec = T.sl ? (t - (T.sl.segStart ?? T.sl.start)) / 1000 : 0;
+      const vis = !!(st && st.on && st.t && sec >= st.d && (st.l <= 0 || sec < st.d + st.l));
+      if (st) {
+        if (ovTxt.textContent !== st.t) ovTxt.textContent = st.t;
+        Object.assign(ovTxt.style, { left: (st.x * w) + 'px', top: (st.y * hgt) + 'px', fontSize: (hgt * st.s / 100) + 'px', maxWidth: (w * (1 - st.x) - mg) + 'px', fontFamily: famOf(B.font) });
+      }
+      ovTxt.classList.toggle('on', vis);
       };
     }
 
@@ -2345,6 +2398,24 @@ async function showRegie() {
     return pan;
   }
 
+  // ── Panneau Publicités : les pubs ne passent jamais seules, seulement pendant les coupures d'un film ──
+  function pubPanel() {
+    const rows = h('div', { class: 'rg-rows' });
+    const meta = h('span', { class: 'meta' }, '');
+    const ups = h('div', { class: 'rg-ups' });
+    const pan = h('div', { class: 'rg-pan' },
+      h('header', {}, h('span', {}, 'Publicités'), meta),
+      h('div', { class: 'rg-tools' },
+        can.program ? h('button', { class: 'btn small primary', onclick: () => pickFiles('pub') }, 'Ajouter des pubs') : null,
+        can.program ? h('button', { class: 'btn small', onclick: () => askLinks('pub') }, 'Liens YouTube') : null,
+        h('span', { class: 'rg-small' }, 'Elles passent seulement pendant les coupures d’un film : bouton « Pubs » sur le film.')),
+      ups, rows, can.program ? h('div', { class: 'rg-drop' }, 'Glissez-déposez vos pubs ici') : null);
+    if (can.program) dropZone(pan, 'pub');
+    R.pubUI = { rows, meta, ups };
+    return pan;
+  }
+  const uiOf = where => where === 'loop' ? R.loopUI : where === 'pub' ? R.pubUI : R.weekUI;
+
   function dropZone(pan, where) {
     let n = 0;
     pan.addEventListener('dragenter', e => { if (![...(e.dataTransfer?.types || [])].includes('Files')) return; e.preventDefault(); n++; pan.classList.add('drag'); });
@@ -2370,7 +2441,7 @@ async function showRegie() {
       else if (p.repeat_weekly) { if (dayIdx(s) === i) at = s0 + timeOfDay(s); }
       else if (s >= s0 && s < s1) at = s;
       if (at != null && (p.repeat_daily || p.repeat_weekly) && specialHides(R.specials, at)) at = null; // jour spécial
-      if (at != null) out.push({ p, at, end: at + p.duration * 1000 });
+      if (at != null) out.push({ p, at, end: at + airDur(p) * 1000 });
     }
     return out.sort((a, b) => a.at - b.at);
   }
@@ -2461,11 +2532,11 @@ async function showRegie() {
     } else {
       try {
         await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null,
-          show_band: p.show_band !== false, position: 0, start_at: new Date(t).toISOString(), repeat_daily: false, repeat_weekly: false });
+          show_band: p.show_band !== false, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, start_at: new Date(t).toISOString(), repeat_daily: false, repeat_weekly: false });
         toast(`« ${p.title} » programmé ${RG_DAYS_LONG[R.day]} à ${hm(t)}. Il reste aussi dans la playlist.`);
       } catch (e) { return toast(friendly(e), true); }
     }
-    const clash = dayItems(R.day).find(it => it.p.id !== p.id && it.at < t + p.duration * 1000 && it.end > t);
+    const clash = dayItems(R.day).find(it => it.p.id !== p.id && it.at < t + airDur(p) * 1000 && it.end > t);
     if (clash) toast(`Attention : chevauche « ${clash.p.title} » (${hm(clash.at)}). Le plus tardif coupe le précédent (sauf rendez-vous prioritaire).`, true);
     reload();
   }
@@ -2651,7 +2722,7 @@ async function showRegie() {
       LU.repeatHelp.textContent = on ? 'Tourne sans fin quand rien n’est prévu.' : 'Passe une seule fois, puis l’écran d’attente (logo) jusqu’au prochain rendez-vous.'; }
     const loop = R.sched.loop;
     const L = R.loopUI; L.rows.textContent = '';
-    L.meta.textContent = `${loop.length} programme${loop.length > 1 ? 's' : ''} · ${fmtHms(loop.reduce((a, p) => a + p.duration, 0)) || '0:00'}`;
+    L.meta.textContent = `${loop.length} programme${loop.length > 1 ? 's' : ''} · ${fmtHms(loop.reduce((a, p) => a + airDur(p), 0)) || '0:00'}`;
     if (!loop.length) L.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Playlist vide. Ajoutez des vidéos ou des liens YouTube.'));
     let shown = 0;
     loop.forEach((p, k) => {
@@ -2661,11 +2732,23 @@ async function showRegie() {
         can.program && !R.q && R.kind === 'all' ? ['▲', () => k > 0 && move(loop, k, -1), k > 0 ? '' : 'off', 'Monter'] : null,
         can.program && !R.q && R.kind === 'all' ? ['▼', () => k < loop.length - 1 && move(loop, k, 1), k < loop.length - 1 ? '' : 'off', 'Descendre'] : null,
         can.program ? ['Heure exacte', () => exactTimeBox(p), '', 'Faire passer cette vidéo à une heure précise'] : null,
+        can.program && p.kind !== 'habillage' ? [pubLabel(p), () => adBreaksBox(p), '', 'Coupures publicitaires dans ce programme'] : null,
         can.program ? ['Modifier', () => openForm('tv', p)] : null,
         can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
       ]));
     });
     if (loop.length && !shown) L.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Aucun programme ne correspond à cette recherche.'));
+    const P = R.pubUI, pubs = R.programs.filter(p => p.kind === 'pub');
+    P.rows.textContent = ''; P.meta.textContent = `${pubs.length} pub${pubs.length > 1 ? 's' : ''}`;
+    if (!pubs.length) P.rows.append(h('div', { class: 'empty', style: 'margin:12px' }, 'Aucune publicité. Ajoutez les vidéos de vos annonceurs, puis placez-les dans un film avec le bouton « Pubs ».'));
+    for (const p of pubs) {
+      const used = R.programs.filter(f => (f.ad_breaks || []).some(b => b.ad === p.id)).length;
+      P.rows.append(row(p, 'PUB', [
+        ['Aperçu', () => setPreview(p)],
+        can.program ? ['Modifier', () => openForm('tv', p)] : null,
+        can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
+      ], used ? `dans ${used} programme${used > 1 ? 's' : ''}` : 'pas encore placée'));
+    }
     const W = R.weekUI;
     const items = dayItems(R.day);
     W.title.textContent = 'Plan du ' + RG_DAYS_LONG[R.day];
@@ -2679,6 +2762,7 @@ async function showRegie() {
       const r = row(p, hm(it.at), [
         ['Aperçu', () => setPreview(p)],
         can.program ? ['Heure', () => editTime(r, p, it)] : null,
+        can.program && p.kind !== 'habillage' ? [pubLabel(p), () => adBreaksBox(p), '', 'Coupures publicitaires dans ce programme'] : null,
         can.program ? [p.is_priority ? '★ Prioritaire' : '☆ Prioritaire', () => setPriority(p, !p.is_priority), p.is_priority ? 'pri' : '', p.is_priority ? 'Retirer la priorité' : 'Rendre prioritaire : passe à son heure exacte même si un autre rendez-vous est prévu'] : null,
         can.program ? ['Modifier', () => openForm('tv', p)] : null,
         can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
@@ -2714,7 +2798,9 @@ async function showRegie() {
     if (R.channel.status === 'stopped') { document.querySelectorAll('[data-w]').forEach(el => { el.textContent = 'chaîne arrêtée'; el.className = 'w no'; }); return; }
     const m = nextAirings(R.sched, now());
     document.querySelectorAll('[data-w]').forEach(el => {
-      const a = m.get(el.dataset.w), isLoop = !R.programs.find(p => p.id === el.dataset.w)?.start_at;
+      const pr = R.programs.find(p => p.id === el.dataset.w);
+      if (pr && pr.kind === 'pub') { el.textContent = ''; return; }
+      const a = m.get(el.dataset.w), isLoop = !pr?.start_at;
       const l = whenLabel(a);
       el.textContent = l || (isLoop && R.sched && !R.sched.repeat ? 'ne repasse pas' : '+ 48 h');
       el.className = 'w' + (a && a.on ? ' on' : l ? '' : ' no');
@@ -2722,6 +2808,107 @@ async function showRegie() {
     });
   }
   setInterval(() => { if (R.sched) drawAirings(); }, 20000);
+  function pubLabel(p) { const n = (p.ad_breaks || []).length; return n ? `Pubs (${n})` : 'Pubs'; }
+  const tmOf = s => { s = Math.max(0, Math.round(s)); const hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60; return `${hh}:${pad(mm)}:${pad(ss)}`; };
+  const secOf = v => { const m = String(v || '').trim().match(/^(?:(\d+):)?(\d{1,2}):(\d{1,2})$/); return m ? (Number(m[1] || 0) * 3600 + Number(m[2]) * 60 + Number(m[3])) : null; };
+  // ── Coupures publicitaires d'un film : l'instant est choisi dans le film ; texte d'annonce et message de reprise réglables ──
+  function adBreaksBox(p) {
+    const pubs = R.programs.filter(x => x.kind === 'pub' && x.duration > 0);
+    const brks = (p.ad_breaks || []).map(b => ({ at: b.at, ad: b.ad, txt: adTxt(b.txt, 'Publicité'), res: adTxt(b.res, RESUME_TXT, true) }));
+    let sel = 0;
+    const v = h('video', { class: 'ab-vid', controls: true, playsinline: true, muted: true });
+    let stop = null;
+    if (p.source === 'file' && streamUrl(p.video_url)) stop = attachHls(v, streamUrl(p.video_url));
+    const vidBox = p.source === 'file' ? v : h('div', { class: 'rg-small' }, 'Vidéo YouTube : tapez l’heure de chaque coupure (h:mm:ss) dans la liste.');
+    const cutBtn = h('button', { class: 'btn primary', onclick: () => addBreak(v.currentTime || 0) }, '✂ Couper ici');
+    v.addEventListener('timeupdate', () => { cutBtn.textContent = `✂ Couper ici (${tmOf(v.currentTime || 0)})`; });
+    const list = h('div', { style: 'display:grid;gap:10px' });
+    const total = h('div', { class: 'rg-small' });
+    const frame = h('div', { class: 'ab-frame' });
+    const close = () => { try { stop && stop(); } catch (e) {} m.remove(); };
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && close() },
+      h('div', { class: 'ab-wrap' },
+        h('h2', {}, 'Publicités dans « ' + p.title + ' »'),
+        h('div', { class: 'rg-small' }, 'Avancez le film jusqu’à l’instant voulu, puis « Couper ici ». À l’antenne : le son et l’image baissent en douceur, la pub passe, puis le film reprend exactement où il a été coupé, en douceur.'),
+        vidBox,
+        h('div', { class: 'l', style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' },
+          p.source === 'file' ? cutBtn : null,
+          h('button', { class: 'btn', onclick: () => addBreak(brks.length ? Math.min(p.duration - 30, brks[brks.length - 1].at + 600) : Math.min(600, p.duration / 2)) }, '+ Coupure à une heure précise')),
+        pubs.length ? null : h('div', { class: 'rg-small', style: 'color:#FDA45A' }, 'Aucune pub enregistrée : ajoutez d’abord les vidéos dans l’onglet « Publicités ».'),
+        list,
+        h('div', {}, h('b', { style: 'font-size:13px' }, 'Position des textes'), h('div', { class: 'rg-small' }, 'Glissez les textes sur l’écran ci-dessous (coupure sélectionnée). Jaune : annonce pendant la pub ; bleu : message à la reprise.')),
+        frame, total,
+        h('div', { class: 'row' },
+          h('button', { class: 'btn ghost', onclick: close }, 'Annuler'),
+          h('button', { class: 'btn primary', onclick: save }, 'Enregistrer'))));
+    function addBreak(at) {
+      at = Math.round(at);
+      if (at < 5 || at > p.duration - 5) return toast('Choisissez un instant entre le début et la fin du film (pas dans les 5 premières ou dernières secondes).', true);
+      if (brks.some(b => Math.abs(b.at - at) < 10)) return toast('Il y a déjà une coupure à cet endroit.', true);
+      const last = brks.find(b => b.ad) || null;
+      brks.push({ at, ad: last ? last.ad : (pubs[0] ? pubs[0].id : ''), txt: last ? { ...last.txt } : adTxt(null, 'Publicité'), res: last ? { ...last.res } : adTxt(null, RESUME_TXT, true) });
+      brks.sort((a, b) => a.at - b.at); sel = brks.findIndex(b => b.at === at); drawList();
+    }
+    const num = (o, k, lab, min, max, step, unit) => h('label', { class: 'l', style: 'gap:4px' }, lab,
+      h('input', { type: 'number', min, max, step, value: o[k], oninput: e => { o[k] = clampN(e.target.value, min, max, o[k]); drawFrame(); } }), unit || '');
+    function drawList() {
+      list.textContent = '';
+      if (!brks.length) list.append(h('div', { class: 'empty' }, 'Aucune coupure : le film passe d’un seul tenant.'));
+      brks.forEach((b, i) => {
+        const tm = h('input', { class: 'tm', type: 'text', value: tmOf(b.at), 'aria-label': 'Instant de la coupure', onchange: e => {
+          const x = secOf(e.target.value); if (x == null || x < 5 || x > p.duration - 5) { toast('Instant invalide (format h:mm:ss, à l’intérieur du film).', true); e.target.value = tmOf(b.at); return; }
+          b.at = x; brks.sort((a, c) => a.at - c.at); sel = brks.indexOf(b); drawList(); } });
+        const adSel = h('select', { 'aria-label': 'Publicité', onchange: e => { b.ad = e.target.value; drawTotal(); } },
+          ...pubs.map(x => h('option', { value: x.id, selected: x.id === b.ad }, `${x.title} · ${fmtHms(x.duration)}`)));
+        if (!pubs.some(x => x.id === b.ad)) adSel.prepend(h('option', { value: '', selected: true }, '— choisir une pub —'));
+        const tOn = h('input', { type: 'checkbox', checked: b.txt.on, onchange: e => { b.txt.on = e.target.checked; drawFrame(); } });
+        const rOn = h('input', { type: 'checkbox', checked: b.res.on, onchange: e => { b.res.on = e.target.checked; drawFrame(); } });
+        list.append(h('div', { class: 'ab-brk' + (i === sel ? ' sel' : ''), onclick: () => { if (sel !== i) { sel = i; [...list.children].forEach((c, k) => c.classList.toggle('sel', k === sel)); drawFrame(); } } },
+          h('div', { class: 'l' }, h('b', {}, `Coupure ${i + 1}`), 'à', tm,
+            p.source === 'file' ? h('button', { class: 'btn small', onclick: () => { try { v.currentTime = Math.max(0, b.at - 5); v.play().catch(() => {}); } catch (e) {} } }, 'Revoir') : null,
+            adSel, h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer la coupure', onclick: e => { e.stopPropagation(); brks.splice(i, 1); sel = Math.min(sel, brks.length - 1); drawList(); } }, '✕')),
+          h('fieldset', {}, h('legend', {}, 'Texte pendant la pub'),
+            h('label', { class: 'l' }, tOn, h('input', { type: 'text', value: b.txt.t, maxlength: 120, oninput: e => { b.txt.t = e.target.value; drawFrame(); } })),
+            h('div', { class: 'l' }, num(b.txt, 's', 'Taille', 1, 20, 0.5, '%'), num(b.txt, 'd', 'Apparaît après', 0, 600, 1, 's'), num(b.txt, 'l', 'pendant', 0, 600, 1, 's (0 = toute la pub)'))),
+          h('fieldset', {}, h('legend', {}, 'Message à la reprise du film'),
+            h('label', { class: 'l' }, rOn, h('input', { type: 'text', value: b.res.t, maxlength: 120, oninput: e => { b.res.t = e.target.value; drawFrame(); } })),
+            h('div', { class: 'l' }, num(b.res, 's', 'Taille', 1, 20, 0.5, '%'), num(b.res, 'l', 'Durée', 1, 120, 1, 's')))));
+      });
+      drawFrame(); drawTotal();
+    }
+    function drawTotal() {
+      const extra = brks.reduce((a, b) => a + ((pubs.find(x => x.id === b.ad) || {}).duration || 0), 0);
+      total.textContent = `À l’antenne : ${fmtHms(p.duration + extra)} (film ${fmtHms(p.duration)} + pubs ${fmtHms(extra) || '0:00'}). Les programmes suivants se décalent d’autant.`;
+    }
+    function drawFrame() {
+      frame.textContent = '';
+      const b = brks[sel]; if (!b) { frame.append(h('small', {}, 'Ajoutez une coupure')); return; }
+      const hgt = frame.clientHeight || 290;
+      const mk = (o, cls) => {
+        const el = h('span', { class: cls, style: `left:${o.x * 100}%;top:${o.y * 100}%;font-size:${hgt * o.s / 100}px;opacity:${o.on ? 1 : .35}` }, o.t || '…');
+        el.addEventListener('pointerdown', e => {
+          e.preventDefault(); const r = frame.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, x0 = o.x, y0 = o.y;
+          const mv = ev => { o.x = clampN(x0 + (ev.clientX - sx) / r.width, 0, 0.95, x0); o.y = clampN(y0 + (ev.clientY - sy) / r.height, 0, 0.95, y0); el.style.left = o.x * 100 + '%'; el.style.top = o.y * 100 + '%'; };
+          const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); o.x = Math.round(o.x * 1000) / 1000; o.y = Math.round(o.y * 1000) / 1000; };
+          window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+        });
+        return el;
+      };
+      frame.append(mk(b.txt, ''), mk(b.res, 'res'), h('small', {}, `Coupure ${sel + 1} · ${tmOf(b.at)}`));
+    }
+    async function save() {
+      if (brks.some(b => !pubs.some(x => x.id === b.ad))) return toast('Choisissez une pub pour chaque coupure.', true);
+      const clean = brks.map(b => ({ at: b.at, ad: b.ad,
+        txt: { on: b.txt.on, t: (b.txt.t || '').trim(), x: b.txt.x, y: b.txt.y, s: b.txt.s, d: b.txt.d, l: b.txt.l },
+        res: { on: b.res.on, t: (b.res.t || '').trim(), x: b.res.x, y: b.res.y, s: b.res.s, l: b.res.l } }));
+      const extra = clean.reduce((a, b) => a + pubs.find(x => x.id === b.ad).duration, 0);
+      const { error } = await sb.from('tv_programs').update({ ad_breaks: clean, air_extra: extra }).eq('id', p.id);
+      if (error) return toast(friendly(error), true);
+      toast(clean.length ? `${clean.length} coupure${clean.length > 1 ? 's' : ''} pub enregistrée${clean.length > 1 ? 's' : ''} dans « ${p.title} ».` : `Plus de pub dans « ${p.title} ».`);
+      close(); reload();
+    }
+    document.body.append(m); drawList(); requestAnimationFrame(drawFrame);
+  }
   async function setPriority(p, on) {
     const { error } = await sb.from('tv_programs').update({ is_priority: on }).eq('id', p.id);
     if (error) return toast(friendly(error), true);
@@ -2739,8 +2926,8 @@ async function showRegie() {
     const info = h('div', { class: 'rg-small' });
     const check = () => {
       const t = when(); if (t == null) { info.textContent = ''; return; }
-      const clash = R.programs.filter(x => x.start_at && x.id !== p.id).map(x => ({ x, s: Date.parse(x.start_at) })).find(({ x, s }) => s < t + p.duration * 1000 && s + x.duration * 1000 > t && !x.repeat_daily && !x.repeat_weekly);
-      info.textContent = `Passage le ${new Date(t).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}, fin vers ${hm(t + p.duration * 1000)}.` +
+      const clash = R.programs.filter(x => x.start_at && x.id !== p.id).map(x => ({ x, s: Date.parse(x.start_at) })).find(({ x, s }) => s < t + airDur(p) * 1000 && s + airDur(x) * 1000 > t && !x.repeat_daily && !x.repeat_weekly);
+      info.textContent = `Passage le ${new Date(t).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}, fin vers ${hm(t + airDur(p) * 1000)}.` +
         (clash ? ` Un autre rendez-vous est prévu à ce moment (« ${clash.x.title} », ${hm(clash.s)}) : ${pri.checked ? 'cette vidéo passera devant.' : 'le plus tardif des deux coupe l’autre.'}` : '');
     };
     const when = () => {
@@ -2765,7 +2952,7 @@ async function showRegie() {
             if (t < now() - 60000 && rep.value === 'once') return toast('Cette heure est déjà passée.', true);
             const v = { start_at: new Date(t).toISOString(), repeat_daily: rep.value === 'daily', repeat_weekly: rep.value === 'weekly', is_priority: pri.checked };
             try {
-              if (keep.checked) await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false, position: 0, ...v });
+              if (keep.checked) await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, ...v });
               else { const { error } = await sb.from('tv_programs').update(v).eq('id', p.id); if (error) throw error; }
             } catch (e) { return toast(friendly(e), true); }
             toast(`« ${p.title} » passera ${whenLabel({ at: t })}${rep.value === 'daily' ? ', chaque jour' : rep.value === 'weekly' ? ', chaque semaine' : ''}${pri.checked ? ' (prioritaire)' : ''}.`);
@@ -2782,7 +2969,8 @@ async function showRegie() {
       h('span', { class: 'n' }, num),
       h('span', { class: 'th' }, th ? h('img', { src: th, alt: '', loading: 'lazy', onerror: e => e.target.remove() }) : null),
       h('span', { class: 't', title: p.title }, p.title, h('small', {},
-        (p.artist ? p.artist + ' · ' : '') + (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') + st)),
+        (p.artist ? p.artist + ' · ' : '') + (p.source === 'youtube' ? 'YouTube' : 'Vidéo envoyée') + (note ? ' · ' + note : '') +
+        ((p.ad_breaks || []).length ? ` · ${p.ad_breaks.length} coupure${p.ad_breaks.length > 1 ? 's' : ''} pub (+${fmtHms(p.air_extra || 0) || '0:00'})` : '') + st)),
       h('span', { class: 'd' }, h('span', { class: 'w', 'data-w': p.id }), fmtHms(p.duration)),
       h('span', { class: 'a' }, acts.filter(Boolean).map(([l, f, c, t]) => h('button', { class: c || '', onclick: f, title: t, 'aria-label': t ? t + ' : ' + p.title : null }, l))));
   }
@@ -2803,7 +2991,7 @@ async function showRegie() {
     const prep = R.programs.filter(p => p.source === 'file' && R.ready[p.id] === false).length;
     if (prep) out.push(['info', `${prep} vidéo${prep > 1 ? 's' : ''} encore en préparation chez Cloudflare : elle${prep > 1 ? 's' : ''} passera${prep > 1 ? 'ont' : ''} dès qu’elle${prep > 1 ? 's seront prêtes' : ' sera prête'}.`]);
     // Boucle de sécurité : ce qui tourne quand rien n'est programmé.
-    const loopDur = S.empty ? 0 : S.loop.reduce((a, p) => a + p.duration, 0);
+    const loopDur = S.empty ? 0 : S.loop.reduce((a, p) => a + airDur(p), 0);
     const planned = [0, 1, 2, 3, 4, 5, 6].filter(i => dayItems(i).length).length;
     if (S.loop.length && loopDur < 2 * 3600) out.push(['warn', `Réserve basse : la playlist en boucle ne dure que ${fmtLong(loopDur)}, elle se répète souvent. Ajoutez des vidéos (objectif : au moins 24 h).`, '#programmes']);
     const uniq = new Map(); for (const p of R.programs) uniq.set(p.video_url, p.duration);
@@ -2894,6 +3082,7 @@ async function showRegie() {
     const weekly = R.weekly;
     return dur => {
       if (where === 'loop') return { position: ++pos, start_at: null, repeat_daily: false, repeat_weekly: false };
+      if (where === 'pub') return { position: 0, start_at: null, repeat_daily: false, repeat_weekly: false, kind: 'pub', show_band: false };
       const st = t; t += dur * 1000;
       return { position: 0, start_at: new Date(st).toISOString(), repeat_daily: false, repeat_weekly: weekly };
     };
@@ -2908,7 +3097,7 @@ async function showRegie() {
     const ta = h('textarea', { rows: 7, placeholder: 'https://youtu.be/…\nhttps://www.youtube.com/watch?v=…', 'aria-label': 'Liens YouTube' });
     const go = h('button', { class: 'btn primary' }, 'Programmer');
     const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
-      h('div', {}, h('h2', {}, where === 'loop' ? 'Ajouter à la playlist en boucle' : `Ajouter au plan : ${RG_DAYS_LONG[R.day]} à partir de ${hm(chosenStart())}`),
+      h('div', {}, h('h2', {}, where === 'pub' ? 'Ajouter des publicités' : where === 'loop' ? 'Ajouter à la playlist en boucle' : `Ajouter au plan : ${RG_DAYS_LONG[R.day]} à partir de ${hm(chosenStart())}`),
         h('div', { class: 'rg-small' }, 'Collez un ou plusieurs liens YouTube, un par ligne. Le titre et la durée sont trouvés automatiquement, puis les vidéos s’enchaînent.'),
         ta, h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Annuler'), go)));
     document.body.append(m); ta.focus();
@@ -2916,7 +3105,7 @@ async function showRegie() {
       const ids = ta.value.split(/[\s,]+/).map(ytId).filter(Boolean);
       if (!ids.length) return toast('Aucun lien YouTube reconnu.', true);
       m.remove();
-      const plan = slotPlanner(where); const UI = where === 'loop' ? R.loopUI : R.weekUI;
+      const plan = slotPlanner(where); const UI = uiOf(where);
       let okN = 0;
       for (const [i, id] of ids.entries()) {
         const line = h('div', {}, h('span', {}, `Lien ${i + 1}/${ids.length} : recherche du titre et de la durée…`)); UI.ups.append(line);
@@ -2939,7 +3128,7 @@ async function showRegie() {
   }
 
   async function addFiles(where, files) {
-    const UI = where === 'loop' ? R.loopUI : R.weekUI;
+    const UI = uiOf(where);
     const plan = slotPlanner(where);
     const jobs = [];
     for (const f of files) {
@@ -3041,13 +3230,14 @@ async function showRegie() {
     if (!S || S.empty) return { kind: 'none', key: 'empty', msg: ['AUCUN PROGRAMME', 'Ajoutez des vidéos à la playlist ou au plan de la semaine.'] };
     if (R.channel.status === 'stopped') return { kind: 'none', key: 'stopped', msg: ['CHAÎNE ARRÊTÉE', 'Les spectateurs voient l’écran d’attente. Touchez « Lecture » pour reprendre.'] };
     if (R.channel.status === 'paused') return { kind: 'none', key: 'paused', msg: ['EN PAUSE', 'Les spectateurs voient « Nous revenons dans un instant ».'] };
-    const sl = S.at(t);
+    const sl = S.play(t);
     if (!sl) {
       if (!S.repeat && S.loop.length) { const n = S.nextFixed(t); return { kind: 'none', key: 'wait', msg: ['ÉCRAN D’ATTENTE', 'La playlist est terminée (« Lire en boucle » décoché). ' + (n ? `Prochain rendez-vous à ${hm(n.start)} : ${n.p.title}.` : 'Aucun rendez-vous prévu : « Reprendre la playlist au début » la relance.')] }; }
       return { kind: 'none', key: 'nothing', msg: ['RIEN À L’ANTENNE', 'Ajoutez des vidéos à la playlist en boucle pour combler les trous.'] };
     }
     const p = sl.p, key = p.id + '@' + sl.start;
-    return p.source === 'youtube' ? { kind: 'yt', key, id: ytId(p.video_url), sl, title: p.title } : { kind: 'hls', key, url: streamUrl(p.video_url), sl, title: p.title };
+    const title = sl.parent ? `PUB · ${p.title} (pendant « ${sl.parent.title} »)` : p.title;
+    return p.source === 'youtube' ? { kind: 'yt', key, id: ytId(p.video_url), sl, title } : { kind: 'hls', key, url: streamUrl(p.video_url), sl, title };
   }
   function mountAir(T) {
     const A = R.air;
@@ -3094,6 +3284,11 @@ async function showRegie() {
     const same = R.air.T && T.sl && R.air.T.sl && R.air.T.sl.p.id === T.sl.p.id && Math.abs(R.air.T.sl.start - T.sl.start) < 3000 && R.air.T.kind === T.kind;
     if (same) { R.air.T = T; R.air.key = T.key; }
     if (T.key !== R.air.key) mountAir(T);
+    // Fondu du son en fin de morceau (coupure pub, fin du programme) et au début du suivant.
+    if (R.air.video && T.sl && !R.mute) {
+      const left = T.sl.end - t, since = t - (T.sl.segStart ?? T.sl.start), base = R.vol / 100;
+      try { R.air.video.volume = base * Math.max(0, Math.min(1, left / 1200, since / 1000 + 0.05)); } catch (e) {}
+    }
     if (T.sl && t - lastSync > 15000) {
       lastSync = t;
       const want = (t - T.sl.start) / 1000;

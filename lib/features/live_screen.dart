@@ -103,14 +103,20 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     }
     add(slot?.program);
     add(next?.program);
+    // Les pubs des films passent aussi par la réserve.
+    if (slot != null) schedule.adsOf(slot.show).forEach(add);
     for (final p in schedule.loop) {
       add(p);
+      schedule.adsOf(p).forEach(add);
     }
     final now = _now();
     for (final p in schedule.fixed) {
       final s = p.startAt;
       if (s == null) continue;
-      if (p.repeatDaily || p.repeatWeekly || (s.isAfter(now.subtract(const Duration(hours: 1))) && s.isBefore(now.add(const Duration(hours: 24))))) add(p);
+      if (p.repeatDaily || p.repeatWeekly || (s.isAfter(now.subtract(const Duration(hours: 1))) && s.isBefore(now.add(const Duration(hours: 24))))) {
+        add(p);
+        schedule.adsOf(p).forEach(add);
+      }
     }
     final json = jsonEncode(items);
     if (json == _lastPlan) return;
@@ -125,7 +131,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   static String _sigOf(List<TvProgram> ps, TvChannel c) =>
       '${c.status}|${c.anchor.millisecondsSinceEpoch}|${c.pausedAt?.millisecondsSinceEpoch}|${c.loopRepeat}|' +
-      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.isPriority}:${p.videoUrl}').join(',');
+      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.isPriority}:${p.kind}:${p.airExtra.inSeconds}:${p.breaksSig}:${p.videoUrl}').join(',');
 
   void _settleSchedule(List<TvProgram> ps, TvChannel c) {
     final sig = _sigOf(ps, c);
@@ -291,12 +297,14 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         _syncImmersive(immersive);
         if (!canPlay) return _Offline(live: live, nextProgram: waitNext);
         final next = slot == null ? null : schedule.after(slot);
+        // « À suivre » : le prochain programme (pas la pub ni la suite du même film).
+        final upNext = slot == null ? null : schedule.nextShow(slot);
         if (!onAir) _sendPlan(schedule, slot, next, size);
         final youtube = slot != null && slot.program.isYoutube;
         // Ce qui s'affiche sous la TV : le direct, ou le programme en cours.
         final LiveStream l = onAir
             ? live!
-            : LiveStream(id: 'tv', title: live?.title ?? 'Conacce TV', isLive: false, messageTitle: slot!.program.title);
+            : LiveStream(id: 'tv', title: live?.title ?? 'Conacce TV', isLive: false, messageTitle: slot!.show.title);
         final Widget player;
         if (!onTv) {
           player = const AspectRatio(aspectRatio: 16 / 9, child: ColoredBox(color: Colors.black));
@@ -396,10 +404,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                   Center(child: screen),
                   _TvInfoBar(
                     visible: _tvInfo,
-                    now: onAir ? (l.messageTitle ?? l.title) : slot!.program.title,
+                    now: onAir ? (l.messageTitle ?? l.title) : slot!.show.title,
                     live: onAir,
-                    nextTitle: next?.program.title,
-                    nextAt: next?.start,
+                    nextTitle: upNext?.show.title,
+                    nextAt: upNext?.segStart,
                   ),
                 ]),
               ),
@@ -446,10 +454,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
                     ],
-                    if (next != null && next.program.title.isNotEmpty) ...[
+                    if (upNext != null && upNext.show.title.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'À suivre · ${DateFormat('HH:mm', 'fr_FR').format(next.start.toLocal())} · ${next.program.title}',
+                        'À suivre · ${DateFormat('HH:mm', 'fr_FR').format(upNext.segStart.toLocal())} · ${upNext.show.title}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: AppColors.muted, fontSize: 12),

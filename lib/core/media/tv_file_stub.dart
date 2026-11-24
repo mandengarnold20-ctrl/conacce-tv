@@ -32,6 +32,7 @@ class TvFileSurface extends StatelessWidget {
         url: localFile != null ? Uri.file(localFile!).toString() : url,
         isLive: true,
         startAt: position,
+        remaining: remaining,
         onExpand: onExpand,
         expanded: expanded,
       );
