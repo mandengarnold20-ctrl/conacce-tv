@@ -16,6 +16,7 @@ class TvProgram {
     this.song,
     this.showBand = true,
     this.kind = 'clip',
+    this.isPriority = false,
   });
 
   final String id;
@@ -40,6 +41,9 @@ class TvProgram {
   /// clip, emission ou habillage (jingle, spot : jamais de bande).
   final String kind;
   bool get hasBand => showBand && kind != 'habillage' && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
+
+  /// Rendez-vous prioritaire : passe à son heure exacte, même si un autre rendez-vous occupe ce moment.
+  final bool isPriority;
 
   bool get isFixed => startAt != null;
   String? get youtubeId => parseYoutubeId(videoUrl);
@@ -71,6 +75,7 @@ class TvProgram {
         song: m['song'] as String?,
         showBand: m['show_band'] as bool? ?? true,
         kind: m['kind'] as String? ?? 'clip',
+        isPriority: m['is_priority'] as bool? ?? false,
       );
 }
 
@@ -118,7 +123,8 @@ class TvSlot {
 /// La grille de la chaîne : boucle continue + rendez-vous à heure fixe.
 /// Calcul identique sur tous les téléphones, à partir de l'heure du serveur.
 class TvSchedule {
-  TvSchedule(List<TvProgram> programs, {DateTime? anchor, List<TvSpecialDay> specialDays = const []})
+  TvSchedule(List<TvProgram> programs,
+      {DateTime? anchor, List<TvSpecialDay> specialDays = const [], this.loopRepeat = true})
       : anchor = anchor ?? defaultAnchor,
         _blackouts = specialDays.where((d) => d.replaceRegular).toList(),
         fixed = programs.where((p) => p.isFixed && p.duration > Duration.zero).toList(),
@@ -137,6 +143,10 @@ class TvSchedule {
   /// Point de départ commun de la boucle (le même pour tout le monde).
   /// Réglé par la régie : « Play » après « Stop » fait repartir la playlist du n° 1.
   final DateTime anchor;
+
+  /// Case « Lire en boucle » de la régie. Décochée : la playlist passe une seule fois depuis [anchor],
+  /// puis l'écran d'attente jusqu'au prochain rendez-vous.
+  final bool loopRepeat;
   static final DateTime defaultAnchor = DateTime.utc(2026, 1, 1);
 
   bool get isEmpty => fixed.isEmpty && loop.isEmpty;
@@ -185,7 +195,11 @@ class TvSchedule {
     TvSlot? current;
     for (final slot in _fixedAround(t)) {
       if (!t.isBefore(slot.start) && t.isBefore(slot.end)) {
-        if (current == null || slot.start.isAfter(current.start)) current = slot;
+        // Le rendez-vous prioritaire l'emporte ; sinon, le plus récent coupe le précédent.
+        final better = current == null ||
+            (slot.program.isPriority && !current.program.isPriority) ||
+            (slot.program.isPriority == current.program.isPriority && slot.start.isAfter(current.start));
+        if (better) current = slot;
       }
     }
     if (current != null) return current;
@@ -193,7 +207,10 @@ class TvSchedule {
     if (loop.isEmpty) return null;
     final totalMs = loop.fold<int>(0, (a, p) => a + p.duration.inMilliseconds);
     if (totalMs <= 0) return null;
-    var inLoop = t.difference(anchor).inMilliseconds % totalMs;
+    final raw = t.difference(anchor).inMilliseconds;
+    // Boucle décochée : un seul tour de playlist, puis l'écran d'attente.
+    if (!loopRepeat && (raw < 0 || raw >= totalMs)) return null;
+    var inLoop = raw % totalMs;
     if (inLoop < 0) inLoop += totalMs;
     for (final p in loop) {
       final d = p.duration.inMilliseconds;
@@ -210,13 +227,19 @@ class TvSchedule {
     return null;
   }
 
+  /// Le prochain rendez-vous après [t] (affiché sur l'écran d'attente).
+  TvSlot? nextFixedAfter(DateTime t) => _nextFixedAfter(t.toUtc());
+
   /// Le programme suivant (pour « À suivre »).
   TvSlot? after(TvSlot slot) => at(slot.end.add(const Duration(milliseconds: 500)));
 }
 
 /// État de la chaîne, piloté par la régie : à l'antenne, en pause ou arrêtée.
 class TvChannel {
-  const TvChannel({this.status = 'playing', DateTime? anchor, this.pausedAt}) : _anchor = anchor;
+  const TvChannel({this.status = 'playing', DateTime? anchor, this.pausedAt, this.loopRepeat = true}) : _anchor = anchor;
+
+  /// Case « Lire en boucle » de la régie.
+  final bool loopRepeat;
 
   final String status;
   final DateTime? _anchor;
@@ -230,5 +253,6 @@ class TvChannel {
         status: m['status'] as String? ?? 'playing',
         anchor: m['anchor'] == null ? null : DateTime.parse(m['anchor'] as String).toUtc(),
         pausedAt: m['paused_at'] == null ? null : DateTime.parse(m['paused_at'] as String).toUtc(),
+        loopRepeat: m['loop_repeat'] as bool? ?? true,
       );
 }

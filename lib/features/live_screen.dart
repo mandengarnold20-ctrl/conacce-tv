@@ -124,8 +124,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   Timer? _settle;
 
   static String _sigOf(List<TvProgram> ps, TvChannel c) =>
-      '${c.status}|${c.anchor.millisecondsSinceEpoch}|${c.pausedAt?.millisecondsSinceEpoch}|' +
-      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.videoUrl}').join(',');
+      '${c.status}|${c.anchor.millisecondsSinceEpoch}|${c.pausedAt?.millisecondsSinceEpoch}|${c.loopRepeat}|' +
+      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.isPriority}:${p.videoUrl}').join(',');
 
   void _settleSchedule(List<TvProgram> ps, TvChannel c) {
     final sig = _sigOf(ps, c);
@@ -266,7 +266,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
       data: (live) {
         // Un vrai direct (OBS) passe devant la programmation ; sinon, la chaîne 24 h/24.
         final onAir = live != null && live.canPlay;
-        final schedule = TvSchedule(programs, anchor: channel.anchor, specialDays: specialDays);
+        final schedule = TvSchedule(programs, anchor: channel.anchor, specialDays: specialDays, loopRepeat: channel.loopRepeat);
         final now = _now();
         // Régie : chaîne arrêtée = écran d'attente ; en pause = « Nous revenons dans un instant ».
         if (!onAir && channel.isPaused && !schedule.isEmpty) {
@@ -275,7 +275,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           return const _Paused();
         }
         final slot = onAir || channel.isStopped ? null : schedule.at(now);
-        _slotEnd = slot?.end;
+        // Écran d'attente (playlist terminée, boucle décochée) : on se réveille au prochain rendez-vous.
+        final waitNext = slot == null && !onAir && !channel.isStopped ? schedule.nextFixedAfter(now) : null;
+        _slotEnd = slot?.end ?? waitNext?.start;
         final canPlay = onAir || slot != null;
         // Tourner le téléphone remet le mode automatique.
         if (_lastLandscape != landscape) {
@@ -287,7 +289,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         final tv = isTvDevice;
         final immersive = canPlay && onTv && !_audioOnly && (landscape || _bigOverride == true || (tv && _bigOverride != false));
         _syncImmersive(immersive);
-        if (!canPlay) return _Offline(live: live);
+        if (!canPlay) return _Offline(live: live, nextProgram: waitNext);
         final next = slot == null ? null : schedule.after(slot);
         if (!onAir) _sendPlan(schedule, slot, next, size);
         final youtube = slot != null && slot.program.isYoutube;
@@ -605,13 +607,43 @@ class _Paused extends StatelessWidget {
 
 /// Pas de direct en ce moment : image de la chaîne et prochain rendez-vous.
 class _Offline extends StatelessWidget {
-  const _Offline({required this.live});
+  const _Offline({required this.live, this.nextProgram});
 
   final LiveStream? live;
+
+  /// Prochain rendez-vous de la grille (écran d'attente quand la playlist ne tourne pas en boucle).
+  final TvSlot? nextProgram;
 
   @override
   Widget build(BuildContext context) {
     final next = live?.nextLiveAt;
+    final prog = nextProgram;
+    if (prog != null) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 110),
+          child: MaxWidth(
+            maxWidth: 520,
+            child: Column(children: [
+              const LogoShine(width: 260, radius: 6),
+              const SizedBox(height: 24),
+              Text('Conacce TV revient bientôt', style: AppTheme.title(size: 18, weight: FontWeight.w800), textAlign: TextAlign.center),
+              const SizedBox(height: 14),
+              NavyCard(
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text('Prochain programme à ${DateFormat('HH:mm', 'fr_FR').format(prog.start.toLocal())}',
+                      style: AppTheme.title(size: 14, color: AppColors.sunYellow)),
+                  if (prog.program.title.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(prog.program.title, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.mist)),
+                  ],
+                ]),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 110),
