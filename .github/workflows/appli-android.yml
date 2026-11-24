@@ -1,5 +1,6 @@
 # Fabrique l'appli Android de Conacce TV (fichier .apk à installer sur un téléphone pour les essais).
-# Le fichier se télécharge dans l'onglet « Actions » › dernière fabrication › « Artifacts » › conacce-tv-android.
+# Lien direct (à ouvrir sur le téléphone) :
+# https://github.com/mandengarnold20-ctrl/conacce-tv/releases/download/essai-android/conacce-tv-essai.apk
 # Cette fabrication est indépendante du site web : si elle échoue, le site continue d'être publié.
 name: Appli Android Conacce TV
 
@@ -13,6 +14,9 @@ on:
       - 'tool/patch_android.py'
       - '.github/workflows/appli-android.yml'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: android
@@ -46,3 +50,9 @@ jobs:
           name: conacce-tv-android
           path: conacce-tv-essai.apk
           retention-days: 30
+      - name: Lien fixe de téléchargement (toujours la dernière version d'essai)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete essai-android --yes --cleanup-tag || true
+          gh release create essai-android conacce-tv-essai.apk --prerelease --title "Conacce TV — version d'essai Android" --notes "Dernière version d'essai de l'appli Android. Ouvrir ce lien sur le téléphone : https://github.com/mandengarnold20-ctrl/conacce-tv/releases/download/essai-android/conacce-tv-essai.apk"
