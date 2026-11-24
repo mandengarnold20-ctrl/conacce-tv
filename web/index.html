@@ -23,17 +23,57 @@
   </style>
 </head>
 <body>
-  <!-- Lecture des directs (.m3u8) dans Chrome, Edge, Firefox et les TV : hls.js prend le relais
-       quand le navigateur ne sait pas lire ce format tout seul (Safari sur iPhone le lit nativement). -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+  <!-- Écran de chargement : visible tout de suite, même sur une connexion lente, jusqu'à l'affichage de l'appli. -->
+  <div id="ctv-splash" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#080F43;z-index:9;transition:opacity .4s">
+    <img src="icons/Icon-192.png" alt="Conacce TV" width="96" height="96" style="border-radius:22px">
+    <div style="display:flex;gap:10px;align-items:center;color:#C9D2F5;font:14px system-ui,sans-serif">
+      <span style="width:18px;height:18px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvsp .8s linear infinite"></span>
+      <span id="ctv-splash-t">Chargement de Conacce TV…</span>
+    </div>
+    <style>@keyframes ctvsp{to{transform:rotate(360deg)}}</style>
+  </div>
+  <script>
+  (function () {
+    var sp = document.getElementById('ctv-splash');
+    function hide() { if (!sp) return; sp.style.opacity = '0'; setTimeout(function () { sp && sp.remove(); sp = null; }, 450); }
+    window.addEventListener('flutter-first-frame', hide);
+    setTimeout(function () { var t = document.getElementById('ctv-splash-t'); if (t && sp) t.textContent = 'Connexion lente · encore un instant…'; }, 8000);
+    setTimeout(hide, 60000);
+  })();
+  </script>
+  <!-- Lecture des directs et programmes (.m3u8) : hls.js (copié sur notre propre adresse, chargé sans bloquer
+       l'ouverture de l'appli) ; Safari sur les anciens iPhone lit ce format tout seul. -->
+  <script src="hls.min.js" async></script>
   <script>
   (function () {
     var desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-    if (!desc || !window.Hls || !Hls.isSupported()) return;
+    if (!desc) return;
+    var native = document.createElement('video').canPlayType('application/vnd.apple.mpegurl');
+    function ready() { return window.Hls && Hls.isSupported(); }
+    // Débit estimé au départ : on commence en basse qualité et on monte seulement si la connexion suit.
+    function startEstimate() {
+      var c = navigator.connection, d = c && c.downlink;
+      if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return 150000;
+      if (d && d > 0) return Math.max(150000, Math.min(d * 1e6 * 0.5, 2500000));
+      return 400000;
+    }
     function attach(el, url) {
       if (el.__hls) { el.__hls.destroy(); el.__hls = null; el.__hlsSrc = null; }
       // iPhone (iOS 17.1+) compris : hls.js gère mieux les coupures réseau que le lecteur natif.
       if (typeof url !== 'string' || !/\.m3u8(\?|$)/i.test(url)) return false;
+      // hls.js pas encore arrivé : Safari (iPhone) lit le format tout seul ; ailleurs on l'attend un instant.
+      if (!ready()) {
+        if (native) return false;
+        var n = 0, L = !!el.__light;
+        (function retry() {
+          if (el.__wantSrc !== url) return;
+          if (ready()) { el.__light = L; attach(el, url); el.__light = false; }
+          else if (n++ < 150) setTimeout(retry, 100);
+          else desc.set.call(el, url);
+        })();
+        return true;
+      }
+      var light = !!el.__light;
       // Programme enregistré (Cloudflare videodelivery) : grosse réserve d'avance pour ne jamais saccader.
       var vod = /videodelivery\.net|\/videos?\//i.test(url);
       var hls = new Hls({
@@ -41,8 +81,15 @@
         liveSyncDurationCount: 4,       // marge de 4 segments derrière le direct
         liveMaxLatencyDurationCount: 12,
         capLevelToPlayerSize: true,     // qualité adaptée à la taille de l'écran
-        maxBufferLength: vod ? 120 : 30,
-        maxMaxBufferLength: vod ? 600 : 60,
+        // Connexions lentes : départ en basse qualité, montée prudente, descente rapide.
+        startLevel: -1,
+        abrEwmaDefaultEstimate: startEstimate(),
+        abrBandWidthFactor: 0.8,
+        abrBandWidthUpFactor: 0.6,
+        // Programme suivant préparé en coulisse : juste quelques secondes, pour ne pas prendre
+        // la connexion du programme en cours.
+        maxBufferLength: light ? 6 : (vod ? 120 : 30),
+        maxMaxBufferLength: light ? 10 : (vod ? 600 : 60),
         backBufferLength: 30,
         manifestLoadingMaxRetry: 20, manifestLoadingRetryDelay: 1000,
         levelLoadingMaxRetry: 20, levelLoadingRetryDelay: 1000,
@@ -61,7 +108,7 @@
     Object.defineProperty(HTMLMediaElement.prototype, 'src', {
       configurable: true, enumerable: desc.enumerable,
       get: function () { return this.__hlsSrc || desc.get.call(this); },
-      set: function (v) { if (!attach(this, v)) desc.set.call(this, v); }
+      set: function (v) { this.__wantSrc = v; if (!attach(this, v)) desc.set.call(this, v); }
     });
     // Les petites erreurs que hls.js répare tout seul ne doivent pas arrêter le lecteur de l'appli.
     window.addEventListener('error', function (e) {
@@ -228,6 +275,11 @@
       v.style.opacity = '1';
       if (other !== v) { other.style.opacity = '0'; setTimeout(function () { if (other !== vids[cur]) other.pause(); }, 400); }
     }
+    // L'écran qui passe à l'antenne retrouve une grande réserve d'avance.
+    function full(v) { var h = v.__hls; if (h && h.config) { h.config.maxBufferLength = 120; h.config.maxMaxBufferLength = 600; } }
+    function ahead(v) { try { var b = v.buffered; return b.length ? b.end(b.length - 1) : 0; } catch (e) { return 0; } }
+    function inBuf(v, t) { try { var b = v.buffered; for (var i = 0; i < b.length; i++) if (t >= b.start(i) && t <= b.end(i)) return true; } catch (e) {} return false; }
+    var lastAhead = 0;
     function seekTo(v, s) { try { if (isFinite(s) && s > 0.5 && (!v.duration || s < v.duration - 1)) v.currentTime = s; } catch (e) {} lastSeek = now(); }
     function load(v, url) {
       v.__u = url; v.__ready = false;
@@ -262,6 +314,7 @@
       var o = vids[1 - cur];
       if (o.__u === url) {            // déjà préparée : bascule immédiate
         cur = 1 - cur;
+        full(o);
         if (o.__ready) { seekTo(o, expected()); doPlay(o); }
         show(o); v.style.opacity = '0'; setTimeout(function () { v.pause(); }, 400);
         place(); return;
@@ -276,7 +329,7 @@
       var o = vids[1 - cur];
       if (o.__u === url) return;
       o.pause(); o.muted = true; o.style.opacity = '0';
-      load(o, url);
+      o.__light = true; load(o, url); o.__light = false;
     };
     // La TV quitte l'écran (autre page) : elle continue sans le son quelques minutes, puis se met en pause.
     window.conacceFileAway = function () {
@@ -330,8 +383,14 @@
       var pos = v.currentTime;
       if (Math.abs(pos - lastPos) < 0.05) still++; else still = 0;
       lastPos = pos;
-      if (!v.paused && Math.abs(pos - expected()) > 20 && now() - lastSeek > 60000) seekTo(v, expected());
-      if (still >= 6 && v.__u && !document.hidden) reload(v);  // ≈ 30 s sans image : on recharge
+      // Recalage sur l'horaire : seulement si l'image visée est déjà téléchargée, ou si l'écart devient grand
+      // (sur une connexion lente, sauter en avant jetterait ce qui est déjà chargé).
+      var gap = Math.abs(pos - expected());
+      if (!v.paused && gap > 20 && now() - lastSeek > 60000 && (inBuf(v, expected()) || gap > 120)) seekTo(v, expected());
+      // Image figée : on ne recharge pas tant que la vidéo continue de se télécharger.
+      var a = ahead(v), growing = a > lastAhead + 0.5; lastAhead = a;
+      if (growing && still) still = Math.min(still, 3);
+      if (still >= 6 && v.__u && !document.hidden) reload(v);  // ≈ 30 s sans image ni téléchargement : on recharge
     }, 5000);
   })();
   // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre

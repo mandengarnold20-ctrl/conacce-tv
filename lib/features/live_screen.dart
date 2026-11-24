@@ -159,7 +159,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     });
   }
 
-  /// Téléphone : vidéo en 480p (Cloudflare) pour qu'elle passe sans s'arrêter sur les connexions mobiles.
+  /// Téléphone : départ en basse qualité (≈ 360p, Cloudflare), puis qualité automatique selon la connexion pour qu'elle passe sans s'arrêter sur les connexions mobiles.
   /// Tablette, ordinateur et TV gardent la qualité automatique (jusqu'à 1080p).
   /// Téléphone : on regarde la taille de la fenêtre ET celle de l'écran de l'appareil
   /// (Safari en « version ordinateur » annonce une fenêtre plus grande que le téléphone).
@@ -177,7 +177,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   String _phoneQuality(String url, Size size) {
     final cf = url.contains('videodelivery.net') || url.contains('cloudflarestream.com');
     if (!cf || !isPhone(context) || url.contains('clientBandwidthHint')) return url;
-    return '$url${url.contains('?') ? '&' : '?'}clientBandwidthHint=1.5';
+    return '$url${url.contains('?') ? '&' : '?'}clientBandwidthHint=0.8';
   }
 
   Future<void> _toggleAudio(LiveStream live) async {

@@ -32,6 +32,11 @@ jobs:
         run: flutter build web --release --base-href /conacce-tv/
       - name: Polices de l'habillage chargées seulement à la demande (pas au démarrage)
         run: if [ -f build/web/flutter_service_worker.js ]; then sed -i '/^"fonts\//d' build/web/flutter_service_worker.js; fi
+      - name: Lecteur vidéo (hls.js) et moteur d'affichage servis depuis notre propre adresse
+        run: |
+          curl -fsSL https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js -o build/web/hls.min.js
+          test -s build/web/hls.min.js
+          test -d build/web/canvaskit
       - name: Page de secours
         run: cp build/web/index.html build/web/404.html
       - name: Copie pour Cloudflare (adresse à la racine du domaine)
