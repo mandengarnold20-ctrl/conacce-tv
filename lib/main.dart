@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, LicenseRegistry, LicenseEntryWithLineBreaks;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +16,14 @@ import 'features/shell.dart';
 /// Point d'entrée de Conacce TV.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Polices Poppins et Urbanist : enregistrées dans l'appli (assets/google_fonts),
+  // donc identiques sur Android, iPhone, télé et site, même avec une connexion faible.
+  LicenseRegistry.addLicense(() async* {
+    for (final f in ['OFL-Poppins.txt', 'OFL-Urbanist.txt']) {
+      yield LicenseEntryWithLineBreaks(const ['google_fonts'], await rootBundle.loadString('assets/google_fonts/$f'));
+    }
+  });
 
   if (Env.isConfigured) {
     await Supabase.initialize(url: Env.supabaseUrl, anonKey: Env.supabaseAnonKey);
@@ -60,6 +68,13 @@ class ConacceApp extends StatelessWidget {
     return MaterialApp(
       title: 'Conacce TV',
       debugShowCheckedModeBanner: false,
+      // Taille du texte : on suit le réglage du téléphone (personnes qui voient mal),
+      // mais sans dépasser +15 %, pour que les écrans gardent leur mise en page.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 0.9,
+        maxScaleFactor: 1.15,
+        child: child ?? const SizedBox.shrink(),
+      ),
       // Télécommande : le bouton central (OK) valide, comme la touche Entrée.
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,

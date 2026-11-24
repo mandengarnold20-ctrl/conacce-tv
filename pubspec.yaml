@@ -45,3 +45,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    # Polices embarquées (google_fonts les prend ici au lieu de les télécharger)
+    - assets/google_fonts/
