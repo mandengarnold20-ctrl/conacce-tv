@@ -34,7 +34,7 @@ int get _startBytes => (isTvDevice ? 3072 : 1536) * _mb;
 int get _topBytes => (isTvDevice ? 8192 : 3584) * _mb;
 
 /// Environ 5,5 Mo par minute de vidéo en 360p, 15 Mo en 720p (image + son).
-double get _bytesPerMinute => (isTvDevice ? 15 : 5.5) * _mb;
+double get _bytesPerMinute => (isTvDevice ? 15.0 : 5.5) * _mb;
 
 late int _maxBytes = _startBytes;
 
