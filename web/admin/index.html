@@ -557,6 +557,9 @@
   .ov-band.a-open { transform: scale(.2); transition: transform .55s cubic-bezier(.5,-.5,.7,0), opacity .35s; }
   .ov-band.a-open.on { transform: scale(1); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
   .ov-artist { padding: calc(5px * var(--bk)) calc(12px * var(--bk)); font-size: calc(14px * var(--bk)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; }
+  .ov-band.img { border-radius: 0; box-shadow: none; overflow: visible; background-size: 100% 100%; background-repeat: no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .ov-band.img .ov-artist, .ov-band.img .ov-song { background: none !important; animation: none; padding: 0; max-width: 100%; text-shadow: 0 1px 3px rgba(0,0,0,.6); line-height: 1.1; }
+  .hb-bandimg { height: 38px; max-width: 260px; border-radius: 4px; background: #000 center/100% 100% no-repeat; flex: 1; }
   .ov-song { background: #fff; padding: calc(3px * var(--bk)) calc(12px * var(--bk)); font-size: calc(10.5px * var(--bk)); font-weight: 600; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ov-tick { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: stretch; background: rgba(11,20,99,.92); color: #fff; line-height: 1; }
   .ov-tick.th-blanc { background: #fff; color: #0B1463; } .ov-tick.th-noir { background: rgba(0,0,0,.85); color: #F9CA22; }
@@ -779,6 +782,9 @@ const ENT = {
       { k: 'artist', label: 'Haut de la bande : artiste (clip) ou nom de l’émission', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : ORO ft. Tope Alabi, ou « Culte du dimanche ». Affiché en haut de la bande, sur le dégradé.' },
       { k: 'song', label: 'Bas de la bande : titre de la chanson ou invité', type: 'text', show: v => v.kind !== 'habillage', help: 'Ex. : Oh Lord, ou « Invité : Pasteur Jean ». Affiché en dessous, sur fond blanc.' },
       { k: 'show_band', label: 'Afficher la bande sur ce programme', type: 'checkbox', def: true, show: v => v.kind !== 'habillage' && v.kind !== 'pub' },
+      { k: 'band_anim', label: 'Animation de la bande pour ce programme', type: 'select', def: '', show: v => v.kind !== 'habillage' && v.kind !== 'pub',
+        opts: [['', 'Comme dans l’habillage'], ['haut', 'Arrive par le haut'], ['bas', 'Arrive par le bas'], ['fade', 'Fondu'], ['open', 'Déploiement']],
+        help: 'Chaque clip peut avoir sa propre animation de bande (entrée et sortie).' },
       { k: 'source', label: 'Source', type: 'select', opts: [['youtube', 'Lien YouTube'], ['file', 'Vidéo téléversée (Cloudflare Stream)']], def: 'youtube' },
       { k: 'video_url', label: 'Lien de la vidéo', type: 'text', req: true, help: 'YouTube : collez le lien de la vidéo. Vidéo téléversée : envoyez-la dans Cloudflare (Stream › Téléverser, même plus de 2 Go, en 1920×1080), puis collez ici son lien ou son identifiant.' },
       { k: 'duration', label: 'Durée', type: 'duration', req: true, help: 'Touchez « Trouver la durée » : elle se remplit seule. La durée exacte permet d’enchaîner les vidéos sans trou.' },
@@ -2121,6 +2127,22 @@ async function showRegie() {
           range('Hauteur', 0, 40, B.band.y, v => v ? '+' + v + ' %' : 'au bord', v => { B.band.y = v; }),
           range('Taille', 60, 160, B.band.scale, v => v + ' %', v => { B.band.scale = v; }),
           range('Longueur max.', 25, 90, B.band.width, v => v + ' %', v => { B.band.width = v; })),
+        sub('Image de bande (facultatif)'),
+        h('div', { class: 'hb-row' },
+          B.band.img ? h('span', { class: 'hb-bandimg', style: `background-image:url("${B.band.img}")`, title: 'Votre image de bande' }) : h('span', { class: 'rg-small', style: 'flex:1' }, 'Bande Conacce en deux couleurs (ci-dessous).'),
+          ro ? null : h('button', { class: 'btn small', onclick: () => pickFile('image/png,image/webp,image/jpeg,image/svg+xml', async f => {
+            toast('Envoi de l’image de bande…');
+            try {
+              const ia = await new Promise(res => { const im = new Image(); im.onload = () => res(im.naturalWidth / im.naturalHeight || 6); im.onerror = () => res(6); im.src = URL.createObjectURL(f); });
+              B.band.img = await upload('images', f, () => {}); B.band.ia = Math.round(Math.min(30, Math.max(1, ia)) * 1000) / 1000;
+              saveBrand(); buildHab(); toast('Image de bande en place : l’artiste et le titre s’y adaptent automatiquement.');
+            } catch (e) { toast(e.message || String(e), true); }
+          }) }, B.band.img ? 'Changer l’image' : 'Importer mon image de bande'),
+          B.band.img && !ro ? h('button', { class: 'btn small ghost', onclick: () => { B.band.img = null; saveBrand(); buildHab(); } }, 'Revenir à la bande Conacce') : null),
+        B.band.img ? h('div', { class: 'hb-row' },
+          range('Taille du texte', 50, 200, B.band.tsz || 100, v => v + ' %', v => { B.band.tsz = v; }),
+          color('Couleur du texte', B.band.tc || '#FFFFFF', v => { B.band.tc = v; })) : null,
+        B.band.img ? h('div', { class: 'rg-small' }, 'Conseil : une image large et peu haute (par ex. 1200 × 200 px), avec une zone calme au milieu pour le texte. « Longueur max. » règle la taille de l’image à l’écran.') : null,
         sub('Couleurs (modèle appliqué à tous les clips)'),
         h('div', { class: 'hb-row' },
           color('Haut 1', B.band.topA, v => { B.band.topA = v; }), color('Haut 2', B.band.topB, v => { B.band.topB = v; }),
@@ -2210,8 +2232,10 @@ async function showRegie() {
         bandWas = on; clearTimeout(bandSwap);
         if (!on) { bandHidden = B.band.out; bandSwap = setTimeout(() => { bandHidden = null; }, 900); }
       }
-      const style = on ? B.band.anim : (bandHidden || B.band.anim);
-      const fromTop = B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
+      // Animation propre au clip (haut, bas, fondu, déploiement), sinon celle de l'habillage.
+      const pa = p && p.band_anim, pStyle = pa === 'haut' || pa === 'bas' ? 'slide' : pa === 'fade' || pa === 'open' ? pa : null;
+      const style = pStyle || (on ? B.band.anim : (bandHidden || B.band.anim));
+      const fromTop = pa === 'haut' ? true : pa === 'bas' ? false : B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
       ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
       Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
         top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
@@ -2219,8 +2243,19 @@ async function showRegie() {
       const mid = B.band.topA;
       Object.assign(ovBand.style, { maxWidth: (w * B.band.width / 100) + 'px', minWidth: Math.min(150 * bk, w * B.band.width / 100) + 'px', fontFamily: famOf(B.fontBand || B.font) });
       ovBand.style.setProperty('--bk', bk.toFixed(3));
-      Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText });
-      Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText });
+      if (B.band.img) {
+        // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
+        const bw = w * B.band.width / 100, bh = bw / (B.band.ia || 6), ts = (B.band.tsz || 100) / 100;
+        ovBand.classList.add('img');
+        Object.assign(ovBand.style, { width: bw + 'px', height: bh + 'px', minWidth: '', maxWidth: '', backgroundImage: `url("${B.band.img}")`, padding: `${bh * 0.1}px ${bw * 0.06}px` });
+        Object.assign(ovArtist.style, { backgroundImage: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * 0.34 * ts) + 'px' });
+        Object.assign(ovSong.style, { background: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * 0.22 * ts) + 'px' });
+        for (const el of [ovArtist, ovSong]) if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) el.style.fontSize = (parseFloat(el.style.fontSize) * el.clientWidth / el.scrollWidth) + 'px';
+      } else {
+        ovBand.classList.remove('img'); ovBand.style.width = ''; ovBand.style.height = ''; ovBand.style.backgroundImage = ''; ovBand.style.padding = '';
+        Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText, fontSize: '' });
+        Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText, fontSize: '' });
+      }
       // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
       const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);
       const sec = T.sl ? (t - (T.sl.txtFrom ?? T.sl.segStart ?? T.sl.start)) / 1000 : 0;
@@ -2536,7 +2571,7 @@ async function showRegie() {
     } else {
       try {
         await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null,
-          show_band: p.show_band !== false, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, start_at: new Date(t).toISOString(), repeat_daily: false, repeat_weekly: false });
+          show_band: p.show_band !== false, band_anim: p.band_anim || null, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, start_at: new Date(t).toISOString(), repeat_daily: false, repeat_weekly: false });
         toast(`« ${p.title} » programmé ${RG_DAYS_LONG[R.day]} à ${hm(t)}. Il reste aussi dans la playlist.`);
       } catch (e) { return toast(friendly(e), true); }
     }
@@ -2584,7 +2619,7 @@ async function showRegie() {
   }
 
   // ── Modèles de journées ──
-  const snap = p => ({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false });
+  const snap = p => ({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false, band_anim: p.band_anim || null, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0 });
   const dayModel = i => dayItems(i).filter(it => !it.p.repeat_daily).map(it => ({ minute: Math.round((it.at - dayStart(i)) / 60000), ...snap(it.p) }));
   async function applyItems(items, i) {
     const s0 = dayStart(i), have = dayItems(i);
@@ -2973,7 +3008,7 @@ async function showRegie() {
             if (t < now() - 60000 && rep.value === 'once') return toast('Cette heure est déjà passée.', true);
             const v = { start_at: new Date(t).toISOString(), repeat_daily: rep.value === 'daily', repeat_weekly: rep.value === 'weekly', is_priority: pri.checked };
             try {
-              if (keep.checked) await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, ...v });
+              if (keep.checked) await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null, show_band: p.show_band !== false, band_anim: p.band_anim || null, ad_breaks: p.ad_breaks || [], air_extra: p.air_extra || 0, position: 0, ...v });
               else { const { error } = await sb.from('tv_programs').update(v).eq('id', p.id); if (error) throw error; }
             } catch (e) { return toast(friendly(e), true); }
             toast(`« ${p.title} » passera ${whenLabel({ at: t })}${rep.value === 'daily' ? ', chaque jour' : rep.value === 'weekly' ? ', chaque semaine' : ''}${pri.checked ? ' (prioritaire)' : ''}.`);

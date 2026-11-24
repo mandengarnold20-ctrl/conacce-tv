@@ -22,7 +22,11 @@ class TvProgram {
     this.adBreaks = const [],
     this.airExtra = Duration.zero,
     this.breaksSig = '',
+    this.bandAnim,
   });
+
+  /// Animation de la bande propre à ce clip : haut, bas, fade, open (null = celle de l'habillage).
+  final String? bandAnim;
 
   final String id;
   final String title;
@@ -94,6 +98,7 @@ class TvProgram {
         showBand: m['show_band'] as bool? ?? true,
         kind: m['kind'] as String? ?? 'clip',
         isPriority: m['is_priority'] as bool? ?? false,
+        bandAnim: (m['band_anim'] as String?)?.trim().isEmpty ?? true ? null : (m['band_anim'] as String).trim(),
         adBreaks: TvAdBreak.listFrom(m['ad_breaks']),
         breaksSig: m['ad_breaks'] is List && (m['ad_breaks'] as List).isNotEmpty ? jsonEncode(m['ad_breaks']) : '',
         airExtra: Duration(seconds: (m['air_extra'] as num?)?.toInt() ?? 0),

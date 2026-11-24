@@ -104,6 +104,10 @@ class Branding {
     this.bandTopText = const Color(0xFF0B1463),
     this.bandBottomBg = const Color(0xFFFFFFFF),
     this.bandBottomText = const Color(0xFF0B1463),
+    this.bandImg,
+    this.bandImgAspect = 6,
+    this.bandTextSize = 100,
+    this.bandImgText = const Color(0xFFFFFFFF),
     this.font = const BrandFont('Poppins'),
     this.fontTicker,
     this.fontBand,
@@ -145,6 +149,13 @@ class Branding {
   final int bandScale; // taille du texte en % (60–160)
   final int bandWidth; // longueur maximale en % de la largeur (25–90)
   final Color bandTopA, bandTopB, bandTopText, bandBottomBg, bandBottomText;
+
+  /// Image de bande importée dans la régie (null = bande Conacce en deux couleurs).
+  /// Le texte (artiste, titre) s'adapte à sa surface.
+  final String? bandImg;
+  final double bandImgAspect; // largeur / hauteur de l'image
+  final int bandTextSize; // taille du texte sur l'image, en % (50–200)
+  final Color bandImgText;
   final BrandFont font; // police générale
   final BrandFont? fontTicker; // police du bandeau (sinon la générale)
   final BrandFont? fontBand; // police de la bande artiste (sinon la générale)
@@ -228,6 +239,10 @@ class Branding {
       bandTopText: _color(band['topText']) ?? d.bandTopText,
       bandBottomBg: _color(band['bottomBg']) ?? d.bandBottomBg,
       bandBottomText: _color(band['bottomText']) ?? d.bandBottomText,
+      bandImg: _str(band['img']),
+      bandImgAspect: band['ia'] is num ? (band['ia'] as num).toDouble().clamp(1.0, 30.0).toDouble() : 6,
+      bandTextSize: _int(band['tsz'], 100).clamp(50, 200).toInt(),
+      bandImgText: _color(band['tc']) ?? d.bandImgText,
       font: BrandFont.fromMap(c['font']) ?? const BrandFont('Poppins'),
       fontTicker: BrandFont.fromMap(c['fontTicker']),
       fontBand: BrandFont.fromMap(c['fontBand']),

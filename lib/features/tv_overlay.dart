@@ -179,8 +179,11 @@ class _TvOverlayState extends State<TvOverlay> {
                         ? Alignment.centerRight
                         : Alignment.center,
                 child: _Band(
+                  key: ValueKey('band-${slot.program.id}'),
                   visible: bandOn,
-                  fromTop: bandTop,
+                  // Animation propre au clip (régie) : par le haut, par le bas, fondu ou déploiement.
+                  fromTop: slot.program.bandAnim == 'haut' ? true : slot.program.bandAnim == 'bas' ? false : bandTop,
+                  anim: switch (slot.program.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null },
                   artist: (slot.program.artist ?? '').trim(),
                   song: (slot.program.song ?? '').trim(),
                   k: k,
@@ -225,8 +228,10 @@ class _TvOverlayState extends State<TvOverlay> {
 /// Animation d'entrée et animation de sortie réglables séparément en régie.
 class _Band extends StatefulWidget {
   const _Band({
+    super.key,
     required this.visible,
     required this.fromTop,
+    this.anim,
     required this.artist,
     required this.song,
     required this.k,
@@ -236,6 +241,9 @@ class _Band extends StatefulWidget {
 
   final bool visible;
   final bool fromTop;
+
+  /// Animation imposée par le clip (entrée et sortie), sinon celles de l'habillage.
+  final String? anim;
   final String artist;
   final String song;
   final double k;
@@ -252,7 +260,9 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
 
   /// Animation utilisée pour l'état caché : celle de sortie juste après la sortie,
   /// puis celle d'entrée (préparée en coulisse, invisible) pour le prochain passage.
-  late String _hiddenStyle = widget.branding.bandAnim;
+  String get _in => widget.anim ?? widget.branding.bandAnim;
+  String get _out => widget.anim ?? widget.branding.bandAnimOut;
+  late String _hiddenStyle = _in;
   Timer? _swap;
 
   void _syncFlow() {
@@ -279,15 +289,15 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
       _swap?.cancel();
       if (!widget.visible) {
         // Sortie : on part avec l'animation de sortie, puis on se prépare pour la prochaine entrée.
-        _hiddenStyle = widget.branding.bandAnimOut;
+        _hiddenStyle = _out;
         _swap = Timer(const Duration(milliseconds: 900), () {
-          if (mounted && !widget.visible) setState(() => _hiddenStyle = widget.branding.bandAnim);
+          if (mounted && !widget.visible) setState(() => _hiddenStyle = _in);
         });
       } else {
-        _hiddenStyle = widget.branding.bandAnim;
+        _hiddenStyle = _in;
       }
     } else if (!widget.visible && _swap == null) {
-      _hiddenStyle = widget.branding.bandAnim;
+      _hiddenStyle = _in;
     }
   }
 
@@ -303,7 +313,46 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
     final b = widget.branding;
     final k = widget.k * b.bandScale / 100;
     final font = b.bandFont;
-    final card = ConstrainedBox(
+    final img = b.bandImg;
+    // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
+    final Widget card = img != null
+        ? Builder(builder: (context) {
+            final bw = widget.maxWidth, bh = widget.maxWidth / b.bandImgAspect, ts = b.bandTextSize / 100;
+            final shadow = [Shadow(color: const Color(0x99000000), blurRadius: 3 * widget.k, offset: Offset(0, widget.k))];
+            return SizedBox(
+              width: bw,
+              height: bh,
+              child: Stack(fit: StackFit.expand, children: [
+                Image.network(img, fit: BoxFit.fill, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: bw * 0.06, vertical: bh * 0.1),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    if (widget.artist.isNotEmpty)
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(widget.artist,
+                              maxLines: 1,
+                              style: brandStyle(b, font: font, size: bh * 0.34 * ts, weight: FontWeight.w800, color: b.bandImgText)
+                                  .copyWith(shadows: shadow)),
+                        ),
+                      ),
+                    if (widget.song.isNotEmpty)
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(widget.song,
+                              maxLines: 1,
+                              style: brandStyle(b, font: font, size: bh * 0.22 * ts, weight: FontWeight.w600, color: b.bandImgText)
+                                  .copyWith(shadows: shadow)),
+                        ),
+                      ),
+                  ]),
+                ),
+              ]),
+            );
+          })
+        : ConstrainedBox(
       constraints: BoxConstraints(minWidth: (150 * k).clamp(0, widget.maxWidth).toDouble(), maxWidth: widget.maxWidth),
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -356,7 +405,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
       ),
     );
     final on = widget.visible;
-    final style = on ? b.bandAnim : _hiddenStyle;
+    final style = on ? _in : _hiddenStyle;
     final slideAway = Offset(0, widget.fromTop ? -1.6 : 1.6);
     final dur = Duration(milliseconds: style == 'open' ? 550 : 650);
     // Les trois effets sont toujours en place : seul l'effet choisi bouge (pas de saut d'image).
