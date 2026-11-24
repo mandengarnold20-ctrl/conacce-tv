@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/analytics.dart';
+import '../core/device.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
 import '../core/widgets/brand.dart';
@@ -24,6 +26,9 @@ final currentTabProvider = StateProvider<AppTab>((ref) => AppTab.home);
 
 /// Vidéo en grand (téléphone tourné sur la TV) : on cache les menus.
 final immersiveProvider = StateProvider<bool>((ref) => false);
+
+/// Téléviseur : demande de remettre la chaîne en plein écran (on choisit « TV » dans le menu).
+final tvFullscreenProvider = StateProvider<int>((ref) => 0);
 
 /// Écran de démarrage : le logo Conacce TV et sa lumière.
 /// Toucher l'écran ouvre l'accueil.
@@ -119,7 +124,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final tab = ref.watch(currentTabProvider);
     final isLive = ref.watch(liveStreamProvider).valueOrNull?.canPlay ?? false;
-    void select(int i) => ref.read(currentTabProvider.notifier).state = AppTab.values[i];
+    void select(int i) {
+      ref.read(currentTabProvider.notifier).state = AppTab.values[i];
+      // Téléviseur : choisir « TV » remet la chaîne en plein écran.
+      if (isTvDevice && AppTab.values[i] == AppTab.tv) ref.read(tvFullscreenProvider.notifier).state++;
+    }
 
     Widget badge(IconData icon) => Badge(isLabelVisible: isLive, backgroundColor: AppColors.live, smallSize: 8, child: Icon(icon));
     // Icônes fines (au trait), comme une appli moderne ; l'onglet choisi s'allume en jaune.
@@ -158,7 +167,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     // La zone des pages garde toujours la même place dans l'arbre (clé) :
     // tourner le téléphone ne recrée pas la vidéo en cours.
-    return Scaffold(
+    final scaffold = Scaffold(
       extendBody: true,
       body: Row(children: [
         if (wide && !immersive)
@@ -185,7 +194,32 @@ class _AppShellState extends ConsumerState<AppShell> {
           ? null
           : _ScrollNavBar(items: items, selected: tab.index, onSelect: select),
     );
+    if (!isTvDevice) return scaffold;
+    // Téléviseur : Retour depuis le menu = retour à la chaîne ; sur la chaîne, deux fois Retour = quitter.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || ref.read(immersiveProvider)) return; // la chaîne en plein écran gère elle-même Retour
+        if (tab != AppTab.tv) {
+          select(AppTab.tv.index);
+          return;
+        }
+        final t = DateTime.now();
+        if (_lastBack != null && t.difference(_lastBack!) < const Duration(seconds: 3)) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBack = t;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          duration: Duration(seconds: 3),
+          content: Text('Appuyez encore sur Retour pour quitter Conacce TV'),
+        ));
+      },
+      child: scaffold,
+    );
   }
+
+  DateTime? _lastBack;
 }
 
 /// Barre du bas qui défile au doigt : on peut ajouter autant d'onglets que l'on veut.

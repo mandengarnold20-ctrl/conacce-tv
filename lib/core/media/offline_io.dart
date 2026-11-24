@@ -5,10 +5,12 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
+import '../device.dart';
+
 /// Appli Android : les vidéos de la grille sont gardées dans le téléphone, comme le logo et le bandeau.
 ///
 /// - La régie envoie la grille ; l'appli télécharge à l'avance chaque programme en 360p
-///   (≈ 0,75 Mbit/s, environ 5,5 Mo par minute de vidéo).
+///   sur un téléphone (≈ 5,5 Mo par minute de vidéo), en 720p sur un téléviseur (≈ 15 Mo).
 /// - Quand la grille change, les nouveaux programmes sont téléchargés et ceux qui ne servent plus
 ///   sont effacés du téléphone.
 /// - Sans internet, la chaîne continue avec les vidéos gardées, à la bonne heure de la grille.
@@ -17,22 +19,24 @@ import 'package:path_provider/path_provider.dart';
 /// lecture). Le dossier n'est utilisable qu'une fois entièrement téléchargé ; un téléchargement
 /// coupé reprend là où il s'était arrêté.
 
-/// Hauteur d'image gardée dans le téléphone (360p : léger, net sur un écran de téléphone).
-const _targetHeight = 360;
+/// Hauteur d'image gardée : 360p sur un téléphone (léger, net sur un petit écran),
+/// 720p sur un téléviseur (HD sur grand écran).
+int get _targetHeight => isTvDevice ? 720 : 360;
 
 /// Place utilisée sur le téléphone : elle s'adapte toute seule.
 /// - téléphone presque toujours en ligne : petite réserve (≈ 2 h) ;
 /// - coupures longues ou fréquentes : la réserve grandit (jusqu'à ≈ 10 h) ;
 /// - téléphone plein : la réserve se réduit, sans jamais bloquer le téléphone.
 const _mb = 1024 * 1024;
-const _minBytes = 600 * _mb;
-const _startBytes = 1536 * _mb;
-const _topBytes = 3584 * _mb;
+// Téléphone (360p) : 600 Mo → 3,5 Go. Téléviseur (720p, ≈ 2,7× plus lourd) : 1,5 Go → 8 Go.
+int get _minBytes => (isTvDevice ? 1536 : 600) * _mb;
+int get _startBytes => (isTvDevice ? 3072 : 1536) * _mb;
+int get _topBytes => (isTvDevice ? 8192 : 3584) * _mb;
 
-/// Environ 5,5 Mo par minute de vidéo en 360p (image + son).
-const _bytesPerMinute = 5.5 * _mb;
+/// Environ 5,5 Mo par minute de vidéo en 360p, 15 Mo en 720p (image + son).
+double get _bytesPerMinute => (isTvDevice ? 15 : 5.5) * _mb;
 
-int _maxBytes = _startBytes;
+late int _maxBytes = _startBytes;
 
 /// Journal des coupures (début → retour du réseau), gardé sur 7 jours.
 final List<({DateTime from, DateTime to})> _outages = [];

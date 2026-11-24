@@ -4,6 +4,7 @@
 - Permissions : internet, audio en arrière-plan, notifications
 - Activité audio_service (lecture écran verrouillé)
 - Lien de retour de connexion : com.conacce.tv://login-callback
+- Android TV : bannière, lancement depuis l'accueil du téléviseur, sans écran tactile
 Le script peut être relancé : il ne duplique rien.
 """
 from pathlib import Path
@@ -65,7 +66,24 @@ if "<queries>" in xml:
 else:
     xml = xml.replace("</manifest>", browser_query + "\n    </queries>\n</manifest>", 1)
 
-for needle in ("AudioServiceActivity", "login-callback", "MediaButtonReceiver", "android.permission.INTERNET"):
+# Android TV / Google TV : l'appli apparaît sur l'écran d'accueil du téléviseur (bannière),
+# s'installe sans écran tactile, et se pilote à la télécommande.
+tv_features = """    <uses-feature android:name="android.software.leanback" android:required="false"/>
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <application"""
+xml = xml.replace("    <application", tv_features, 1)
+xml = xml.replace("<application", '<application\n        android:banner="@drawable/tv_banner"', 1)
+xml = xml.replace(
+    '<category android:name="android.intent.category.LAUNCHER"/>',
+    '<category android:name="android.intent.category.LAUNCHER"/>\n                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>',
+    1,
+)
+banner_dir = Path("android/app/src/main/res/drawable-xhdpi")
+banner_dir.mkdir(parents=True, exist_ok=True)
+(banner_dir / "tv_banner.png").write_bytes(Path("assets/icon/tv-banner.png").read_bytes())
+
+for needle in ("AudioServiceActivity", "login-callback", "MediaButtonReceiver", "android.permission.INTERNET",
+               "LEANBACK_LAUNCHER", "android.software.leanback", "tv_banner"):
     if needle not in xml:
         raise SystemExit(f"Échec : « {needle} » n'a pas pu être ajouté au manifest.")
 

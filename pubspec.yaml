@@ -32,6 +32,10 @@ dependencies:
   http: ^1.2.2
   share_plus: ^10.1.4
 
+  # Téléviseurs : reconnaître Android TV, garder l'écran allumé pendant la chaîne
+  device_info_plus: ^11.3.0
+  wakelock_plus: ^1.2.10
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

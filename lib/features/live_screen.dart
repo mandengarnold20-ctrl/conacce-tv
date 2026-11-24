@@ -3,11 +3,13 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/device.dart';
 import '../core/analytics.dart';
 import '../core/media/audio_player_service.dart';
 import '../core/media/embed_video.dart';
@@ -46,6 +48,41 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
   /// null = automatique (en grand quand le téléphone est tourné).
   bool? _bigOverride;
   bool? _lastLandscape;
+
+  /// Téléviseur : bandeau « En ce moment / À suivre » affiché quelques secondes à la télécommande.
+  bool _tvInfo = false;
+  Timer? _tvInfoTimer;
+  void _showTvInfo() {
+    _tvInfoTimer?.cancel();
+    setState(() => _tvInfo = true);
+    _tvInfoTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _tvInfo = false);
+    });
+  }
+
+  /// Touches de la télécommande sur la chaîne en plein écran.
+  KeyEventResult _tvKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    // Retour : on quitte le plein écran pour le menu (Samsung / LG dans le navigateur : Échap / Retour).
+    if (k == LogicalKeyboardKey.escape || k == LogicalKeyboardKey.goBack || k == LogicalKeyboardKey.browserBack || k == LogicalKeyboardKey.backspace) {
+      if (kIsWeb) {
+        setState(() => _bigOverride = false);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored; // Android : géré par le bouton Retour du système (PopScope)
+    }
+    const info = {
+      LogicalKeyboardKey.select, LogicalKeyboardKey.enter, LogicalKeyboardKey.numpadEnter, LogicalKeyboardKey.gameButtonA,
+      LogicalKeyboardKey.arrowUp, LogicalKeyboardKey.arrowDown, LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowRight,
+      LogicalKeyboardKey.info, LogicalKeyboardKey.contextMenu,
+    };
+    if (info.contains(k)) {
+      _showTvInfo();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   String _offKey = '';
   String? _lastPlan;
@@ -147,6 +184,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   @override
   void dispose() {
+    _tvInfoTimer?.cancel();
     _settle?.cancel();
     _ticker?.cancel();
     super.dispose();
@@ -196,6 +234,10 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Téléviseur : choisir « TV » dans le menu remet la chaîne en plein écran.
+    ref.listen<int>(tvFullscreenProvider, (_, __) {
+      if (_bigOverride != null) setState(() => _bigOverride = null);
+    });
     final live = ref.watch(liveStreamProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
     final liveProgs = ref.watch(tvProgramsProvider).valueOrNull ?? const <TvProgram>[];
@@ -239,7 +281,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           _bigOverride = null;
         }
         // Téléphone tourné : toujours en grand. Debout : en grand seulement avec le bouton « Agrandir ».
-        final immersive = canPlay && onTv && !_audioOnly && (landscape || _bigOverride == true);
+        // Téléviseur : la chaîne est en plein écran par défaut (Retour = menu).
+        final tv = isTvDevice;
+        final immersive = canPlay && onTv && !_audioOnly && (landscape || _bigOverride == true || (tv && _bigOverride != false));
         _syncImmersive(immersive);
         if (!canPlay) return _Offline(live: live);
         final next = slot == null ? null : schedule.after(slot);
@@ -333,6 +377,32 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       ),
                     ),
                 ]);
+        if (immersive && tv) {
+          // Téléviseur : la chaîne en plein écran, pilotée à la télécommande.
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) setState(() => _bigOverride = false);
+            },
+            child: Focus(
+              autofocus: true,
+              onKeyEvent: _tvKey,
+              child: ColoredBox(
+                color: Colors.black,
+                child: Stack(fit: StackFit.expand, children: [
+                  Center(child: screen),
+                  _TvInfoBar(
+                    visible: _tvInfo,
+                    now: onAir ? (l.messageTitle ?? l.title) : slot!.program.title,
+                    live: onAir,
+                    nextTitle: next?.program.title,
+                    nextAt: next?.start,
+                  ),
+                ]),
+              ),
+            ),
+          );
+        }
         if (immersive) {
           // Un geste vers le bas (ou le bouton « Réduire ») ramène l'écran normal.
           return GestureDetector(
@@ -570,6 +640,52 @@ class _Offline extends StatelessWidget {
               ),
             ],
           ]),
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Téléviseur : bandeau en bas de l'écran, affiché quelques secondes quand on touche la télécommande.
+class _TvInfoBar extends StatelessWidget {
+  const _TvInfoBar({required this.visible, required this.now, required this.live, this.nextTitle, this.nextAt});
+
+  final bool visible;
+  final String now;
+  final bool live;
+  final String? nextTitle;
+  final DateTime? nextAt;
+
+  @override
+  Widget build(BuildContext context) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: visible ? 1 : 0,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(48, 28, 48, 32),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xE6050A30)]),
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(live ? 'EN DIRECT' : 'EN CE MOMENT',
+                  style: AppTheme.title(size: 14, weight: FontWeight.w800, color: live ? AppColors.live : AppColors.sunYellow).copyWith(letterSpacing: 2)),
+              const SizedBox(height: 6),
+              Text(now, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTheme.title(size: 30, weight: FontWeight.w800, color: Colors.white)),
+              if (nextTitle != null && nextTitle!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text('À SUIVRE${nextAt == null ? '' : ' · ${two(nextAt!.hour)}:${two(nextAt!.minute)}'}  ·  $nextTitle',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mist, fontSize: 18)),
+              ],
+              const SizedBox(height: 14),
+              const Text('Retour : menu de l’appli', style: TextStyle(color: AppColors.muted, fontSize: 14)),
+            ]),
+          ),
         ),
       ),
     );
