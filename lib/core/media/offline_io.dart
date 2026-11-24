@@ -237,9 +237,11 @@ Future<void> _work() async {
       await _scan();
       _resize();
       await _trim(d);
-      var i = 0;
-      for (final p in _plan) {
-        final urgent = i++ < 2; // programme en cours et suivant : toujours gardés
+      // Ordre : d'abord le programme suivant et ceux d'après ; le programme en cours en dernier
+      // (il est déjà en train de passer par Internet : le télécharger en même temps ferait « charger » la TV).
+      final order = [if (_plan.length > 1) ..._plan.skip(1), if (_plan.isNotEmpty) _plan.first];
+      for (final p in order) {
+        final urgent = _plan.indexOf(p) < 2; // programme en cours et suivant : toujours gardés
         if (_wake) break;
         if (_ready.contains(p.id)) continue;
         if (!urgent && _bytes >= _maxBytes) break;
@@ -299,6 +301,29 @@ Future<String> _text(Uri u) async {
   return utf8.decode(r.bodyBytes);
 }
 
+// ── Débit limité ──
+// La réserve se remplit en douceur, sans jamais prendre toute la connexion : sinon la TV en direct
+// (et les autres appareils du même Wi-Fi) se mettent à « charger ». ~1,3 Mbit/s sur téléphone
+// (environ 1,5 fois la vitesse de lecture en 360p : la réserve prend quand même de l'avance).
+int get _capBytesPerSecond => isTvDevice ? 450 * 1024 : 160 * 1024;
+DateTime? _paceStart;
+int _paceBytes = 0;
+DateTime _paceLast = DateTime.fromMillisecondsSinceEpoch(0);
+
+Future<void> _pace(int bytes) async {
+  final now = DateTime.now();
+  // Après une pause (plus de 10 s sans téléchargement), on repart de zéro.
+  if (_paceStart == null || now.difference(_paceLast).inSeconds > 10) {
+    _paceStart = now;
+    _paceBytes = 0;
+  }
+  _paceBytes += bytes;
+  final dueMs = _paceBytes * 1000 ~/ _capBytesPerSecond;
+  final spentMs = now.difference(_paceStart!).inMilliseconds;
+  if (dueMs > spentMs) await Future<void>.delayed(Duration(milliseconds: dueMs - spentMs));
+  _paceLast = DateTime.now();
+}
+
 Future<void> _file(Uri u, File f) async {
   if (f.existsSync() && f.lengthSync() > 0) return; // déjà là (reprise)
   final tmp = File('${f.path}.tmp');
@@ -309,6 +334,7 @@ Future<void> _file(Uri u, File f) async {
       final sink = tmp.openWrite();
       await req.stream.timeout(const Duration(seconds: 45)).pipe(sink);
       await tmp.rename(f.path);
+      await _pace(await f.length());
       return;
     } catch (e) {
       if (attempt >= 3) rethrow;
@@ -343,7 +369,7 @@ Future<void> _playlist(Uri u, Directory dir, String prefix) async {
       out.add(line);
     }
   }
-  // Trois morceaux à la fois : plus rapide sur les réseaux à forte latence.
+  // Deux morceaux à la fois (réseaux à forte latence), le débit total restant limité par _pace.
   var i = 0;
   Future<void> worker() async {
     while (i < jobs.length) {
@@ -352,7 +378,7 @@ Future<void> _playlist(Uri u, Directory dir, String prefix) async {
     }
   }
 
-  await Future.wait([worker(), worker(), worker()]);
+  await Future.wait([worker(), worker()]);
   await File('${dir.path}/$prefix.m3u8').writeAsString('${out.join('\n')}\n');
 }
 

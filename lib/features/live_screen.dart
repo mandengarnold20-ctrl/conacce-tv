@@ -290,7 +290,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         if (!canPlay) return _Offline(live: live);
         final next = slot == null ? null : schedule.after(slot);
         if (!onAir) _sendPlan(schedule, slot, next, size);
-        final offSt = onAir ? null : offlineStatus();
         final youtube = slot != null && slot.program.isYoutube;
         // Ce qui s'affiche sous la TV : le direct, ou le programme en cours.
         final LiveStream l = onAir
@@ -444,14 +443,6 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                     if (l.messageTitle != null) ...[
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
-                    ],
-                    if (offSt != null && offSt.total > 0 && (phone || !kIsWeb)) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        'Gardés dans le téléphone · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''}'
-                        '${offSt.mb >= 1 ? ' · ${offSt.mb.round()} Mo' : ''}',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 11.5),
-                      ),
                     ],
                     if (next != null && next.program.title.isNotEmpty) ...[
                       const SizedBox(height: 2),
