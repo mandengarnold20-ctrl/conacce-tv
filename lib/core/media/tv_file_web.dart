@@ -46,6 +46,7 @@ class TvFileSurface extends StatefulWidget {
     required this.position,
     required this.remaining,
     this.nextUrl,
+    this.localFile,
     this.onExpand,
     this.expanded = false,
   });
@@ -57,6 +58,8 @@ class TvFileSurface extends StatefulWidget {
 
   /// Programme suivant (s'il s'agit aussi d'une vidéo envoyée) : préparé ~40 s avant.
   final String? nextUrl;
+  /// Vidéo gardée dans le téléphone (appli installée), lue à la place d'internet.
+  final String? localFile;
   final VoidCallback? onExpand;
   final bool expanded;
 

@@ -47,13 +47,24 @@ final liveStreamProvider = StreamProvider<LiveStream?>((ref) {
     emit();
   }
 
+  // Hors connexion : pas de nouvelles du direct au bout de quelques secondes = pas de direct,
+  // la chaîne programmée (vidéos gardées dans le téléphone) prend le relais.
+  var heard = false;
+  final noNews = Timer(const Duration(seconds: 4), () {
+    if (!heard) emit();
+  });
   final sub = _db.from('live_stream').stream(primaryKey: ['id']).listen((rows) {
+    heard = true;
     row = rows.isEmpty ? null : LiveStream.fromMap(rows.first);
     emit();
     probe();
-  }, onError: (Object e, StackTrace st) => ctrl.addError(e, st));
+  }, onError: (Object e, StackTrace st) {
+    airing = false;
+    emit();
+  });
   final timer = Timer.periodic(const Duration(seconds: 15), (_) => probe());
   ref.onDispose(() {
+    noNews.cancel();
     sub.cancel();
     timer.cancel();
     ctrl.close();

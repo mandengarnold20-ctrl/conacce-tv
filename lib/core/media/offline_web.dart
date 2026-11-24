@@ -26,3 +26,6 @@ void offlinePlan(String json) {
     return null;
   }
 }
+
+/// Vidéo gardée dans le téléphone (seulement dans l'appli installée).
+String? offlineLocalFile(String url) => null;

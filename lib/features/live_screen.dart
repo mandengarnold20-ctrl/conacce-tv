@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -56,7 +57,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     final items = <Map<String, String>>[];
     // Réserve réservée aux téléphones (une seule qualité, ≈ 480p) ; ordinateur et tablette lisent en direct
     // et une liste vide efface ce qui aurait été gardé.
-    final phone = isPhone(context);
+    // Appli installée : tous les appareils gardent les vidéos. Web : téléphones seulement (en pause).
+    final phone = !kIsWeb || isPhone(context);
     void add(TvProgram? p) {
       if (!phone || p == null || p.isYoutube || p.videoUrl.trim().isEmpty) return;
       final url = _phoneQuality(p.fileUrl, size);
@@ -265,6 +267,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
           player = TvFileSurface(
             key: const ValueKey('tv-file'),
             url: _phoneQuality(slot!.program.fileUrl, size),
+            // Appli installée : la vidéo gardée dans le téléphone passe en priorité (marche sans internet).
+            localFile: offlineLocalFile(slot.program.fileUrl),
             slotKey: slot.key,
             position: () => slot!.positionAt(_now()),
             remaining: () => slot!.end.difference(_now()),
@@ -364,10 +368,11 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                       const SizedBox(height: 4),
                       Text(onAir ? l.messageTitle! : 'En ce moment · ${l.messageTitle!}', style: const TextStyle(color: AppColors.mist, fontSize: 13)),
                     ],
-                    if (offSt != null && offSt.total > 0 && phone) ...[
+                    if (offSt != null && offSt.total > 0 && (phone || !kIsWeb)) ...[
                       const SizedBox(height: 2),
                       Text(
-                        'Réserve hors connexion · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''} prêt${offSt.ready > 1 ? 's' : ''}',
+                        'Gardés dans le téléphone · ${offSt.ready}/${offSt.total} programme${offSt.total > 1 ? 's' : ''}'
+                        '${offSt.mb >= 1 ? ' · ${offSt.mb.round()} Mo' : ''}',
                         style: const TextStyle(color: AppColors.muted, fontSize: 11.5),
                       ),
                     ],
