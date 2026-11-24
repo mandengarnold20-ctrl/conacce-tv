@@ -20,8 +20,28 @@ import 'package:path_provider/path_provider.dart';
 /// Hauteur d'image gardée dans le téléphone (360p : léger, net sur un écran de téléphone).
 const _targetHeight = 360;
 
-/// Place maximale utilisée sur le téléphone (≈ 4 h 30 de programmes en 360p).
-const _maxBytes = 1536 * 1024 * 1024;
+/// Place utilisée sur le téléphone : elle s'adapte toute seule.
+/// - téléphone presque toujours en ligne : petite réserve (≈ 2 h) ;
+/// - coupures longues ou fréquentes : la réserve grandit (jusqu'à ≈ 10 h) ;
+/// - téléphone plein : la réserve se réduit, sans jamais bloquer le téléphone.
+const _mb = 1024 * 1024;
+const _minBytes = 600 * _mb;
+const _startBytes = 1536 * _mb;
+const _topBytes = 3584 * _mb;
+
+/// Environ 5,5 Mo par minute de vidéo en 360p (image + son).
+const _bytesPerMinute = 5.5 * _mb;
+
+int _maxBytes = _startBytes;
+
+/// Journal des coupures (début → retour du réseau), gardé sur 7 jours.
+final List<({DateTime from, DateTime to})> _outages = [];
+DateTime? _offSince;
+int? _diskCap;
+DateTime? _diskAt;
+
+/// Premier jour d'utilisation (pour distinguer « pas encore d'historique » de « jamais coupé »).
+DateTime? _firstSeen;
 
 Directory? _root;
 Future<Directory>? _rootF;
@@ -39,6 +59,7 @@ Future<Directory> _dir() => _rootF ??= () async {
       await d.create(recursive: true);
       _root = d;
       await _scan();
+      await _loadLog();
       return d;
     }();
 
@@ -59,6 +80,106 @@ Future<void> _scan() async {
     }
   }
   _bytes = total;
+}
+
+File get _logFile => File('${_root!.path}/coupures.json');
+
+Future<void> _loadLog() async {
+  try {
+    final raw = jsonDecode(await _logFile.readAsString()) as Map<String, dynamic>;
+    _outages
+      ..clear()
+      ..addAll((raw['o'] as List).map((e) => (from: DateTime.parse('${e[0]}'), to: DateTime.parse('${e[1]}'))));
+    final off = raw['off'];
+    _offSince = off == null ? null : DateTime.parse('$off');
+    _diskCap = raw['disk'] as int?;
+    final at = raw['diskAt'];
+    _diskAt = at == null ? null : DateTime.parse('$at');
+    final fs = raw['first'];
+    _firstSeen = fs == null ? null : DateTime.parse('$fs');
+  } catch (_) {}
+  if (_firstSeen == null) {
+    _firstSeen = DateTime.now();
+    await _saveLog();
+  }
+  _resize();
+}
+
+Future<void> _saveLog() async {
+  try {
+    await _logFile.writeAsString(jsonEncode({
+      'o': [for (final o in _outages) [o.from.toIso8601String(), o.to.toIso8601String()]],
+      'off': _offSince?.toIso8601String(),
+      'disk': _diskCap,
+      'diskAt': _diskAt?.toIso8601String(),
+      'first': _firstSeen?.toIso8601String(),
+    }));
+  } catch (_) {}
+}
+
+/// Taille de la réserve d'après les coupures des 7 derniers jours :
+/// la plus longue coupure (avec une marge de 30 %) en minutes de vidéo à garder.
+void _resize() {
+  final now = DateTime.now();
+  _outages.removeWhere((o) => now.difference(o.to) > const Duration(days: 7));
+  var longest = Duration.zero;
+  for (final o in _outages) {
+    final d = o.to.difference(o.from);
+    if (d > longest) longest = d;
+  }
+  final since = _offSince;
+  if (since != null && now.difference(since) > longest) longest = now.difference(since);
+  int target;
+  final first = _firstSeen;
+  if (_outages.isEmpty && since == null) {
+    // Moins de 2 jours d'historique : réserve moyenne ; sinon téléphone toujours en ligne : petite réserve.
+    target = first == null || now.difference(first) < const Duration(days: 2) ? _startBytes : _minBytes;
+  } else {
+    target = (longest.inMinutes * 1.3 * _bytesPerMinute).round();
+    if (_outages.length >= 5) target = (target * 1.25).round(); // coupures fréquentes : un peu plus de marge
+  }
+  target = target.clamp(_minBytes, _topBytes).toInt();
+  // Téléphone plein il y a moins de 3 jours : on reste sous la place qui tenait.
+  final disk = _diskCap;
+  if (disk != null && _diskAt != null && now.difference(_diskAt!) > const Duration(days: 3)) {
+    _diskCap = null;
+    _diskAt = null;
+  } else if (disk != null && target > disk) {
+    target = disk;
+  }
+  _maxBytes = target;
+}
+
+void _wentOffline() {
+  if (_offSince != null) return;
+  _offSince = DateTime.now();
+  unawaited(_saveLog());
+}
+
+void _backOnline() {
+  final since = _offSince;
+  if (since == null) return;
+  _offSince = null;
+  final now = DateTime.now();
+  // Les micro-coupures (moins de 2 minutes) ne comptent pas.
+  if (now.difference(since) >= const Duration(minutes: 2)) _outages.add((from: since, to: now));
+  _resize();
+  unawaited(_saveLog());
+}
+
+/// Réserve trop grosse (réduite, ou téléphone plein) : on efface en partant des programmes
+/// les moins urgents (fin de la grille), jamais le programme en cours ni le suivant.
+Future<void> _trim(Directory d) async {
+  if (_bytes <= _maxBytes) return;
+  for (final p in _plan.skip(2).toList().reversed) {
+    if (_bytes <= _maxBytes) break;
+    final dir = Directory('${d.path}/${p.id}');
+    if (!dir.existsSync()) continue;
+    try {
+      await dir.delete(recursive: true);
+    } catch (_) {}
+    await _scan();
+  }
 }
 
 /// Reçoit la grille à préparer (liste JSON de {url, title}, dans l'ordre d'importance).
@@ -110,15 +231,48 @@ Future<void> _work() async {
         }
       }
       await _scan();
+      _resize();
+      await _trim(d);
+      var i = 0;
       for (final p in _plan) {
+        final urgent = i++ < 2; // programme en cours et suivant : toujours gardés
         if (_wake) break;
         if (_ready.contains(p.id)) continue;
-        if (_bytes >= _maxBytes) break;
+        if (!urgent && _bytes >= _maxBytes) break;
         try {
           await _download(d, p.id, p.url);
           _ready.add(p.id);
+          _backOnline();
+        } on FileSystemException {
+          // Téléphone plein : la réserve se limite à ce qui tient déjà, et on libère un peu de place.
+          await _scan();
+          _diskCap = (_bytes * 0.8).round().clamp(0, _topBytes).toInt();
+          _diskAt = DateTime.now();
+          _resize();
+          await _saveLog();
+          final part = Directory('${d.path}/${p.id}.part');
+          if (part.existsSync()) {
+            try {
+              await part.delete(recursive: true);
+            } catch (_) {}
+          }
+          await _scan();
+          await _trim(d);
+          break;
+        } on SocketException {
+          _wentOffline();
+          failed = true;
+          break; // pas de réseau : inutile d'essayer les autres programmes
+        } on TimeoutException {
+          _wentOffline();
+          failed = true;
+          break;
+        } on http.ClientException {
+          _wentOffline();
+          failed = true;
+          break;
         } catch (_) {
-          failed = true; // pas de réseau, ou vidéo indisponible : on réessaiera
+          failed = true; // vidéo indisponible : on réessaiera
         }
         await _scan();
       }
