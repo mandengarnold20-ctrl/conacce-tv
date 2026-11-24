@@ -517,6 +517,15 @@
   @container (max-width: 560px) { .hb-2, .hb-3 { grid-template-columns: 1fr; } .hb-msg { grid-template-columns: 1fr 1fr; } }
   .ov { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; --k: .6; }
   .ov-logo { position: absolute; border-radius: calc(3px * var(--k)); }
+  /* Réglage du logo à la souris sur l'écran Antenne */
+  .lg-safe { position: absolute; inset: 5%; border: 1.5px dashed rgba(249,202,34,.85); border-radius: 4px; pointer-events: none; z-index: 5; }
+  .lg-safe span { position: absolute; left: 6px; top: 4px; font-size: 10.5px; font-weight: 700; color: #F9CA22; text-shadow: 0 1px 2px #000; letter-spacing: .04em; }
+  .lg-safe.bad { border-color: #FF4D4D; } .lg-safe.bad span { color: #FF6B6B; }
+  .lg-edit { position: absolute; z-index: 6; border: 2px solid #F9CA22; border-radius: 4px; cursor: move; box-shadow: 0 0 0 9999px rgba(0,0,0,.18); touch-action: none; }
+  .lg-edit.bad { border-color: #FF4D4D; }
+  .lg-grip { position: absolute; right: -8px; bottom: -8px; width: 16px; height: 16px; background: #F9CA22; border: 2px solid #0B1463; border-radius: 4px; cursor: nwse-resize; }
+  .lg-tip { margin-top: 6px; }
+  .lg-tip.bad { color: #FF8A8A; font-weight: 600; }
   .ov-bandpos { position: absolute; display: flex; pointer-events: none; }
   .ov-band { --bk: var(--k); border-radius: calc(5px * var(--bk)); overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.35); text-align: center; opacity: 0; transform: translateY(170%); transition: transform .65s cubic-bezier(.5,0,.75,0), opacity .4s; }
   .ov-band.from-top { transform: translateY(-170%); }
@@ -2003,7 +2012,14 @@ async function showRegie() {
     habPane.append(
       h('fieldset', { class: 'hb' }, h('legend', {}, 'Logo'),
         h('div', { class: 'hb-row' }, sw(B.logo.show, 'Afficher le logo', v => { B.logo.show = v; }), h('span', { class: 'grow' }), h('span', { class: 'logo-shine hb-logo' }, h('img', { src: B.logo.url || LOGO_DEFAULT, alt: 'Logo actuel' }))),
-        pills([['hg', 'Haut gauche'], ['hd', 'Haut droite'], ['bg', 'Bas gauche'], ['bd', 'Bas droite']], B.logo.corner, v => { B.logo.corner = v; }),
+        ro ? null : h('div', { class: 'hb-row' },
+          h('button', { class: 'btn small' + (R.logoEdit ? ' primary' : ''), 'aria-pressed': String(!!R.logoEdit), onclick: () => {
+            R.logoEdit = !R.logoEdit;
+            if (R.logoEdit) document.getElementById('antenne-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            buildHab(); syncLogoEdit();
+          } }, R.logoEdit ? '✓ Terminer le réglage' : 'Déplacer / agrandir sur l’écran Antenne'),
+          B.logo.x != null ? h('button', { class: 'btn small ghost', onclick: () => { B.logo.x = null; B.logo.y = null; B.logo.corner = 'hd'; saveBrand(); buildHab(); syncLogoEdit(); } }, 'Remettre en haut à droite') : null),
+        R.logoEdit ? h('div', { class: 'rg-small lg-tip', id: 'lg-tip' }, 'Sur l’écran Antenne : glissez le logo pour le déplacer, tirez le petit carré jaune pour l’agrandir ou le réduire. Gardez-le à l’intérieur du cadre pointillé (zone de sécurité) : au-delà, il peut être coupé sur certains écrans.') : null,
         h('div', { class: 'hb-2' },
           range('Taille', 40, 200, B.logo.size, v => v + ' %', v => { B.logo.size = v; }),
           range('Opacité', 10, 100, B.logo.opacity, v => v + ' %', v => { B.logo.opacity = v; })),
@@ -2084,9 +2100,16 @@ async function showRegie() {
       const src = B.logo.url || LOGO_DEFAULT;
       if (ovLogoImg.getAttribute('src') !== src) ovLogoImg.src = src;
       ovLogo.classList.toggle('hidden', !B.logo.show);
-      const top = B.logo.corner[0] === 'h', left = B.logo.corner[1] === 'g';
-      Object.assign(ovLogo.style, { width: (w * 0.17 * B.logo.size / 100) + 'px', opacity: B.logo.opacity / 100,
-        top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
+      const lw = w * 0.17 * B.logo.size / 100;
+      if (B.logo.x != null && B.logo.y != null) {
+        // Position libre (réglée à la souris) : en proportion de l'écran, identique dans l'appli.
+        Object.assign(ovLogo.style, { width: lw + 'px', opacity: B.logo.opacity / 100,
+          left: Math.max(0, Math.min(B.logo.x * w, w - lw)) + 'px', top: Math.max(0, Math.min(B.logo.y * hgt, hgt - 8)) + 'px', right: '', bottom: '' });
+      } else {
+        const top = B.logo.corner[0] === 'h', left = B.logo.corner[1] === 'g';
+        Object.assign(ovLogo.style, { width: lw + 'px', opacity: B.logo.opacity / 100,
+          top: top ? mg + 'px' : '', bottom: top ? '' : (mg + th) + 'px', left: left ? mg + 'px' : '', right: left ? '' : mg + 'px' });
+      }
       // Bandeau
       const theme = { nuit: ['rgba(11,20,99,.92)', '#fff'], blanc: ['#fff', '#0B1463'], noir: ['rgba(0,0,0,.85)', '#F9CA22'] }[B.ticker.theme] || ['rgba(11,20,99,.92)', '#fff'];
       ovTick.className = 'ov-tick' + (text ? '' : ' hidden');
@@ -2156,6 +2179,62 @@ async function showRegie() {
     return parts.join('   •   ');
   }
   const drawOverlay = makeOverlay(airBox);
+  // ── Réglage du logo à la souris (écran Antenne) ──
+  airBox.id = 'antenne-box';
+  const lgSafe = h('div', { class: 'lg-safe hidden' }, h('span', {}, 'ZONE DE SÉCURITÉ'));
+  const lgGrip = h('span', { class: 'lg-grip', title: 'Agrandir / réduire' });
+  const lgFrame = h('div', { class: 'lg-edit hidden', title: 'Glissez pour déplacer le logo' }, lgGrip);
+  airBox.append(lgSafe, lgFrame);
+  function syncLogoEdit() {
+    const on = !!R.logoEdit && R.brand.logo.show;
+    if (!lgFrame.isConnected) airBox.append(lgSafe, lgFrame);
+    lgSafe.classList.toggle('hidden', !on); lgFrame.classList.toggle('hidden', !on);
+    if (!on) return;
+    const lg = airBox.querySelector('.ov-logo'); if (!lg) return;
+    const b = airBox.getBoundingClientRect(), r = lg.getBoundingClientRect();
+    if (!b.width || !r.width) return;
+    Object.assign(lgFrame.style, { left: (r.left - b.left) + 'px', top: (r.top - b.top) + 'px', width: r.width + 'px', height: r.height + 'px' });
+    const m = 0.05, inside = r.left - b.left >= b.width * m - 1 && r.top - b.top >= b.height * m - 1 && r.right - b.left <= b.width * (1 - m) + 1 && r.bottom - b.top <= b.height * (1 - m) + 1;
+    lgSafe.classList.toggle('bad', !inside); lgFrame.classList.toggle('bad', !inside);
+    const tip = document.getElementById('lg-tip');
+    if (tip) {
+      tip.classList.toggle('bad', !inside);
+      tip.textContent = inside
+        ? 'Sur l’écran Antenne : glissez le logo pour le déplacer, tirez le petit carré jaune pour l’agrandir ou le réduire. Gardez-le à l’intérieur du cadre pointillé (zone de sécurité).'
+        : '⚠ Le logo sort de la zone de sécurité : il risque d’être coupé sur certains téléviseurs et téléphones. Ramenez-le à l’intérieur du cadre pointillé.';
+    }
+  }
+  function lgStart(e, resize) {
+    if (!R.logoEdit) return;
+    e.preventDefault(); e.stopPropagation();
+    const B = R.brand, lg = airBox.querySelector('.ov-logo'); if (!lg) return;
+    const b = airBox.getBoundingClientRect(), r = lg.getBoundingClientRect();
+    // On part de la position affichée (même si le logo était encore dans un coin).
+    B.logo.x = (r.left - b.left) / b.width; B.logo.y = (r.top - b.top) / b.height;
+    const sx = e.clientX, sy = e.clientY, x0 = B.logo.x, y0 = B.logo.y, w0 = r.width, ratio = r.height / r.width;
+    const move = ev => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (resize) {
+        const nw = Math.max(b.width * 0.17 * 0.4, Math.min(b.width * 0.17 * 2, w0 + dx));
+        B.logo.size = Math.round(nw / (b.width * 0.17) * 100);
+        B.logo.x = Math.min(x0, 1 - nw / b.width);
+      } else {
+        const lw = b.width * 0.17 * B.logo.size / 100;
+        B.logo.x = Math.max(0, Math.min(1 - lw / b.width, x0 + dx / b.width));
+        B.logo.y = Math.max(0, Math.min(1 - (lw * ratio) / b.height, y0 + dy / b.height));
+      }
+      drawOverlay(now(), R.air ? R.air.T || { kind: 'file' } : { kind: 'file' });
+      syncLogoEdit();
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      B.logo.x = Math.round(B.logo.x * 1000) / 1000; B.logo.y = Math.round(B.logo.y * 1000) / 1000;
+      saveBrand(); buildHab(); syncLogoEdit();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  }
+  lgFrame.addEventListener('pointerdown', e => lgStart(e, e.target === lgGrip));
+  window.addEventListener('resize', () => syncLogoEdit());
 
   // ── Barre du direct ──
   function liveBar() {
@@ -2910,6 +2989,7 @@ async function showRegie() {
       } catch (e) {}
     }
     drawOverlay(t, T);
+    if (R.logoEdit) syncLogoEdit();
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
     const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];

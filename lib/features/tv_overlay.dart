@@ -130,6 +130,8 @@ class _TvOverlayState extends State<TvOverlay> {
         final margin = 10 * k;
         final top = b.logoCorner.startsWith('h');
         final left = b.logoCorner.endsWith('g');
+        final free = b.logoX != null && b.logoY != null;
+        final logoW = w * 0.17 * b.logoSize / 100;
 
         // Position de la bande : bas ou haut, gauche / centre / droite, hauteur réglable.
         final bandTop = b.bandPos.startsWith('h');
@@ -138,10 +140,11 @@ class _TvOverlayState extends State<TvOverlay> {
         return Stack(clipBehavior: Clip.hardEdge, children: [
           if (b.logoShow)
             Positioned(
-              top: top ? margin : null,
-              bottom: top ? null : margin + tickerH,
-              left: left ? margin : null,
-              right: left ? null : margin,
+              // Position libre réglée à la souris dans la régie, sinon un des quatre coins.
+              top: free ? (b.logoY! * h).clamp(0.0, (h - 8).clamp(0.0, h)).toDouble() : top ? margin : null,
+              bottom: free ? null : top ? null : margin + tickerH,
+              left: free ? (b.logoX! * w).clamp(0.0, (w - logoW).clamp(0.0, w)).toDouble() : left ? margin : null,
+              right: free ? null : left ? null : margin,
               child: Opacity(
                 opacity: b.logoOpacity / 100,
                 // Notre logo officiel, avec le reflet de lumière qui le traverse (comme dans l'appli).

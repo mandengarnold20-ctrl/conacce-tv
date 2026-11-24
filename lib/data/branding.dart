@@ -74,6 +74,8 @@ class Branding {
   const Branding({
     this.logoShow = true,
     this.logoCorner = 'hd',
+    this.logoX,
+    this.logoY,
     this.logoSize = 100,
     this.logoOpacity = 90,
     this.logoUrl,
@@ -109,6 +111,11 @@ class Branding {
 
   final bool logoShow;
   final String logoCorner; // hg, hd, bg, bd
+
+  /// Position libre réglée à la souris dans la régie (coin haut-gauche du logo, en fraction de l'écran) ;
+  /// null = le logo est dans le coin [logoCorner].
+  final double? logoX;
+  final double? logoY;
   final int logoSize; // %
   final int logoOpacity; // %
   final String? logoUrl;
@@ -168,6 +175,7 @@ class Branding {
     return parts.join('   •   ');
   }
 
+  static double? _frac(Object? v) => v is num ? v.toDouble().clamp(0.0, 1.0).toDouble() : null;
   static int _int(Object? v, int def) => v is num ? v.toInt() : int.tryParse('$v') ?? def;
   static bool _bool(Object? v, bool def) => v is bool ? v : def;
   static String? _str(Object? v) => v == null || '$v'.trim().isEmpty ? null : '$v';
@@ -187,6 +195,8 @@ class Branding {
     return Branding(
       logoShow: _bool(logo['show'], true),
       logoCorner: _str(logo['corner']) ?? 'hd',
+      logoX: _frac(logo['x']),
+      logoY: _frac(logo['y']),
       logoSize: _int(logo['size'], 100).clamp(40, 200).toInt(),
       logoOpacity: _int(logo['opacity'], 90).clamp(10, 100).toInt(),
       logoUrl: _str(logo['url']),
