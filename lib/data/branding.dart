@@ -120,6 +120,9 @@ class Branding {
     this.rankBg = const Color(0xFFFFFFFF),
     this.rankFg = const Color(0xFF000000),
     this.rankSide = 'g',
+    this.chartBandAll = false,
+    this.rankCut = true,
+    this.chartRankAll = false,
     this.font = const BrandFont('Poppins'),
     this.fontTicker,
     this.fontBand,
@@ -181,6 +184,12 @@ class Branding {
   /// Numéro du classement (hits de la semaine) collé à la bande 1.
   final Color rankBg, rankFg;
   final String rankSide; // g (à gauche) ou d (à droite)
+
+  /// Pendant un classement : bandes et/ou numéro affichés pendant tout le clip (sinon au rythme habituel des bandes).
+  final bool chartBandAll, chartRankAll;
+
+  /// Chiffre « percé » dans le carré (on voit l'image à travers), sinon chiffre de couleur.
+  final bool rankCut;
 
   bool get twoBands => bandImg != null && bandImg2 != null;
   final BrandFont font; // police générale
@@ -282,6 +291,9 @@ class Branding {
       rankBg: _color(band['rankBg']) ?? d.rankBg,
       rankFg: _color(band['rankFg']) ?? d.rankFg,
       rankSide: _str(band['rankSide']) == 'd' ? 'd' : 'g',
+      chartBandAll: band['cBand'] == 'all',
+      rankCut: band['rankCut'] != false,
+      chartRankAll: band['cRank'] == 'all',
       font: BrandFont.fromMap(c['font']) ?? const BrandFont('Poppins'),
       fontTicker: BrandFont.fromMap(c['fontTicker']),
       fontBand: BrandFont.fromMap(c['fontBand']),

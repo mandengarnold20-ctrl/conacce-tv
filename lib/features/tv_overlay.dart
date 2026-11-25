@@ -122,6 +122,9 @@ class _TvOverlayState extends State<TvOverlay> {
       bandOn = inWindow(b.bandAt.toDouble()) || (twice && inWindow(total - b.bandEnd));
       // Classement : le numéro arrive avec la bande, reste quand elle part, et repart avec elle au 2ᵉ passage.
       rankOn = rank != null && pos >= b.bandAt && pos < (twice ? total - b.bandEnd + b.bandDur : total);
+      // Options du classement : bandes et/ou numéro pendant tout le clip.
+      if (rank != null && b.chartBandAll) bandOn = pos >= b.bandAt && pos < total - 1;
+      if (rank != null && b.chartRankAll) rankOn = pos >= b.bandAt && pos < total - 0.5;
     }
 
     // Texte d'annonce pendant une pub, ou « Suite de votre programme » à la reprise du film.
@@ -174,7 +177,7 @@ class _TvOverlayState extends State<TvOverlay> {
             final two = b.twoBands;
             final fromTop = prog.bandAnim == 'haut' ? true : prog.bandAnim == 'bas' ? false : bandTop;
             final anim = switch (prog.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null };
-            final artist = (prog.artist ?? '').trim(), song = (prog.song ?? '').trim();
+            final artist = prog.bandArtist, song = prog.bandSong;
             final bw1 = w * (b.bandW1 ?? b.bandWidth) / 100, bh1 = bw1 / b.bandImgAspect;
             final bw2 = w * (b.bandW2 ?? b.bandWidth) / 100, bh2 = bw2 / b.bandImg2Aspect;
             final kk = k * b.bandScale / 100;
@@ -539,23 +542,45 @@ class _RankBox extends StatelessWidget {
         scale: visible ? 1 : 0.4,
         duration: const Duration(milliseconds: 550),
         curve: visible ? Curves.easeOutBack : Curves.easeIn,
-        // Carré blanc, chiffre noir en Poppins (couleurs réglables dans la régie).
-        child: Container(
+        // Carré blanc et chiffre en Poppins : « percé » (on voit l'image à travers) ou de couleur.
+        child: SizedBox(
           width: size,
           height: size,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: b.rankBg,
-            borderRadius: BorderRadius.circular(size * 0.03),
-            boxShadow: [BoxShadow(color: const Color(0x59000000), blurRadius: size * 0.12, offset: Offset(0, size * 0.03))],
-          ),
-          child: Text('$rank',
-              maxLines: 1,
-              style: GoogleFonts.poppins(fontSize: size * (rank > 9 ? 0.6 : 0.72), fontWeight: FontWeight.w800, color: b.rankFg, height: 1, letterSpacing: -size * 0.02)),
+          child: CustomPaint(painter: _RankPainter(rank: rank, bg: b.rankBg, fg: b.rankFg, cut: b.rankCut)),
         ),
       ),
     );
   }
+}
+
+/// Dessine le carré du numéro ; en mode « percé », le chiffre est découpé dans le carré (BlendMode.dstOut).
+class _RankPainter extends CustomPainter {
+  _RankPainter({required this.rank, required this.bg, required this.fg, required this.cut});
+
+  final int rank;
+  final Color bg, fg;
+  final bool cut;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = Offset.zero & size;
+    canvas.saveLayer(r.inflate(2), Paint());
+    canvas.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(size.width * 0.03)), Paint()..color = bg);
+    final fs = size.width * (rank > 9 ? 0.62 : 0.74);
+    final style = GoogleFonts.poppins(fontSize: fs, fontWeight: FontWeight.w800, height: 1, letterSpacing: -fs * 0.04);
+    final tp = TextPainter(
+      text: TextSpan(
+        text: '$rank',
+        style: cut ? style.copyWith(foreground: Paint()..blendMode = BlendMode.dstOut ..color = const Color(0xFF000000)) : style.copyWith(color: fg),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2 + size.height * 0.02));
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_RankPainter old) => old.rank != rank || old.bg != bg || old.fg != fg || old.cut != cut;
 }
 
 /// Bandeau d'infos défilant en bas de l'image.

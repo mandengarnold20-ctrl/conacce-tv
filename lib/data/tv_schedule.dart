@@ -61,7 +61,31 @@ class TvProgram {
 
   /// clip, emission ou habillage (jingle, spot : jamais de bande).
   final String kind;
-  bool get hasBand => showBand && kind != 'habillage' && kind != 'pub' && ((artist ?? '').trim().isNotEmpty || (song ?? '').trim().isNotEmpty);
+  bool get hasBand => showBand && kind != 'habillage' && kind != 'pub' && (bandArtist.isNotEmpty || bandSong.isNotEmpty);
+
+  /// Noms affichés sur les bandes. Clip de classement sans nom rempli : tirés du nom du fichier
+  /// (« Artiste - Titre (1080p) » → « Artiste » et « Titre »), pour que les bandes et le numéro s'affichent toujours.
+  String get bandArtist {
+    final a = (artist ?? '').trim();
+    if (a.isNotEmpty || chartRank == null || (song ?? '').trim().isNotEmpty) return a;
+    return splitTitle(title).$1;
+  }
+
+  String get bandSong {
+    final s = (song ?? '').trim();
+    if (s.isNotEmpty || chartRank == null || (artist ?? '').trim().isNotEmpty) return s;
+    return splitTitle(title).$2;
+  }
+
+  static (String, String) splitTitle(String t) {
+    String clean(String x) => x
+        .replaceAll(RegExp(r'\s*[\(\[](1080|720|480|360|4k)p?[\)\]]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s*[\(\[]?(clip officiel|official (music )?video|clip)[\)\]]?\s*$', caseSensitive: false), '')
+        .trim();
+    final m = RegExp(r'\s[-–—]\s').firstMatch(t);
+    if (m == null) return ('', clean(t));
+    return (t.substring(0, m.start).trim(), clean(t.substring(m.end)));
+  }
 
   /// Rendez-vous prioritaire : passe à son heure exacte, même si un autre rendez-vous occupe ce moment.
   final bool isPriority;

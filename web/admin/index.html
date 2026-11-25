@@ -567,6 +567,9 @@
   .bd-frame .lg-grip { background: #7FD3FF; }
   .ch-rows { display: grid; gap: 6px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
   .ch-row { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; }
+  .ch-row > div { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+  .ch-row input, .ch-row select { min-width: 0; }
+  @media (max-width: 700px) { .ch-row > div { grid-template-columns: 1fr 1fr; } .ch-row > div select { grid-column: 1 / -1; } }
   .ch-row b { background: #0E9F4F; color: #fff; border-radius: 6px; text-align: center; padding: 6px 0; font-size: 15px; }
   .ov-band.img { border-radius: 0; box-shadow: none; overflow: visible; background-size: 100% 100%; background-repeat: no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; }
   .ov-band.img .ov-artist, .ov-band.img .ov-song { background: none !important; animation: none; padding: 0; max-width: 100%; text-shadow: 0 1px 3px rgba(0,0,0,.6); line-height: 1.1; }
@@ -2173,6 +2176,12 @@ async function showRegie() {
         h('div', { class: 'hb-row' },
           color('Fond du numéro', B.band.rankBg || '#FFFFFF', v => { B.band.rankBg = v; }), color('Chiffre', B.band.rankFg || '#000000', v => { B.band.rankFg = v; }),
           pills([['g', 'À gauche de la bande'], ['d', 'À droite de la bande']], B.band.rankSide === 'd' ? 'd' : 'g', v => { B.band.rankSide = v; })),
+        h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Chiffre :'),
+          pills([['', 'Percé (on voit l’image à travers)'], ['plein', 'Plein (couleur du chiffre)']], B.band.rankCut === false ? 'plein' : '', v => { B.band.rankCut = v === 'plein' ? false : null; })),
+        h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Numéro :'),
+          pills([['', 'Avec les bandes (début et fin)'], ['all', 'Pendant tout le clip']], B.band.cRank === 'all' ? 'all' : '', v => { B.band.cRank = v || null; })),
+        h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Bandes pendant un classement :'),
+          pills([['', 'Rythme habituel'], ['all', 'Pendant tout le clip']], B.band.cBand === 'all' ? 'all' : '', v => { B.band.cBand = v || null; })),
         B.band.img ? h('div', { class: 'hb-row' },
           range('Taille du texte', 50, 200, B.band.tsz || 100, v => v + ' %', v => { B.band.tsz = v; }),
           color('Couleur du texte', B.band.tc || '#FFFFFF', v => { B.band.tc = v; })) : null,
@@ -2257,10 +2266,10 @@ async function showRegie() {
       // Bande artiste / émission
       const editing = box === airBox && R.bandEdit;
       const p = editing ? { artist: (T.sl && T.sl.p.artist) || 'Nom de l’artiste', song: (T.sl && T.sl.p.song) || 'Titre de la chanson', duration: 200, chart_rank: (T.sl && T.sl.p.chart_rank) || 10, band_anim: null } : T.sl && T.sl.p;
-      const has = !!(editing || (B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim())));
+      const [artistT, songT] = p ? bandNames(p) : ['', ''];
+      const has = !!(editing || (B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && (artistT || songT)));
       const two = !!(B.band.img && B.band.img2);
       let on = false, rankOn = false;
-      const artistT = ((p && p.artist) || '').trim(), songT = ((p && p.song) || '').trim();
       if (has) {
         const pos = T.sl ? (t - T.sl.start) / 1000 : 0, total = p.duration;
         const win = a => pos >= a && pos < a + B.band.dur;
@@ -2268,6 +2277,9 @@ async function showRegie() {
         on = editing || win(B.band.at) || (twice && win(total - B.band.end));
         // Classement : le numéro arrive avec la bande, reste quand elle part, et repart avec elle au 2ᵉ passage.
         rankOn = !!p.chart_rank && (editing || (pos >= B.band.at && pos < (twice ? total - B.band.end + B.band.dur : total)));
+        // Options du classement : bandes et/ou numéro pendant tout le clip.
+        if (p.chart_rank && !editing && B.band.cBand === 'all') on = pos >= B.band.at && pos < total - 1;
+        if (p.chart_rank && !editing && B.band.cRank === 'all') rankOn = pos >= B.band.at && pos < total - 0.5;
         if (ovArtist.textContent !== artistT) ovArtist.textContent = artistT;
         if (ovSong.textContent !== songT) ovSong.textContent = songT;
         if (ovSong2.textContent !== songT) ovSong2.textContent = songT;
@@ -2338,9 +2350,18 @@ async function showRegie() {
           if (Math.abs(l2 - l1) < w1 * 0.5 && t2 >= t1 && t2 - (t1 + h1) < h1 * 1.5) { top = Math.min(top, t2); bot = Math.max(bot, t2 + h2); left = Math.min(left, l2); right = Math.max(right, l2 + w2); }
         }
         const hh = bot - top, sz = hh * 1.12;
-        if (ovRank.textContent !== String(p.chart_rank)) ovRank.textContent = String(p.chart_rank);
-        Object.assign(ovRank.style, { width: sz + 'px', height: sz + 'px', top: (top - (sz - hh) / 2) + 'px', left: (rSide === 'd' ? right + gap : left - gap - sz) + 'px',
-          fontSize: (sz * (p.chart_rank > 9 ? 0.6 : 0.72)) + 'px', fontWeight: 800, letterSpacing: '-0.03em', background: B.band.rankBg || '#FFFFFF', color: B.band.rankFg || '#000000', fontFamily: famOf({ name: 'Poppins' }) });
+        // Chiffre « percé » : on voit l'image à travers (masque SVG), ou chiffre de couleur si l'option est décochée.
+        const n = p.chart_rank, bg = B.band.rankBg || '#FFFFFF', cut = B.band.rankCut !== false, fg = B.band.rankFg || '#000000';
+        const fam = famOf({ name: 'Poppins' }).replace(/"/g, ''), fs = n > 9 ? 62 : 74, key = [n, bg, cut, fg].join('|');
+        if (ovRank.__k !== key) {
+          ovRank.__k = key; ovRank.__id = ovRank.__id || 'rk' + Math.random().toString(36).slice(2, 8);
+          const txt = `<text x="50" y="53" text-anchor="middle" dominant-baseline="central" font-family="${fam}" font-weight="800" font-size="${fs}" letter-spacing="-3" fill="${cut ? '#000' : fg}">${n}</text>`;
+          ovRank.innerHTML = cut
+            ? `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><defs><mask id="${ovRank.__id}"><rect width="100" height="100" fill="#fff"/>${txt}</mask></defs><rect width="100" height="100" rx="3" fill="${bg}" mask="url(#${ovRank.__id})"/></svg>`
+            : `<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true"><rect width="100" height="100" rx="3" fill="${bg}"/>${txt}</svg>`;
+        }
+        Object.assign(ovRank.style, { width: sz + 'px', height: sz + 'px', top: (top - (sz - hh) / 2) + 'px', left: (rSide === 'd' ? right + gap : left - gap - sz) + 'px', background: 'none', boxShadow: 'none',
+          filter: 'drop-shadow(0 2px 6px rgba(0,0,0,.35))' });
       }
       // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
       const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);
@@ -3092,6 +3113,18 @@ async function showRegie() {
   }
   // ── Voix des classements (gratuite : Piper, voix française féminine « Siwis », fabriquée dans ce navigateur) ──
   const VOICE_ID = 'fr_FR-siwis-medium', VOICE_AT = 2;
+  // « Artiste - Titre (1080p) clip officiel » → ['Artiste', 'Titre'] (même règle que l'appli).
+  function splitTitle(t) {
+    t = String(t || '');
+    const clean = x => x.replace(/\s*[\(\[](1080|720|480|360|4k)p?[\)\]]/gi, '').replace(/\s*[\(\[]?(clip officiel|official (music )?video|clip)[\)\]]?\s*$/i, '').trim();
+    const m = t.match(/\s[-–—]\s/);
+    return m ? [t.slice(0, m.index).trim(), clean(t.slice(m.index + m[0].length))] : ['', clean(t)];
+  }
+  // Noms affichés (bandes, voix) : ceux remplis, sinon tirés du nom du fichier pour un clip de classement.
+  function bandNames(p) {
+    const a = (p.artist || '').trim(), s = (p.song || '').trim();
+    return (a || s || !p.chart_rank) ? [a, s] : splitTitle(p.title);
+  }
   const ORD = ['', 'première', 'deuxième', 'troisième', 'quatrième', 'cinquième', 'sixième', 'septième', 'huitième', 'neuvième', 'dixième',
     'onzième', 'douzième', 'treizième', 'quatorzième', 'quinzième', 'seizième', 'dix-septième', 'dix-huitième', 'dix-neuvième', 'vingtième',
     'vingt-et-unième', 'vingt-deuxième', 'vingt-troisième', 'vingt-quatrième', 'vingt-cinquième', 'vingt-sixième', 'vingt-septième', 'vingt-huitième', 'vingt-neuvième', 'trentième'];
@@ -3100,7 +3133,7 @@ async function showRegie() {
   // Textes de l'animatrice, variés d'un numéro à l'autre, comme une vraie émission de classement.
   function voiceText(p) {
     const n = p.chart_rank, size = p.chart_size || n, title = (p.chart_title || 'Hit de la semaine').trim();
-    const who = (p.artist || p.title || '').trim(), song = (p.song || '').trim();
+    const [an, sn] = bandNames(p), who = an || sn || (p.title || '').trim(), song = an ? sn : '';
     const avec = song ? `, avec « ${song} »` : '';
     if (n === size) return `Salut à tous et bienvenue sur Conacce TV ! C'est l'heure de votre classement ${title} : le top ${NUM[size]} des titres qui font vibrer l'Afrique cette semaine. Installez-vous, montez le son, on démarre tout de suite ! À la ${ORD[n]} position… ${who}${avec} !`;
     if (n === 1) return `Et voici le moment que vous attendiez tous… Le numéro un de votre classement cette semaine… ${who}${avec} ! Bravo ! Merci d'avoir suivi le classement sur Conacce TV, on se retrouve la semaine prochaine pour un nouveau top !`;
@@ -3171,6 +3204,47 @@ async function showRegie() {
     }
     if (R.air.yt && T.kind === 'yt' && !R.mute) try { R.air.yt.setVolume(Math.round(R.vol * R.duck)); } catch (e) {}
   }
+  // Affichage pendant les classements (réglage de l'habillage, valable pour tous les classements).
+  function dispBox() {
+    const B = R.brand.band, wrap = h('div', { class: 'tp-sec' });
+    const draw = () => {
+      wrap.textContent = '';
+      const pill = (key, val, txt) => h('button', { class: 'st-chip' + ((B[key] || '') === val ? ' on' : ''), onclick: () => { B[key] = val || null; if (key === 'show') B.show = true; saveBrand(); draw(); } }, txt);
+      wrap.append(h('b', {}, 'Affichage à l’antenne pendant le classement'),
+        B.show ? null : h('div', { class: 'row' }, h('span', { class: 'rg-small', style: 'color:#ffb4a8' }, 'Les bandes sont désactivées dans l’habillage.'), h('button', { class: 'btn small', onclick: () => { B.show = true; saveBrand(); draw(); } }, 'Activer les bandes')),
+        h('div', { class: 'row' }, h('span', { class: 'rg-small' }, 'Numéro :'), pill('cRank', '', 'Avec les bandes (début et fin)'), pill('cRank', 'all', 'Pendant tout le clip')),
+        h('div', { class: 'row' }, h('span', { class: 'rg-small' }, 'Bandes :'), pill('cBand', '', 'Rythme habituel'), pill('cBand', 'all', 'Pendant tout le clip')),
+        h('div', { class: 'rg-small' }, `Rythme habituel : les bandes apparaissent ${B.at} s après le début du clip, pendant ${B.dur} s${B.end > 0 ? `, puis ${B.end} s avant la fin` : ''}. Réglable dans l’habillage.`));
+    };
+    draw(); return wrap;
+  }
+  // Modifier les noms (artiste / titre) d'un classement déjà programmé.
+  function chartNamesBox(ps, parent) {
+    ps = ps.slice().sort((a, b) => b.chart_rank - a.chart_rank);
+    const ins = ps.map(p => { const [a, sg] = bandNames(p); return [h('input', { type: 'text', value: a, placeholder: 'Artiste', maxlength: 60 }), h('input', { type: 'text', value: sg, placeholder: 'Titre de la chanson', maxlength: 80 })]; });
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
+      h('div', { class: 'ab-wrap' },
+        h('h2', {}, '✏️ Noms affichés sur les bandes'),
+        h('div', { class: 'rg-small' }, 'Ces noms apparaissent sur les bandes et sont lus par la voix. Les changements s’affichent tout de suite à l’antenne.'),
+        h('div', { class: 'ch-rows' }, ...ps.map((p, i) => h('div', { class: 'ch-row' }, h('b', {}, 'N° ' + p.chart_rank), h('div', { style: 'grid-template-columns:1fr 1fr' }, ins[i][0], ins[i][1])))),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn primary', onclick: async () => {
+            const changed = [];
+            for (let i = 0; i < ps.length; i++) {
+              const a = ins[i][0].value.trim() || null, sg = ins[i][1].value.trim() || null;
+              if (a === (ps[i].artist || null) && sg === (ps[i].song || null)) continue;
+              const { error } = await sb.from('tv_programs').update({ artist: a, song: sg }).eq('id', ps[i].id);
+              if (error) return toast(friendly(error), true);
+              ps[i].artist = a; ps[i].song = sg; changed.push(ps[i]);
+            }
+            m.remove(); reload();
+            if (!changed.length) return toast('Aucun changement.');
+            toast(`${changed.length} nom${changed.length > 1 ? 's' : ''} mis à jour.`);
+            if (await confirmBox(`Refaire les annonces vocales des ${changed.length} clip${changed.length > 1 ? 's' : ''} modifié${changed.length > 1 ? 's' : ''} ?`, 'Refaire la voix')) genVoices(changed);
+          } }, 'Enregistrer'),
+          h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Annuler'))));
+    document.body.append(m);
+  }
   // ── Classements (hits de la semaine) : Top 5, 10 ou 30, du dernier au premier, à l'heure choisie ──
   function chartsBox() {
     const songs = []; const seen = new Set();
@@ -3178,7 +3252,9 @@ async function showRegie() {
     songs.sort((a, b) => ((a.artist || a.title) + '').localeCompare((b.artist || b.title) + '', 'fr'));
     const label = p => (p.artist ? p.artist + ' — ' : '') + (p.song || p.title) + ' · ' + fmtHms(p.duration);
     let size = 10;
-    const pick = {};
+    const pick = {}, names = {};
+    // Noms affichés sur les bandes : ceux du clip, sinon tirés du nom du fichier.
+    const namesOf = p => { const a = (p.artist || '').trim(), sg = (p.song || '').trim(); return a || sg ? [a, sg] : splitTitle(p.title); };
     const titleIn = h('input', { type: 'text', value: 'Hit de la semaine', maxlength: 60, 'aria-label': 'Nom du classement' });
     const t0 = new Date(now() + 3600e3); t0.setMinutes(0, 0, 0);
     const dateIn = h('input', { type: 'date', value: `${t0.getFullYear()}-${pad(t0.getMonth() + 1)}-${pad(t0.getDate())}`, 'aria-label': 'Date' });
@@ -3195,9 +3271,16 @@ async function showRegie() {
     function drawRows() {
       rows.textContent = '';
       for (let r = size; r >= 1; r--) {
-        const sel = h('select', { 'aria-label': 'Musique n° ' + r, onchange: e => { pick[r] = e.target.value || null; drawInfo(); } },
-          h('option', { value: '' }, '— choisir la musique —'), ...songs.map(p => h('option', { value: p.id, selected: pick[r] === p.id }, label(p))));
-        rows.append(h('div', { class: 'ch-row' }, h('b', {}, 'N° ' + r), sel));
+        const nm = names[r] || ['', ''];
+        const aIn = h('input', { type: 'text', value: nm[0], placeholder: 'Artiste', 'aria-label': 'Artiste n° ' + r, maxlength: 60, oninput: () => { names[r] = [aIn.value, sIn.value]; } });
+        const sIn = h('input', { type: 'text', value: nm[1], placeholder: 'Titre de la chanson', 'aria-label': 'Titre n° ' + r, maxlength: 80, oninput: () => { names[r] = [aIn.value, sIn.value]; } });
+        const sel = h('select', { 'aria-label': 'Musique n° ' + r, onchange: e => {
+          pick[r] = e.target.value || null;
+          const p = songs.find(x => x.id === pick[r]);
+          names[r] = p ? namesOf(p) : ['', '']; aIn.value = names[r][0]; sIn.value = names[r][1];
+          drawInfo();
+        } }, h('option', { value: '' }, '— choisir la musique —'), ...songs.map(p => h('option', { value: p.id, selected: pick[r] === p.id }, label(p))));
+        rows.append(h('div', { class: 'ch-row' }, h('b', {}, 'N° ' + r), h('div', {}, sel, aIn, sIn)));
       }
       drawInfo();
     }
@@ -3212,6 +3295,7 @@ async function showRegie() {
           h('label', { class: 'row' }, weekly, h('span', {}, 'Repasser chaque semaine, même jour, même heure')),
           h('label', { class: 'row' }, pri, h('span', {}, 'Prioritaire : passe à cette heure même si un autre rendez-vous est prévu')),
           h('label', { class: 'row' }, voiceCb, h('span', {}, '🎙 Voix de l’animatrice : annonce de chaque position, 2 s après le début du clip (voix gratuite, fabriquée ici)')),
+          dispBox(),
           rows, info,
           h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: save }, 'Programmer le classement'))),
         h('div', { class: 'tp-sec' }, h('b', {}, 'Classements programmés'), list),
@@ -3228,8 +3312,8 @@ async function showRegie() {
       const cid = crypto.randomUUID();
       try {
         for (let r = size; r >= 1; r--) {
-          const p = songs.find(x => x.id === pick[r]);
-          await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null,
+          const p = songs.find(x => x.id === pick[r]), [na, ns] = (names[r] || namesOf(p)).map(x => (x || '').trim());
+          await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: na || null, song: ns || null,
             show_band: true, band_anim: p.band_anim || null, ad_breaks: [], air_extra: 0, position: 0, start_at: new Date(t).toISOString(),
             repeat_daily: false, repeat_weekly: weekly.checked, is_priority: pri.checked, chart_id: cid, chart_rank: r, chart_size: size, chart_title: title });
           t += p.duration * 1000;
@@ -3253,6 +3337,7 @@ async function showRegie() {
         h('span', { class: 't' }, h('b', {}, `🏆 ${f.chart_title || 'Classement'} · Top ${f.chart_size || ps.length}`),
           h('small', {}, `${f.repeat_weekly ? 'Chaque ' + new Date(st).toLocaleDateString('fr-FR', { weekday: 'long' }) : new Date(st).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${hm(st)} · n° 1 : ${top ? (top.artist || top.title) : '—'} · 🎙 ${ps.filter(x => x.voice_url).length}/${ps.length} annonces`)),
         h('button', { class: 'btn small ghost', title: 'Écouter les annonces à la suite', 'aria-label': 'Écouter les annonces', onclick: () => listenVoices(ps) }, '▶'),
+        h('button', { class: 'btn small ghost', title: 'Modifier les noms affichés sur les bandes', onclick: () => { m.remove(); chartNamesBox(ps); } }, '✏️ Noms'),
         h('button', { class: 'btn small ghost', onclick: async () => {
           if (ps.some(x => x.voice_url) && !(await confirmBox('Refaire toutes les annonces vocales de ce classement ?', 'Refaire'))) return;
           m.remove(); genVoices(ps);
