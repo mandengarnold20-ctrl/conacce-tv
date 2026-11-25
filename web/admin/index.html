@@ -558,9 +558,8 @@
   .ov-band.a-open.on { transform: scale(1); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
   .ov-artist { padding: calc(5px * var(--bk)) calc(12px * var(--bk)); font-size: calc(14px * var(--bk)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; }
   .ov-bandpos { align-items: center; }
-  .ov-rank { order: 0; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; opacity: 0; transform: scale(.4); transition: opacity .45s, transform .55s cubic-bezier(.3,1.5,.5,1); font-variant-numeric: tabular-nums; }
+  .ov-rank { position: absolute; z-index: 2; border-radius: 2px; box-shadow: 0 2px 10px rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; opacity: 0; transform: scale(.4); transition: opacity .45s, transform .55s cubic-bezier(.3,1.5,.5,1); font-variant-numeric: tabular-nums; }
   .ov-rank.on { opacity: 1; transform: scale(1); }
-  .ov-rank.d { order: 2; }
   .ov-rank.hidden { display: none; }
   .ov-bandpos2 { position: absolute; display: flex; pointer-events: none; }
   .bd-frame { position: absolute; z-index: 6; border: 2px dashed #7FD3FF; border-radius: 4px; cursor: move; touch-action: none; }
@@ -2172,7 +2171,7 @@ async function showRegie() {
         R.bandEdit ? h('div', { class: 'rg-small' }, 'Sur l’écran Antenne : glissez chaque bande (cadre bleu) pour la placer où vous voulez, par exemple l’une à gauche et l’autre à droite ; tirez le petit carré pour l’agrandir. Les bandes restent affichées pendant le réglage, avec un exemple de numéro de classement.') : null,
         sub('Numéro du classement (hits de la semaine)'),
         h('div', { class: 'hb-row' },
-          color('Fond du numéro', B.band.rankBg || '#0E9F4F', v => { B.band.rankBg = v; }), color('Chiffre', B.band.rankFg || '#FFFFFF', v => { B.band.rankFg = v; }),
+          color('Fond du numéro', B.band.rankBg || '#FFFFFF', v => { B.band.rankBg = v; }), color('Chiffre', B.band.rankFg || '#000000', v => { B.band.rankFg = v; }),
           pills([['g', 'À gauche de la bande'], ['d', 'À droite de la bande']], B.band.rankSide === 'd' ? 'd' : 'g', v => { B.band.rankSide = v; })),
         B.band.img ? h('div', { class: 'hb-row' },
           range('Taille du texte', 50, 200, B.band.tsz || 100, v => v + ' %', v => { B.band.tsz = v; }),
@@ -2201,7 +2200,7 @@ async function showRegie() {
     const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
     const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
     const ovRank = h('div', { class: 'ov-rank hidden' });
-    const ovBandPos = h('div', { class: 'ov-bandpos' }, ovRank, ovBand);
+    const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
     // 2ᵉ bande (titre) quand deux images de bande sont importées.
     const ovSong2 = h('div', { class: 'ov-song' });
     const ovBand2 = h('div', { class: 'ov-band img' }, ovSong2);
@@ -2210,7 +2209,7 @@ async function showRegie() {
     const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
     const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
     const ovTxt = h('div', { class: 'ov-txt' });
-    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovBand2Pos, ovTxt, ovTick);
+    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovBand2Pos, ovRank, ovTxt, ovTick);
     box.append(ov);
     let bandHidden = null, bandWas = false, bandSwap = null;
       return function draw(t, T) {
@@ -2286,19 +2285,23 @@ async function showRegie() {
       ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
       const W1 = B.band.w1 ?? B.band.width, W2 = B.band.w2 ?? B.band.width;
       const bw1 = w * W1 / 100, bh1 = bw1 / (B.band.ia || 6), bw2 = w * W2 / 100, bh2 = bw2 / (B.band.ia2 || 6);
-      const rw = p && p.chart_rank ? (B.band.img ? bh1 : 0) : 0, gap = 4 * k, rSide = B.band.rankSide === 'd' ? 'd' : 'g';
+      // Numéro du classement : un carré plus grand que les bandes (les deux bandes empilées), placé à côté.
+      const gap = 4 * k, rSide = B.band.rankSide === 'd' ? 'd' : 'g';
+      const Hs = B.band.img ? (two ? bh1 + gap + bh2 : bh1) : (ovBand.offsetHeight || 40 * k);
+      const S = p && p.chart_rank ? Hs * 1.12 : 0, rw = S ? S + gap : 0, over = Math.max(0, (S - Hs) / 2);
       if (two || B.band.x1 != null) {
         // Position exacte (deux bandes, ou bande placée à la souris) : même calcul que l'appli.
-        const x1 = B.band.x1 != null ? B.band.x1 * w : hz === 'g' ? mg : hz === 'd' ? w - mg - (bw1 + rw) : (w - (bw1 + rw)) / 2;
-        const y1 = B.band.y1 != null ? B.band.y1 * hgt : fromTop ? mg + shift : hgt - th - 14 * k - shift - (two ? bh1 + gap + bh2 : (B.band.img ? bh1 : ovBand.offsetHeight || 40 * k));
-        Object.assign(ovBandPos.style, { left: x1 + 'px', top: y1 + 'px', right: '', bottom: '', justifyContent: 'flex-start' });
+        const x1 = B.band.x1 != null ? B.band.x1 * w : hz === 'g' ? mg + (rSide === 'g' ? rw : 0) : hz === 'd' ? w - mg - bw1 - (rSide === 'd' ? rw : 0) : (w - bw1 - rw) / 2 + (rSide === 'g' ? rw : 0);
+        const y1 = B.band.y1 != null ? B.band.y1 * hgt : fromTop ? mg + shift + over : hgt - th - 14 * k - shift - over - (two ? bh1 + gap + bh2 : (B.band.img ? bh1 : ovBand.offsetHeight || 40 * k));
+        Object.assign(ovBandPos.style, { left: x1 + 'px', top: y1 + 'px', right: '', bottom: '', justifyContent: 'flex-start', paddingLeft: '', paddingRight: '' });
         if (two) {
-          const x2 = B.band.x2 != null ? B.band.x2 * w : x1 + (rSide === 'g' ? rw : 0), y2 = B.band.y2 != null ? B.band.y2 * hgt : y1 + bh1 + gap;
+          const x2 = B.band.x2 != null ? B.band.x2 * w : x1, y2 = B.band.y2 != null ? B.band.y2 * hgt : y1 + bh1 + gap;
           Object.assign(ovBand2Pos.style, { left: x2 + 'px', top: y2 + 'px' });
         }
       } else {
         Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
-          top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
+          paddingLeft: rSide === 'g' ? rw + 'px' : '', paddingRight: rSide === 'd' ? rw + 'px' : '',
+          top: fromTop ? (mg + shift + over) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift + over) + 'px' });
       }
       ovBand2Pos.classList.toggle('hidden', !(has && two));
       ovBand.className = 'ov-band a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
@@ -2324,12 +2327,20 @@ async function showRegie() {
         Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText, fontSize: '' });
         Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText, fontSize: '' });
       }
-      // Numéro du classement, collé à la bande 1 (à gauche ou à droite).
-      const rankH = B.band.img ? bh1 : (ovBand.offsetHeight || 40 * k);
-      ovRank.className = 'ov-rank' + (has && p && p.chart_rank ? '' : ' hidden') + (rSide === 'd' ? ' d' : '') + (rankOn ? ' on' : '');
-      if (p && p.chart_rank) {
+      // Numéro du classement : carré blanc, chiffre noir en Poppins, plus grand que les bandes, à côté de la bande 1.
+      ovRank.className = 'ov-rank' + (has && p && p.chart_rank ? '' : ' hidden') + (rankOn ? ' on' : '');
+      if (has && p && p.chart_rank) {
+        const l1 = ovBandPos.offsetLeft + ovBand.offsetLeft, t1 = ovBandPos.offsetTop + ovBand.offsetTop, w1 = ovBand.offsetWidth, h1 = ovBand.offsetHeight;
+        let top = t1, bot = t1 + h1, left = l1, right = l1 + w1;
+        if (two) {
+          const l2 = ovBand2Pos.offsetLeft, t2 = ovBand2Pos.offsetTop, w2 = ovBand2.offsetWidth, h2 = ovBand2.offsetHeight;
+          // Bandes l'une sous l'autre : le numéro couvre les deux. Bandes séparées : il suit la bande 1.
+          if (Math.abs(l2 - l1) < w1 * 0.5 && t2 >= t1 && t2 - (t1 + h1) < h1 * 1.5) { top = Math.min(top, t2); bot = Math.max(bot, t2 + h2); left = Math.min(left, l2); right = Math.max(right, l2 + w2); }
+        }
+        const hh = bot - top, sz = hh * 1.12;
         if (ovRank.textContent !== String(p.chart_rank)) ovRank.textContent = String(p.chart_rank);
-        Object.assign(ovRank.style, { width: rankH + 'px', height: rankH + 'px', fontSize: (rankH * (p.chart_rank > 9 ? 0.56 : 0.66)) + 'px', background: B.band.rankBg || '#0E9F4F', color: B.band.rankFg || '#FFFFFF', fontFamily: famOf(B.fontBand || B.font) });
+        Object.assign(ovRank.style, { width: sz + 'px', height: sz + 'px', top: (top - (sz - hh) / 2) + 'px', left: (rSide === 'd' ? right + gap : left - gap - sz) + 'px',
+          fontSize: (sz * (p.chart_rank > 9 ? 0.6 : 0.72)) + 'px', fontWeight: 800, letterSpacing: '-0.03em', background: B.band.rankBg || '#FFFFFF', color: B.band.rankFg || '#000000', fontFamily: famOf({ name: 'Poppins' }) });
       }
       // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
       const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);

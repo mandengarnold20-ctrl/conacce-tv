@@ -178,10 +178,14 @@ class _TvOverlayState extends State<TvOverlay> {
             final bw1 = w * (b.bandW1 ?? b.bandWidth) / 100, bh1 = bw1 / b.bandImgAspect;
             final bw2 = w * (b.bandW2 ?? b.bandWidth) / 100, bh2 = bw2 / b.bandImg2Aspect;
             final kk = k * b.bandScale / 100;
-            // Hauteur de la bande 1 (pour le carré du numéro).
-            final band1H = b.bandImg != null ? bh1 : ((artist.isNotEmpty ? 26.1 : 0) + (song.isNotEmpty ? 18.1 : 0)) * kk;
-            final rw = rank != null ? band1H : 0.0;
             final gap = 4 * k;
+            final rankLeft = b.rankSide != 'd';
+            // Hauteur des bandes empilées : le numéro est un carré un peu plus grand, placé à côté.
+            final band1H = b.bandImg != null ? bh1 : ((artist.isNotEmpty ? 26.1 : 0) + (song.isNotEmpty ? 18.1 : 0)) * kk;
+            final stackH = two ? bh1 + gap + bh2 : band1H;
+            final rs = rank != null ? stackH * 1.12 : 0.0;
+            final rw = rank != null ? rs + gap : 0.0;
+            final over = rank != null ? (rs - stackH) / 2 : 0.0;
             final band1 = _Band(
               key: ValueKey('band-${prog.id}'),
               visible: bandOn,
@@ -193,41 +197,57 @@ class _TvOverlayState extends State<TvOverlay> {
               maxWidth: b.bandImg != null ? bw1 : w * b.bandWidth / 100,
               branding: b,
             );
-            final rankBox = rank == null ? null : _RankBox(rank: rank, visible: rankOn, size: band1H, branding: b);
-            final group1 = Row(mainAxisSize: MainAxisSize.min, children: [
-              if (rankBox != null && b.rankSide != 'd') rankBox,
-              band1,
-              if (rankBox != null && b.rankSide == 'd') rankBox,
-            ]);
             if (!two && b.bandX1 == null) {
+              // Bande classique : numéro et bande côte à côte, centrés.
+              final group = Row(mainAxisSize: MainAxisSize.min, children: [
+                if (rank != null && rankLeft) ...[_RankBox(rank: rank, visible: rankOn, size: rs, branding: b), SizedBox(width: gap)],
+                band1,
+                if (rank != null && !rankLeft) ...[SizedBox(width: gap), _RankBox(rank: rank, visible: rankOn, size: rs, branding: b)],
+              ]);
               return [
                 Positioned(
                   left: margin,
                   right: margin,
-                  top: bandTop ? margin + shift : null,
-                  bottom: bandTop ? null : tickerH + 14 * k + shift,
+                  top: bandTop ? margin + shift + over : null,
+                  bottom: bandTop ? null : tickerH + 14 * k + shift + over,
                   child: Align(
                     alignment: hz == 'g'
                         ? Alignment.centerLeft
                         : hz == 'd'
                             ? Alignment.centerRight
                             : Alignment.center,
-                    child: group1,
+                    child: group,
                   ),
                 ),
               ];
             }
             // Position exacte (deux bandes, ou bandes placées à la souris dans la régie) : même calcul que la régie.
-            final x1 = b.bandX1 != null ? b.bandX1! * w : hz == 'g' ? margin : hz == 'd' ? w - margin - (bw1 + rw) : (w - (bw1 + rw)) / 2;
+            final x1 = b.bandX1 != null
+                ? b.bandX1! * w
+                : hz == 'g'
+                    ? margin + (rankLeft ? rw : 0)
+                    : hz == 'd'
+                        ? w - margin - bw1 - (rankLeft ? 0 : rw)
+                        : (w - bw1 - rw) / 2 + (rankLeft ? rw : 0);
             final y1 = b.bandY1 != null
                 ? b.bandY1! * h
                 : bandTop
-                    ? margin + shift
-                    : h - tickerH - 14 * k - shift - (two ? bh1 + gap + bh2 : band1H);
-            final x2 = b.bandX2 != null ? b.bandX2! * w : x1 + (b.rankSide != 'd' ? rw : 0);
+                    ? margin + shift + over
+                    : h - tickerH - 14 * k - shift - over - stackH;
+            final x2 = b.bandX2 != null ? b.bandX2! * w : x1;
             final y2 = b.bandY2 != null ? b.bandY2! * h : y1 + bh1 + gap;
+            // Le numéro couvre les deux bandes quand elles sont l'une sous l'autre ; sinon il suit la bande 1.
+            final w1 = b.bandImg != null ? bw1 : w * b.bandWidth / 100;
+            var top = y1, bot = y1 + band1H, left = x1, right = x1 + w1;
+            if (two && (x2 - x1).abs() < w1 * 0.5 && y2 >= y1 && y2 - (y1 + bh1) < bh1 * 1.5) {
+              top = y1 < y2 ? y1 : y2;
+              bot = (y1 + bh1) > (y2 + bh2) ? y1 + bh1 : y2 + bh2;
+              left = x1 < x2 ? x1 : x2;
+              right = (x1 + bw1) > (x2 + bw2) ? x1 + bw1 : x2 + bw2;
+            }
+            final sz = (bot - top) * 1.12;
             return [
-              Positioned(left: x1, top: y1, child: group1),
+              Positioned(left: x1, top: y1, child: band1),
               if (two)
                 Positioned(
                   left: x2,
@@ -246,6 +266,12 @@ class _TvOverlayState extends State<TvOverlay> {
                     imgAspect: b.bandImg2Aspect,
                     textColor: b.bandImgText2,
                   ),
+                ),
+              if (rank != null)
+                Positioned(
+                  left: rankLeft ? left - gap - sz : right + gap,
+                  top: top - (sz - (bot - top)) / 2,
+                  child: _RankBox(rank: rank, visible: rankOn, size: sz, branding: b),
                 ),
             ];
           })(),
@@ -513,12 +539,19 @@ class _RankBox extends StatelessWidget {
         scale: visible ? 1 : 0.4,
         duration: const Duration(milliseconds: 550),
         curve: visible ? Curves.easeOutBack : Curves.easeIn,
+        // Carré blanc, chiffre noir en Poppins (couleurs réglables dans la régie).
         child: Container(
           width: size,
           height: size,
-          color: b.rankBg,
           alignment: Alignment.center,
-          child: Text('$rank', style: brandStyle(b, font: b.bandFont, size: size * (rank > 9 ? 0.56 : 0.66), weight: FontWeight.w900, color: b.rankFg)),
+          decoration: BoxDecoration(
+            color: b.rankBg,
+            borderRadius: BorderRadius.circular(size * 0.03),
+            boxShadow: [BoxShadow(color: const Color(0x59000000), blurRadius: size * 0.12, offset: Offset(0, size * 0.03))],
+          ),
+          child: Text('$rank',
+              maxLines: 1,
+              style: GoogleFonts.poppins(fontSize: size * (rank > 9 ? 0.6 : 0.72), fontWeight: FontWeight.w800, color: b.rankFg, height: 1, letterSpacing: -size * 0.02)),
         ),
       ),
     );
