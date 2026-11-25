@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/device.dart';
 import '../core/analytics.dart';
+import '../core/media/tv_voice.dart';
 import '../core/media/audio_player_service.dart';
 import '../core/media/embed_video.dart';
 import '../core/media/hls_video_player.dart';
@@ -173,9 +174,34 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   DateTime _now() => DateTime.now().add(_clock);
 
+  // Annonce vocale des classements : programme en cours et suivant, mis à jour à chaque affichage.
+  TvSlot? _vSlot;
+  TvSlot? _vNext;
+  bool _vOk = false;
+  Timer? _voiceTimer;
+
+  /// 4 fois par seconde : l'annonce part 2 s après le début du clip, calée sur l'horloge de l'antenne
+  /// (même instant chez tout le monde ; si on arrive en cours, elle reprend au bon endroit).
+  void _syncVoice() {
+    final now = _now();
+    final s = _vSlot;
+    if (_vOk && s != null && s.program.voiceUrl != null && s.adBreak == null && !now.isBefore(s.start) && now.isBefore(s.end)) {
+      tvVoiceSync(s.program.voiceUrl, now.difference(s.start).inMilliseconds / 1000 - 2.0);
+      return;
+    }
+    // Le clip suivant a une annonce : on la prépare 20 s avant pour qu'elle parte pile à l'heure.
+    final n = _vNext;
+    if (_vOk && n != null && n.program.voiceUrl != null && n.start.difference(now) < const Duration(seconds: 20)) {
+      tvVoiceSync(n.program.voiceUrl, -1);
+      return;
+    }
+    tvVoiceSync(null, 0);
+  }
+
   @override
   void initState() {
     super.initState();
+    _voiceTimer = Timer.periodic(const Duration(milliseconds: 250), (_) => _syncVoice());
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       final end = _slotEnd;
@@ -193,6 +219,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
     _tvInfoTimer?.cancel();
     _settle?.cancel();
     _ticker?.cancel();
+    _voiceTimer?.cancel();
+    tvVoiceSync(null, 0);
     super.dispose();
   }
 
@@ -277,6 +305,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         // Régie : chaîne arrêtée = écran d'attente ; en pause = « Nous revenons dans un instant ».
         if (!onAir && channel.isPaused && !schedule.isEmpty) {
           _slotEnd = null;
+          _vSlot = null;
           _syncImmersive(false);
           return const _Paused();
         }
@@ -284,6 +313,9 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
         // Écran d'attente (playlist terminée, boucle décochée) : on se réveille au prochain rendez-vous.
         final waitNext = slot == null && !onAir && !channel.isStopped ? schedule.nextFixedAfter(now) : null;
         _slotEnd = slot?.end ?? waitNext?.start;
+        _vSlot = slot;
+        _vNext = slot == null ? null : schedule.after(slot);
+        _vOk = onTv || _audioOnly;
         final canPlay = onAir || slot != null;
         // Tourner le téléphone remet le mode automatique.
         if (_lastLandscape != landscape) {

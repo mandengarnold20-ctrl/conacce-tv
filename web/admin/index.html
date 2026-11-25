@@ -3079,6 +3079,87 @@ async function showRegie() {
     }
     document.body.append(m); drawList(); requestAnimationFrame(drawFrame);
   }
+  // ── Voix des classements (gratuite : Piper, voix française féminine « Siwis », fabriquée dans ce navigateur) ──
+  const VOICE_ID = 'fr_FR-siwis-medium', VOICE_AT = 2;
+  const ORD = ['', 'première', 'deuxième', 'troisième', 'quatrième', 'cinquième', 'sixième', 'septième', 'huitième', 'neuvième', 'dixième',
+    'onzième', 'douzième', 'treizième', 'quatorzième', 'quinzième', 'seizième', 'dix-septième', 'dix-huitième', 'dix-neuvième', 'vingtième',
+    'vingt-et-unième', 'vingt-deuxième', 'vingt-troisième', 'vingt-quatrième', 'vingt-cinquième', 'vingt-sixième', 'vingt-septième', 'vingt-huitième', 'vingt-neuvième', 'trentième'];
+  const NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize',
+    'dix-sept', 'dix-huit', 'dix-neuf', 'vingt', 'vingt-et-un', 'vingt-deux', 'vingt-trois', 'vingt-quatre', 'vingt-cinq', 'vingt-six', 'vingt-sept', 'vingt-huit', 'vingt-neuf', 'trente'];
+  // Textes de l'animatrice, variés d'un numéro à l'autre, comme une vraie émission de classement.
+  function voiceText(p) {
+    const n = p.chart_rank, size = p.chart_size || n, title = (p.chart_title || 'Hit de la semaine').trim();
+    const who = (p.artist || p.title || '').trim(), song = (p.song || '').trim();
+    const avec = song ? `, avec « ${song} »` : '';
+    if (n === size) return `Salut à tous et bienvenue sur Conacce TV ! C'est l'heure de votre classement ${title} : le top ${NUM[size]} des titres qui font vibrer l'Afrique cette semaine. Installez-vous, montez le son, on démarre tout de suite ! À la ${ORD[n]} position… ${who}${avec} !`;
+    if (n === 1) return `Et voici le moment que vous attendiez tous… Le numéro un de votre classement cette semaine… ${who}${avec} ! Bravo ! Merci d'avoir suivi le classement sur Conacce TV, on se retrouve la semaine prochaine pour un nouveau top !`;
+    if (n === 2) return `On y est presque ! Juste au pied du sommet, à la deuxième place… ${who}${avec} !`;
+    if (n === 3) return `On entre maintenant dans le top trois ! Sur la troisième marche du podium cette semaine… ${who}${avec} !`;
+    if (n === 4) return `Plus que trois titres avant le numéro un ! À la quatrième place… ${who}${avec} !`;
+    if (n === 10 && size > 10) return `On entre dans le top dix ! À la dixième place… ${who}${avec} !`;
+    const mid = [
+      `On continue avec le numéro ${NUM[n]} ! À la ${ORD[n]} place… ${who}${avec} !`,
+      `Toujours dans la course, à la ${ORD[n]} place… ${who} ! Montez le son !`,
+      `Ça monte encore ! À la ${ORD[n]} position, voici ${who}${avec} !`,
+      `La ${ORD[n]} place de notre classement revient à… ${who}${avec} !`,
+      `Restez bien avec nous, place au numéro ${NUM[n]}… ${who}${avec} !`,
+      `Et ça continue sur Conacce TV ! À la ${ORD[n]} place cette semaine… ${who} !`,
+    ];
+    return mid[n % mid.length];
+  }
+  async function loadTts() {
+    if (!R.tts) R.tts = import('https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/+esm');
+    try { return await R.tts; } catch (e) { R.tts = null; throw e; }
+  }
+  // Fabrique et enregistre l'annonce de chaque clip du classement (du dernier au premier).
+  async function genVoices(ps) {
+    ps = ps.filter(p => p.chart_rank).sort((a, b) => b.chart_rank - a.chart_rank);
+    if (!ps.length) return;
+    toast('🎙 Préparation de la voix… (la première fois, le chargement peut prendre 1 à 2 minutes)');
+    let tts;
+    try { tts = await loadTts(); }
+    catch (e) { return toast('La voix n’a pas pu se charger. Vérifiez la connexion internet, puis cliquez sur « 🎙 Refaire les annonces » dans Classements.', true); }
+    let ok = 0;
+    for (const p of ps) {
+      try {
+        toast(`🎙 Annonce du n° ${p.chart_rank} (${ok + 1}/${ps.length})…`);
+        const wav = await tts.predict({ text: voiceText(p), voiceId: VOICE_ID });
+        const url = await upload('media', new File([wav], `annonce-classement-${p.chart_rank}.wav`, { type: 'audio/wav' }), () => {});
+        const { error } = await sb.from('tv_programs').update({ voice_url: url }).eq('id', p.id);
+        if (error) throw error;
+        p.voice_url = url; ok++;
+      } catch (e) { toast(`Annonce du n° ${p.chart_rank} : ${e.message || e}`, true); }
+    }
+    toast(ok === ps.length ? `🎙 ${ok} annonces prêtes : elles passeront ${VOICE_AT} s après le début de chaque clip, chez tout le monde au même moment.` : `🎙 ${ok}/${ps.length} annonces prêtes. Relancez « 🎙 Refaire les annonces » pour les autres.`, ok !== ps.length);
+    reload();
+  }
+  // Écouter les annonces d'un classement à la suite (dans la régie uniquement).
+  function listenVoices(ps) {
+    const list = ps.filter(p => p.voice_url).sort((a, b) => b.chart_rank - a.chart_rank);
+    if (!list.length) return toast('Pas encore d’annonce pour ce classement.', true);
+    if (R.listen) { R.listen.pause(); R.listen = null; return toast('Écoute arrêtée.'); }
+    let i = 0; const a = new Audio(); R.listen = a;
+    const next = () => { if (R.listen !== a || i >= list.length) { R.listen = null; return; } toast(`▶ N° ${list[i].chart_rank} : ${list[i].artist || list[i].title}`); a.src = list[i++].voice_url; a.play().catch(() => {}); };
+    a.onended = () => setTimeout(next, 600); next();
+  }
+  // Écran Antenne : l'annonce passe aussi dans la régie, au même instant que chez les spectateurs, et la musique baisse.
+  R.duck = 1;
+  function voiceTick(t, T) {
+    const p = T && T.sl && T.sl.p, url = p && p.voice_url && !T.sl.adBreak ? p.voice_url : null;
+    const off = url ? (t - T.sl.start) / 1000 - VOICE_AT : -1;
+    let A = R.voice;
+    if (!url) { if (A) { A.pause(); R.voice = null; } R.duck = Math.min(1, R.duck + 0.25); return; }
+    if (!A || A.__u !== url) { if (A) A.pause(); A = R.voice = new Audio(url); A.__u = url; A.preload = 'auto'; }
+    const d = A.duration, on = off >= 0 && !(isFinite(d) && off >= d - 0.05) && !R.mute;
+    if (!on) { if (!A.paused) A.pause(); R.duck = Math.min(1, R.duck + 0.25); }
+    else {
+      A.volume = R.vol / 100;
+      if (A.paused) { if (A.readyState >= 1) { try { A.currentTime = off; } catch (e) {} A.play().catch(() => {}); } }
+      else if (Math.abs(A.currentTime - off) > 0.35) { try { A.currentTime = off; } catch (e) {} }
+      R.duck = Math.max(0.3, R.duck - 0.25);
+    }
+    if (R.air.yt && T.kind === 'yt' && !R.mute) try { R.air.yt.setVolume(Math.round(R.vol * R.duck)); } catch (e) {}
+  }
   // ── Classements (hits de la semaine) : Top 5, 10 ou 30, du dernier au premier, à l'heure choisie ──
   function chartsBox() {
     const songs = []; const seen = new Set();
@@ -3091,7 +3172,7 @@ async function showRegie() {
     const t0 = new Date(now() + 3600e3); t0.setMinutes(0, 0, 0);
     const dateIn = h('input', { type: 'date', value: `${t0.getFullYear()}-${pad(t0.getMonth() + 1)}-${pad(t0.getDate())}`, 'aria-label': 'Date' });
     const timeIn = h('input', { type: 'time', value: hm(t0.getTime()), 'aria-label': 'Heure de début' });
-    const weekly = h('input', { type: 'checkbox', checked: true }), pri = h('input', { type: 'checkbox', checked: true });
+    const weekly = h('input', { type: 'checkbox', checked: true }), pri = h('input', { type: 'checkbox', checked: true }), voiceCb = h('input', { type: 'checkbox', checked: true });
     const sizes = h('div', { class: 'hb-pills' });
     const rows = h('div', { class: 'ch-rows' }), info = h('div', { class: 'rg-small' }), list = h('div', { style: 'display:grid;gap:6px' });
     const drawSizes = () => { sizes.textContent = ''; for (const n of [5, 10, 30]) sizes.append(h('button', { class: 'st-chip' + (size === n ? ' on' : ''), onclick: () => { size = n; drawSizes(); drawRows(); } }, `Top ${n} (de ${n} à 1)`)); };
@@ -3119,6 +3200,7 @@ async function showRegie() {
           h('div', { class: 'row' }, dateIn, timeIn),
           h('label', { class: 'row' }, weekly, h('span', {}, 'Repasser chaque semaine, même jour, même heure')),
           h('label', { class: 'row' }, pri, h('span', {}, 'Prioritaire : passe à cette heure même si un autre rendez-vous est prévu')),
+          h('label', { class: 'row' }, voiceCb, h('span', {}, '🎙 Voix de l’animatrice : annonce de chaque position, 2 s après le début du clip (voix gratuite, fabriquée ici)')),
           rows, info,
           h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: save }, 'Programmer le classement'))),
         h('div', { class: 'tp-sec' }, h('b', {}, 'Classements programmés'), list),
@@ -3143,7 +3225,11 @@ async function showRegie() {
         }
       } catch (e) { await sb.from('tv_programs').delete().eq('chart_id', cid); return toast(friendly(e), true); }
       toast(`🏆 « ${title} » (Top ${size}) programmé : ${new Date(t - total() * 1000).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })} → ${hm(t)}.`);
-      m.remove(); reload();
+      m.remove();
+      if (voiceCb.checked) {
+        const { data } = await sb.from('tv_programs').select('*').eq('chart_id', cid);
+        reload(); if (data) genVoices(data);
+      } else reload();
     }
     // Classements déjà programmés (regroupés par classement).
     const groups = new Map();
@@ -3154,7 +3240,12 @@ async function showRegie() {
       const f = ps[0], st = Date.parse(f.start_at), top = ps.find(x => x.chart_rank === 1);
       list.append(h('div', { class: 'tp-item' },
         h('span', { class: 't' }, h('b', {}, `🏆 ${f.chart_title || 'Classement'} · Top ${f.chart_size || ps.length}`),
-          h('small', {}, `${f.repeat_weekly ? 'Chaque ' + new Date(st).toLocaleDateString('fr-FR', { weekday: 'long' }) : new Date(st).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${hm(st)} · n° 1 : ${top ? (top.artist || top.title) : '—'}`)),
+          h('small', {}, `${f.repeat_weekly ? 'Chaque ' + new Date(st).toLocaleDateString('fr-FR', { weekday: 'long' }) : new Date(st).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${hm(st)} · n° 1 : ${top ? (top.artist || top.title) : '—'} · 🎙 ${ps.filter(x => x.voice_url).length}/${ps.length} annonces`)),
+        h('button', { class: 'btn small ghost', title: 'Écouter les annonces à la suite', 'aria-label': 'Écouter les annonces', onclick: () => listenVoices(ps) }, '▶'),
+        h('button', { class: 'btn small ghost', onclick: async () => {
+          if (ps.some(x => x.voice_url) && !(await confirmBox('Refaire toutes les annonces vocales de ce classement ?', 'Refaire'))) return;
+          m.remove(); genVoices(ps);
+        } }, '🎙 Refaire les annonces'),
         h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer ce classement', onclick: async () => {
           if (!(await confirmBox(`Supprimer le classement « ${f.chart_title || 'Classement'} » (${ps.length} clips programmés) ?`, 'Supprimer', true))) return;
           const { error } = await sb.from('tv_programs').delete().eq('chart_id', cid);
@@ -3540,8 +3631,9 @@ async function showRegie() {
     if (same) { R.air.T = T; R.air.key = T.key; }
     if (T.key !== R.air.key) mountAir(T);
     // Fondu du son en fin de morceau (coupure pub, fin du programme) et au début du suivant.
+    voiceTick(t, T);
     if (R.air.video && T.sl && !R.mute) {
-      const left = T.sl.end - t, since = t - (T.sl.segStart ?? T.sl.start), base = R.vol / 100;
+      const left = T.sl.end - t, since = t - (T.sl.segStart ?? T.sl.start), base = R.vol / 100 * (R.duck ?? 1);
       try { R.air.video.volume = base * Math.max(0, Math.min(1, left / 1200, since / 1000 + 0.05)); } catch (e) {}
     }
     if (T.sl && t - lastSync > 15000) {

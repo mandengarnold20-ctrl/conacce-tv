@@ -194,6 +194,42 @@
       window.conacceTvMuted = false;
       try { if (cur && cur.player) { cur.player.unMute(); cur.player.setVolume(100); cur.player.playVideo(); } } catch (x) {}
     };
+    // Volume de la vidéo YouTube (0–100), pour l'annonce vocale des classements.
+    window.conacceTvSetVol = function (v) { try { if (cur && cur.player) cur.player.setVolume(v); } catch (x) {} };
+  })();
+  // ─── Annonce vocale des classements ───
+  // L'appli l'appelle 4 fois par seconde avec la position de l'annonce dans l'horloge de l'antenne :
+  // tout le monde l'entend au même moment ; si on arrive en cours, elle reprend au bon endroit.
+  // Pendant la voix, la musique baisse en douceur, puis remonte.
+  (function () {
+    var a = null, duck = 1, target = 1, timer = null;
+    function playingVideos() { return Array.prototype.filter.call(document.querySelectorAll('video'), function (v) { return !v.paused && v.style.opacity !== '0'; }); }
+    function duckTo(f) {
+      target = f; if (timer) return;
+      timer = setInterval(function () {
+        var step = target > duck ? 0.06 : -0.06;
+        duck = Math.abs(target - duck) <= 0.06 ? target : duck + step;
+        playingVideos().forEach(function (v) { try { v.volume = duck; } catch (e) {} });
+        try { if (window.conacceTvSetVol) window.conacceTvSetVol(Math.round(duck * 100)); } catch (e) {}
+        if (duck === target) { clearInterval(timer); timer = null; }
+      }, 50);
+    }
+    function stop() { if (a) { try { a.pause(); } catch (e) {} a.removeAttribute('src'); a = null; } if (target !== 1) duckTo(1); }
+    window.conacceVoice = function (url, off, muted) {
+      if (!url) { stop(); return; }
+      if (!a || a.__u !== url) { stop(); a = new Audio(); a.preload = 'auto'; a.__u = url; a.src = url; a.load(); }
+      var d = a.duration;
+      var silent = muted || window.conacceTvMuted || (function () { var vs = playingVideos(); return vs.length > 0 && vs.every(function (v) { return v.muted; }); })();
+      if (off < 0 || (isFinite(d) && d > 0 && off >= d - 0.05) || silent) { if (!a.paused) a.pause(); if (target !== 1) duckTo(1); return; }
+      if (a.paused) {
+        if (a.readyState < 1) return;  // pas encore chargée : on réessaie au prochain appel, au bon endroit
+        try { a.currentTime = off; } catch (e) {}
+        a.play().catch(function () {});
+        duckTo(0.3);
+      } else if (Math.abs(a.currentTime - off) > 0.35) {
+        try { a.currentTime = off; } catch (e) {}
+      }
+    };
   })();
   // ─── Chaîne programmée (vidéos envoyées) : UN lecteur pour toute la visite ───
   // Les deux écrans vidéo sont créés une seule fois et ne sont jamais détruits :

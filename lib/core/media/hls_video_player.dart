@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../theme/app_colors.dart';
+import 'tv_voice.dart';
 import 'web_fullscreen.dart';
 
 /// Lecteur vidéo adaptatif (HLS .m3u8 ou MP4) basé sur video_player + chewie.
@@ -100,6 +101,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
   Timer? _fadeTimer;
   DateTime? _playingSince;
   double _fadeVol = 1;
+  double _duckNow = 1;
 
   void _fadeTick() {
     final video = _video;
@@ -108,8 +110,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> with WidgetsBindingObse
     _playingSince ??= DateTime.now();
     final since = DateTime.now().difference(_playingSince!).inMilliseconds;
     final left = widget.remaining!().inMilliseconds;
+    // Annonce vocale du classement : la musique baisse en douceur pendant que la voix parle.
+    _duckNow += (tvDuck.value - _duckNow).clamp(-0.12, 0.12).toDouble();
     var vol = 1.0;
     if (left < 1200) vol = (left / 1200).clamp(0.0, 1.0).toDouble();
+    vol *= _duckNow;
     if (since < 1000) vol = vol < since / 1000 ? vol : since / 1000;
     if ((vol - _fadeVol).abs() < 0.03 && vol != 0 && vol != 1) return;
     if (vol == _fadeVol) return;
