@@ -44,6 +44,12 @@ Future<void> _loadFont(BrandFont f, VoidCallback done) async {
   }
 }
 
+/// « ADA EHI - JESUS you are able » → « Ada Ehi - Jesus You Are Able » (ft./feat. restent en minuscules).
+String titleCase(String t) => t
+    .toLowerCase()
+    .replaceAllMapped(RegExp(r'(^|[\s\-–(/"«])(\p{L})', unicode: true), (m) => '${m[1]}${m[2]!.toUpperCase()}')
+    .replaceAllMapped(RegExp(r'\b(Ft|Feat)\.'), (m) => m[0]!.toLowerCase());
+
 /// Style de texte de l'habillage, dans la police [font] (sinon la police générale).
 TextStyle brandStyle(Branding b,
     {BrandFont? font, required double size, FontWeight weight = FontWeight.w700, Color color = Colors.white}) {
@@ -94,7 +100,7 @@ class _TvOverlayState extends State<TvOverlay> {
   }
 
   void _ensureFonts(Branding b) {
-    for (final f in {b.font.key: b.font, b.tickerFont.key: b.tickerFont, b.bandFont.key: b.bandFont}.values) {
+    for (final f in {b.font.key: b.font, b.tickerFont.key: b.tickerFont, b.bandFont.key: b.bandFont, b.bandFont2.key: b.bandFont2}.values) {
       if (!_fontsLoaded.contains(f.key)) {
         _loadFont(f, () {
           if (mounted) setState(() {});
@@ -123,7 +129,6 @@ class _TvOverlayState extends State<TvOverlay> {
       // Classement : le numéro arrive avec la bande, reste quand elle part, et repart avec elle au 2ᵉ passage.
       rankOn = rank != null && pos >= b.bandAt && pos < (twice ? total - b.bandEnd + b.bandDur : total);
       // Options du classement : bandes et/ou numéro pendant tout le clip.
-      if (rank != null && b.chartBandAll) bandOn = pos >= b.bandAt && pos < total - 1;
       if (rank != null && b.chartRankAll) rankOn = pos >= b.bandAt && pos < total - 0.5;
     }
 
@@ -177,7 +182,9 @@ class _TvOverlayState extends State<TvOverlay> {
             final two = b.twoBands;
             final fromTop = prog.bandAnim == 'haut' ? true : prog.bandAnim == 'bas' ? false : bandTop;
             final anim = switch (prog.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null };
-            final artist = prog.bandArtist, song = prog.bandSong;
+            // Majuscule à chaque mot ; sans titre, le bas affiche « Conacce Tv ».
+            final artist = titleCase(prog.bandArtist);
+            final song = prog.bandSong.isEmpty ? (artist.isNotEmpty ? 'Conacce Tv' : '') : titleCase(prog.bandSong);
             final bw1 = w * (b.bandW1 ?? b.bandWidth) / 100, bh1 = bw1 / b.bandImgAspect;
             final bw2 = w * (b.bandW2 ?? b.bandWidth) / 100, bh2 = bw2 / b.bandImg2Aspect;
             final kk = k * b.bandScale / 100;
@@ -408,13 +415,15 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
     final k = widget.k * b.bandScale / 100;
     final font = b.bandFont;
     final img = widget.imgUrl ?? b.bandImg;
+    // Titre (bas de la bande) : sa propre police, en gras, italique selon le réglage.
+    TextStyle titleStyle(double size, Color color) => brandStyle(b, font: b.bandFont2, size: size, weight: FontWeight.w700, color: color)
+        .copyWith(fontStyle: b.titleItalic ? FontStyle.italic : FontStyle.normal);
     // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
     final Widget card = img != null
         ? Builder(builder: (context) {
             final bw = widget.maxWidth, bh = widget.maxWidth / (widget.imgAspect ?? b.bandImgAspect), ts = b.bandTextSize / 100;
             final one = widget.artist.isEmpty || widget.song.isEmpty;
             final tc = widget.textColor ?? b.bandImgText;
-            final shadow = [Shadow(color: const Color(0x99000000), blurRadius: 3 * widget.k, offset: Offset(0, widget.k))];
             return SizedBox(
               width: bw,
               height: bh,
@@ -429,8 +438,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                           fit: BoxFit.scaleDown,
                           child: Text(widget.artist,
                               maxLines: 1,
-                              style: brandStyle(b, font: font, size: bh * (one ? 0.42 : 0.34) * ts, weight: FontWeight.w800, color: tc)
-                                  .copyWith(shadows: shadow)),
+                              style: brandStyle(b, font: font, size: bh * (one ? 0.46 : 0.38) * ts, weight: FontWeight.w700, color: tc)),
                         ),
                       ),
                     if (widget.song.isNotEmpty)
@@ -439,8 +447,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                           fit: BoxFit.scaleDown,
                           child: Text(widget.song,
                               maxLines: 1,
-                              style: brandStyle(b, font: font, size: bh * (one ? 0.42 : 0.22) * ts, weight: one ? FontWeight.w800 : FontWeight.w600, color: tc)
-                                  .copyWith(shadows: shadow)),
+                              style: titleStyle(bh * (one ? 0.46 : 0.26) * ts, tc)),
                         ),
                       ),
                   ]),
@@ -481,7 +488,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: brandStyle(b, font: font, size: 14 * k, weight: FontWeight.w800, color: b.bandTopText)),
+                      style: brandStyle(b, font: font, size: 16 * k, weight: FontWeight.w700, color: b.bandTopText)),
                 ),
               ),
             if (widget.song.isNotEmpty)
@@ -493,7 +500,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: brandStyle(b, font: font, size: 10.5 * k, weight: FontWeight.w600, color: b.bandBottomText)),
+                      style: titleStyle(12.5 * k, b.bandBottomText)),
                 ),
               ),
           ]),

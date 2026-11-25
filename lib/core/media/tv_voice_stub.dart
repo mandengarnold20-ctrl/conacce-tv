@@ -38,7 +38,7 @@ void tvVoiceSync(String? url, double off, {bool muted = false}) {
   if (!c.value.isPlaying) {
     c.setVolume(1);
     c.seekTo(want).then((_) => c.play());
-    tvDuck.value = 0.3;
+    tvDuck.value = 0.15;
   } else if ((c.value.position - want).inMilliseconds.abs() > 350) {
     c.seekTo(want);
   }

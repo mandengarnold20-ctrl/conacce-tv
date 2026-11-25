@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb, LicenseRegistry, LicenseEntryWithLineBreaks;
+import 'package:flutter/foundation.dart' show kIsWeb, LicenseRegistry, LicenseEntryWithLineBreaks, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,11 +70,23 @@ class ConacceApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       // Taille du texte : on suit le réglage du téléphone (personnes qui voient mal),
       // mais sans dépasser +15 %, pour que les écrans gardent leur mise en page.
-      builder: (context, child) => MediaQuery.withClampedTextScaling(
-        minScaleFactor: 0.9,
-        maxScaleFactor: 1.15,
-        child: child ?? const SizedBox.shrink(),
-      ),
+      builder: (context, child) {
+        // Appli Android : textes un peu plus petits (comme sur iPhone) et sans grossir avec le réglage du téléphone,
+        // pour que les écrans respirent.
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && !isTvDevice) {
+          final mq = MediaQuery.of(context);
+          final sys = mq.textScaler.scale(10) / 10;
+          return MediaQuery(
+            data: mq.copyWith(textScaler: TextScaler.linear(sys.clamp(0.85, 1.0) * 0.9)),
+            child: child ?? const SizedBox.shrink(),
+          );
+        }
+        return MediaQuery.withClampedTextScaling(
+          minScaleFactor: 0.9,
+          maxScaleFactor: 1.15,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       // Télécommande : le bouton central (OK) valide, comme la touche Entrée.
       shortcuts: {
         ...WidgetsApp.defaultShortcuts,

@@ -126,6 +126,8 @@ class Branding {
     this.font = const BrandFont('Poppins'),
     this.fontTicker,
     this.fontBand,
+    this.fontBand2,
+    this.bandItalic2,
   });
 
   final bool logoShow;
@@ -202,6 +204,14 @@ class Branding {
 
   BrandFont get tickerFont => fontTicker ?? font;
   BrandFont get bandFont => fontBand ?? font;
+
+  /// Police du bas de la bande (titre de la chanson), sinon celle du haut.
+  final BrandFont? fontBand2;
+  BrandFont get bandFont2 => fontBand2 ?? bandFont;
+
+  /// Titre en italique (par défaut oui, sauf si une police du bas est importée — elle est souvent déjà italique).
+  final bool? bandItalic2;
+  bool get titleItalic => bandItalic2 ?? (fontBand2 == null);
 
   static int _beninMinute(DateTime utc) {
     final local = utc.toUtc().add(const Duration(hours: 1)); // heure du Bénin
@@ -297,6 +307,8 @@ class Branding {
       font: BrandFont.fromMap(c['font']) ?? const BrandFont('Poppins'),
       fontTicker: BrandFont.fromMap(c['fontTicker']),
       fontBand: BrandFont.fromMap(c['fontBand']),
+      fontBand2: BrandFont.fromMap(c['fontBand2']),
+      bandItalic2: band['it2'] is bool ? band['it2'] as bool : null,
     );
   }
 }

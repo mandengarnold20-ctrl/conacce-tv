@@ -214,18 +214,29 @@
         if (duck === target) { clearInterval(timer); timer = null; }
       }, 50);
     }
-    function stop() { if (a) { try { a.pause(); } catch (e) {} a.removeAttribute('src'); a = null; } if (target !== 1) duckTo(1); }
+    // Un seul lecteur audio pour toute la visite, « déverrouillé » au premier geste (iPhone, Safari, Chrome) :
+    // ensuite le navigateur le laisse parler tout seul au bon moment.
+    var el = new Audio(); el.preload = 'auto'; el.setAttribute('playsinline', ''); el.volume = 1;
+    var unlocked = false;
+    function unlock() {
+      if (unlocked) return; unlocked = true;
+      try { el.muted = true; var p = el.play(); if (p && p.then) p.then(function () { el.pause(); el.muted = false; }).catch(function () { el.muted = false; unlocked = false; }); else { el.pause(); el.muted = false; } } catch (e) { el.muted = false; }
+    }
+    ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (t) { window.addEventListener(t, unlock, { capture: true, passive: true }); });
+    function stop() { if (a) { try { a.pause(); } catch (e) {} a = null; } if (target !== 1) duckTo(1); }
     window.conacceVoice = function (url, off, muted) {
       if (!url) { stop(); return; }
-      if (!a || a.__u !== url) { stop(); a = new Audio(); a.preload = 'auto'; a.__u = url; a.src = url; a.load(); }
+      if (!a || a.__u !== url) { stop(); a = el; a.__u = url; a.src = url; a.load(); }
       var d = a.duration;
-      var silent = muted || window.conacceTvMuted || (function () { var vs = playingVideos(); return vs.length > 0 && vs.every(function (v) { return v.muted; }); })();
+      // Muet seulement si l'image qui passe est elle-même muette (pas d'ancien réglage YouTube resté coincé).
+      var silent = muted || (function () { var vs = playingVideos(); return vs.length ? vs.every(function (v) { return v.muted; }) : !!window.conacceTvMuted; })();
       if (off < 0 || (isFinite(d) && d > 0 && off >= d - 0.05) || silent) { if (!a.paused) a.pause(); if (target !== 1) duckTo(1); return; }
       if (a.paused) {
         if (a.readyState < 1) return;  // pas encore chargée : on réessaie au prochain appel, au bon endroit
         try { a.currentTime = off; } catch (e) {}
+        a.muted = false; a.volume = 1;
         a.play().catch(function () {});
-        duckTo(0.3);
+        duckTo(0.15);
       } else if (Math.abs(a.currentTime - off) > 0.35) {
         try { a.currentTime = off; } catch (e) {}
       }
