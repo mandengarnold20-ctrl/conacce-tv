@@ -131,7 +131,7 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
 
   static String _sigOf(List<TvProgram> ps, TvChannel c) =>
       '${c.status}|${c.anchor.millisecondsSinceEpoch}|${c.pausedAt?.millisecondsSinceEpoch}|${c.loopRepeat}|' +
-      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.isPriority}:${p.kind}:${p.bandAnim}:${p.artist}:${p.song}:${p.airExtra.inSeconds}:${p.breaksSig}:${p.videoUrl}').join(',');
+      ps.map((p) => '${p.id}:${p.position}:${p.duration.inSeconds}:${p.startAt?.millisecondsSinceEpoch}:${p.repeatDaily}:${p.repeatWeekly}:${p.isPriority}:${p.kind}:${p.bandAnim}:${p.chartRank}:${p.voiceUrl}:${p.artist}:${p.song}:${p.airExtra.inSeconds}:${p.breaksSig}:${p.videoUrl}').join(',');
 
   void _settleSchedule(List<TvProgram> ps, TvChannel c) {
     final sig = _sigOf(ps, c);

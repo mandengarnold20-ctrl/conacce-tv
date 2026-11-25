@@ -557,6 +557,18 @@
   .ov-band.a-open { transform: scale(.2); transition: transform .55s cubic-bezier(.5,-.5,.7,0), opacity .35s; }
   .ov-band.a-open.on { transform: scale(1); transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .35s; }
   .ov-artist { padding: calc(5px * var(--bk)) calc(12px * var(--bk)); font-size: calc(14px * var(--bk)); font-weight: 800; color: #0B1463; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-size: 300% 100%; animation: sunflow 9s ease-in-out infinite; }
+  .ov-bandpos { align-items: center; }
+  .ov-rank { order: 0; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 900; line-height: 1; opacity: 0; transform: scale(.4); transition: opacity .45s, transform .55s cubic-bezier(.3,1.5,.5,1); font-variant-numeric: tabular-nums; }
+  .ov-rank.on { opacity: 1; transform: scale(1); }
+  .ov-rank.d { order: 2; }
+  .ov-rank.hidden { display: none; }
+  .ov-bandpos2 { position: absolute; display: flex; pointer-events: none; }
+  .bd-frame { position: absolute; z-index: 6; border: 2px dashed #7FD3FF; border-radius: 4px; cursor: move; touch-action: none; }
+  .bd-frame b { position: absolute; left: 0; top: -18px; font-size: 10.5px; color: #7FD3FF; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  .bd-frame .lg-grip { background: #7FD3FF; }
+  .ch-rows { display: grid; gap: 6px; max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+  .ch-row { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: center; }
+  .ch-row b { background: #0E9F4F; color: #fff; border-radius: 6px; text-align: center; padding: 6px 0; font-size: 15px; }
   .ov-band.img { border-radius: 0; box-shadow: none; overflow: visible; background-size: 100% 100%; background-repeat: no-repeat; display: flex; flex-direction: column; justify-content: center; align-items: center; }
   .ov-band.img .ov-artist, .ov-band.img .ov-song { background: none !important; animation: none; padding: 0; max-width: 100%; text-shadow: 0 1px 3px rgba(0,0,0,.6); line-height: 1.1; }
   .hb-bandimg { height: 38px; max-width: 260px; border-radius: 4px; background: #000 center/100% 100% no-repeat; flex: 1; }
@@ -1889,6 +1901,7 @@ async function showRegie() {
   const nowLine = h('div', { class: 'tl-now hidden' }, h('span', {}, 'MAINTENANT'));
   const gridSec = h('section', { class: 'st-card', id: 'grille', 'aria-label': 'Grille' },
     h('div', { class: 'st-card-head' }, gridTitle, h('span', { class: 'rg-small' }, can.program ? 'Glissez une vidéo de la liste sur la grille ; glissez un rendez-vous pour changer son heure.' : 'Touchez un bloc pour le voir dans l’aperçu.'), h('span', { class: 'grow' }),
+      can.program ? h('button', { class: 'btn small', onclick: () => chartsBox() }, '🏆 Classements') : null,
       can.program ? h('button', { class: 'btn small', onclick: () => templatesBox() }, 'Modèles de journées') : null,
       can.program ? h('button', { class: 'btn small', onclick: () => specialBox() }, '★ Jours spéciaux') : null, dayTabs),
     h('div', { class: 'tl-scroll' }, h('div', { class: 'tl' }, ticks, h('div', { class: 'tl-wrap' }, lane, nowLine))),
@@ -2138,7 +2151,29 @@ async function showRegie() {
               saveBrand(); buildHab(); toast('Image de bande en place : l’artiste et le titre s’y adaptent automatiquement.');
             } catch (e) { toast(e.message || String(e), true); }
           }) }, B.band.img ? 'Changer l’image' : 'Importer mon image de bande'),
-          B.band.img && !ro ? h('button', { class: 'btn small ghost', onclick: () => { B.band.img = null; saveBrand(); buildHab(); } }, 'Revenir à la bande Conacce') : null),
+          B.band.img && !ro ? h('button', { class: 'btn small ghost', onclick: () => { B.band.img = null; B.band.img2 = null; saveBrand(); buildHab(); } }, 'Revenir à la bande Conacce') : null),
+        B.band.img ? h('div', { class: 'hb-row' },
+          B.band.img2 ? h('span', { class: 'hb-bandimg', style: `background-image:url("${B.band.img2}")`, title: 'Bande 2 (titre)' }) : h('span', { class: 'rg-small', style: 'flex:1' }, 'Bande 2 (facultatif) : avec deux images, la bande 1 porte l’artiste et la bande 2 le titre.'),
+          ro ? null : h('button', { class: 'btn small', onclick: () => pickFile('image/png,image/webp,image/jpeg,image/svg+xml', async f => {
+            toast('Envoi de la bande 2…');
+            try {
+              const ia = await new Promise(res => { const im = new Image(); im.onload = () => res(im.naturalWidth / im.naturalHeight || 6); im.onerror = () => res(6); im.src = URL.createObjectURL(f); });
+              B.band.img2 = await upload('images', f, () => {}); B.band.ia2 = Math.round(Math.min(30, Math.max(1, ia)) * 1000) / 1000;
+              saveBrand(); buildHab(); toast('Bande 2 en place : le titre s’y affiche. Placez les deux bandes à la souris sur l’écran Antenne.');
+            } catch (e) { toast(e.message || String(e), true); }
+          }) }, B.band.img2 ? 'Changer la bande 2' : 'Importer la bande 2 (titre)'),
+          B.band.img2 && !ro ? h('button', { class: 'btn small ghost', onclick: () => { B.band.img2 = null; B.band.x2 = B.band.y2 = null; saveBrand(); buildHab(); } }, 'Retirer la bande 2') : null) : null,
+        ro ? null : h('div', { class: 'hb-row' },
+          h('button', { class: 'btn small' + (R.bandEdit ? ' primary' : ''), onclick: () => {
+            R.bandEdit = !R.bandEdit; if (R.bandEdit) document.getElementById('antenne-box')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            buildHab(); drawOverlay(now(), R.air && R.air.T ? R.air.T : { kind: 'file' }); syncBandEdit();
+          } }, R.bandEdit ? '✓ Terminer le réglage des bandes' : 'Déplacer / agrandir les bandes sur l’écran Antenne'),
+          B.band.x1 != null || B.band.x2 != null || B.band.w1 != null || B.band.w2 != null ? h('button', { class: 'btn small ghost', onclick: () => { for (const k of ['x1', 'y1', 'x2', 'y2', 'w1', 'w2']) B.band[k] = null; saveBrand(); buildHab(); syncBandEdit(); } }, 'Remettre les bandes à leur place') : null),
+        R.bandEdit ? h('div', { class: 'rg-small' }, 'Sur l’écran Antenne : glissez chaque bande (cadre bleu) pour la placer où vous voulez, par exemple l’une à gauche et l’autre à droite ; tirez le petit carré pour l’agrandir. Les bandes restent affichées pendant le réglage, avec un exemple de numéro de classement.') : null,
+        sub('Numéro du classement (hits de la semaine)'),
+        h('div', { class: 'hb-row' },
+          color('Fond du numéro', B.band.rankBg || '#0E9F4F', v => { B.band.rankBg = v; }), color('Chiffre', B.band.rankFg || '#FFFFFF', v => { B.band.rankFg = v; }),
+          pills([['g', 'À gauche de la bande'], ['d', 'À droite de la bande']], B.band.rankSide === 'd' ? 'd' : 'g', v => { B.band.rankSide = v; })),
         B.band.img ? h('div', { class: 'hb-row' },
           range('Taille du texte', 50, 200, B.band.tsz || 100, v => v + ' %', v => { B.band.tsz = v; }),
           color('Couleur du texte', B.band.tc || '#FFFFFF', v => { B.band.tc = v; })) : null,
@@ -2165,18 +2200,23 @@ async function showRegie() {
     const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
     const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
     const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
-    const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
+    const ovRank = h('div', { class: 'ov-rank hidden' });
+    const ovBandPos = h('div', { class: 'ov-bandpos' }, ovRank, ovBand);
+    // 2ᵉ bande (titre) quand deux images de bande sont importées.
+    const ovSong2 = h('div', { class: 'ov-song' });
+    const ovBand2 = h('div', { class: 'ov-band img' }, ovSong2);
+    const ovBand2Pos = h('div', { class: 'ov-bandpos2 hidden' }, ovBand2);
     const ovTrack = h('div', { class: 'ov-track' });
     const ovInfo = h('span', { class: 'ov-info sun' }, 'INFO');
     const ovTick = h('div', { class: 'ov-tick hidden' }, ovInfo, h('div', { class: 'ov-wrap' }, ovTrack));
     const ovTxt = h('div', { class: 'ov-txt' });
-    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovTxt, ovTick);
+    const ov = h('div', { class: 'ov', 'aria-hidden': 'true' }, ovLogo, ovBandPos, ovBand2Pos, ovTxt, ovTick);
     box.append(ov);
     let bandHidden = null, bandWas = false, bandSwap = null;
       return function draw(t, T) {
       if (!ov.isConnected) { box.append(ov); if (ovTrack.__anim) { ovTrack.__anim.cancel(); ovTrack.__anim = null; } }
       const B = R.brand, w = box.clientWidth || 400, hgt = box.clientHeight || w * 9 / 16, k = w / 640;
-      ov.classList.toggle('hidden', T.kind === 'none');
+      ov.classList.toggle('hidden', T.kind === 'none' && !(box === airBox && R.bandEdit));
       ov.style.setProperty('--k', k.toFixed(3));
       const text = tickerText(B, t), th = text ? Math.max(16, 22 * k) : 0, mg = 10 * k;
       // Logo
@@ -2216,16 +2256,23 @@ async function showRegie() {
         }
       }
       // Bande artiste / émission
-      const p = T.sl && T.sl.p;
-      const has = !!(B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim()));
-      let on = false;
+      const editing = box === airBox && R.bandEdit;
+      const p = editing ? { artist: (T.sl && T.sl.p.artist) || 'Nom de l’artiste', song: (T.sl && T.sl.p.song) || 'Titre de la chanson', duration: 200, chart_rank: (T.sl && T.sl.p.chart_rank) || 10, band_anim: null } : T.sl && T.sl.p;
+      const has = !!(editing || (B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && ((p.artist || '').trim() || (p.song || '').trim())));
+      const two = !!(B.band.img && B.band.img2);
+      let on = false, rankOn = false;
+      const artistT = ((p && p.artist) || '').trim(), songT = ((p && p.song) || '').trim();
       if (has) {
-        const pos = (t - T.sl.start) / 1000, total = p.duration;
+        const pos = T.sl ? (t - T.sl.start) / 1000 : 0, total = p.duration;
         const win = a => pos >= a && pos < a + B.band.dur;
-        on = win(B.band.at) || (B.band.end > 0 && total > B.band.end + B.band.at + B.band.dur && win(total - B.band.end));
-        if (ovArtist.textContent !== (p.artist || '').trim()) ovArtist.textContent = (p.artist || '').trim();
-        if (ovSong.textContent !== (p.song || '').trim()) ovSong.textContent = (p.song || '').trim();
-        ovArtist.classList.toggle('hidden', !(p.artist || '').trim()); ovSong.classList.toggle('hidden', !(p.song || '').trim());
+        const twice = B.band.end > 0 && total > B.band.end + B.band.at + B.band.dur;
+        on = editing || win(B.band.at) || (twice && win(total - B.band.end));
+        // Classement : le numéro arrive avec la bande, reste quand elle part, et repart avec elle au 2ᵉ passage.
+        rankOn = !!p.chart_rank && (editing || (pos >= B.band.at && pos < (twice ? total - B.band.end + B.band.dur : total)));
+        if (ovArtist.textContent !== artistT) ovArtist.textContent = artistT;
+        if (ovSong.textContent !== songT) ovSong.textContent = songT;
+        if (ovSong2.textContent !== songT) ovSong2.textContent = songT;
+        ovArtist.classList.toggle('hidden', !artistT); ovSong.classList.toggle('hidden', !songT || two);
       }
       // Entrée et sortie : chacune avec son animation.
       if (on !== bandWas) {
@@ -2237,24 +2284,52 @@ async function showRegie() {
       const style = pStyle || (on ? B.band.anim : (bandHidden || B.band.anim));
       const fromTop = pa === 'haut' ? true : pa === 'bas' ? false : B.band.pos[0] === 'h', hz = B.band.pos[1] || 'c', bk = k * B.band.scale / 100, shift = hgt * B.band.y / 100;
       ovBandPos.className = 'ov-bandpos' + (has ? '' : ' hidden');
-      Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
-        top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
+      const W1 = B.band.w1 ?? B.band.width, W2 = B.band.w2 ?? B.band.width;
+      const bw1 = w * W1 / 100, bh1 = bw1 / (B.band.ia || 6), bw2 = w * W2 / 100, bh2 = bw2 / (B.band.ia2 || 6);
+      const rw = p && p.chart_rank ? (B.band.img ? bh1 : 0) : 0, gap = 4 * k, rSide = B.band.rankSide === 'd' ? 'd' : 'g';
+      if (two || B.band.x1 != null) {
+        // Position exacte (deux bandes, ou bande placée à la souris) : même calcul que l'appli.
+        const x1 = B.band.x1 != null ? B.band.x1 * w : hz === 'g' ? mg : hz === 'd' ? w - mg - (bw1 + rw) : (w - (bw1 + rw)) / 2;
+        const y1 = B.band.y1 != null ? B.band.y1 * hgt : fromTop ? mg + shift : hgt - th - 14 * k - shift - (two ? bh1 + gap + bh2 : (B.band.img ? bh1 : ovBand.offsetHeight || 40 * k));
+        Object.assign(ovBandPos.style, { left: x1 + 'px', top: y1 + 'px', right: '', bottom: '', justifyContent: 'flex-start' });
+        if (two) {
+          const x2 = B.band.x2 != null ? B.band.x2 * w : x1 + (rSide === 'g' ? rw : 0), y2 = B.band.y2 != null ? B.band.y2 * hgt : y1 + bh1 + gap;
+          Object.assign(ovBand2Pos.style, { left: x2 + 'px', top: y2 + 'px' });
+        }
+      } else {
+        Object.assign(ovBandPos.style, { left: mg + 'px', right: mg + 'px', justifyContent: hz === 'g' ? 'flex-start' : hz === 'd' ? 'flex-end' : 'center',
+          top: fromTop ? (mg + shift) + 'px' : '', bottom: fromTop ? '' : (th + 14 * k + shift) + 'px' });
+      }
+      ovBand2Pos.classList.toggle('hidden', !(has && two));
       ovBand.className = 'ov-band a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
+      ovBand2.className = 'ov-band img a-' + style + (fromTop ? ' from-top' : '') + (on ? ' on' : '');
       const mid = B.band.topA;
       Object.assign(ovBand.style, { maxWidth: (w * B.band.width / 100) + 'px', minWidth: Math.min(150 * bk, w * B.band.width / 100) + 'px', fontFamily: famOf(B.fontBand || B.font) });
       ovBand.style.setProperty('--bk', bk.toFixed(3));
       if (B.band.img) {
         // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
-        const bw = w * B.band.width / 100, bh = bw / (B.band.ia || 6), ts = (B.band.tsz || 100) / 100;
+        const bw = bw1, bh = bh1, ts = (B.band.tsz || 100) / 100, one = two || !songT || !artistT;
         ovBand.classList.add('img');
         Object.assign(ovBand.style, { width: bw + 'px', height: bh + 'px', minWidth: '', maxWidth: '', backgroundImage: `url("${B.band.img}")`, padding: `${bh * 0.1}px ${bw * 0.06}px` });
-        Object.assign(ovArtist.style, { backgroundImage: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * 0.34 * ts) + 'px' });
-        Object.assign(ovSong.style, { background: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * 0.22 * ts) + 'px' });
-        for (const el of [ovArtist, ovSong]) if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) el.style.fontSize = (parseFloat(el.style.fontSize) * el.clientWidth / el.scrollWidth) + 'px';
+        Object.assign(ovArtist.style, { backgroundImage: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * (one ? 0.42 : 0.34) * ts) + 'px' });
+        Object.assign(ovSong.style, { background: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * (one ? 0.42 : 0.22) * ts) + 'px' });
+        if (two) {
+          Object.assign(ovBand2.style, { width: bw2 + 'px', height: bh2 + 'px', backgroundImage: `url("${B.band.img2}")`, padding: `${bh2 * 0.1}px ${bw2 * 0.06}px`, fontFamily: famOf(B.fontBand || B.font) });
+          ovBand2.style.setProperty('--bk', bk.toFixed(3));
+          Object.assign(ovSong2.style, { background: 'none', color: B.band.tc2 || B.band.tc || '#FFFFFF', fontSize: (bh2 * 0.42 * ts) + 'px' });
+        }
+        for (const el of [ovArtist, ovSong, ovSong2]) if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) el.style.fontSize = (parseFloat(el.style.fontSize) * el.clientWidth / el.scrollWidth) + 'px';
       } else {
         ovBand.classList.remove('img'); ovBand.style.width = ''; ovBand.style.height = ''; ovBand.style.backgroundImage = ''; ovBand.style.padding = '';
         Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText, fontSize: '' });
         Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText, fontSize: '' });
+      }
+      // Numéro du classement, collé à la bande 1 (à gauche ou à droite).
+      const rankH = B.band.img ? bh1 : (ovBand.offsetHeight || 40 * k);
+      ovRank.className = 'ov-rank' + (has && p && p.chart_rank ? '' : ' hidden') + (rSide === 'd' ? ' d' : '') + (rankOn ? ' on' : '');
+      if (p && p.chart_rank) {
+        if (ovRank.textContent !== String(p.chart_rank)) ovRank.textContent = String(p.chart_rank);
+        Object.assign(ovRank.style, { width: rankH + 'px', height: rankH + 'px', fontSize: (rankH * (p.chart_rank > 9 ? 0.56 : 0.66)) + 'px', background: B.band.rankBg || '#0E9F4F', color: B.band.rankFg || '#FFFFFF', fontFamily: famOf(B.fontBand || B.font) });
       }
       // Texte d'annonce pendant une pub, « Suite de votre programme » à la reprise du film.
       const st = T.sl && (T.sl.brk ? T.sl.brk.txt && adTxt(T.sl.brk.txt, 'Publicité') : T.sl.res ? T.sl.res.res && adTxt(T.sl.res.res, RESUME_TXT, true) : null);
@@ -2339,6 +2414,45 @@ async function showRegie() {
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   }
   lgFrame.addEventListener('pointerdown', e => lgStart(e, e.target === lgGrip));
+  // ── Réglage des bandes à la souris (écran Antenne) : déplacer chaque bande, tirer le coin pour l'agrandir ──
+  const bdGrip1 = h('span', { class: 'lg-grip', title: 'Agrandir / réduire' }), bdGrip2 = h('span', { class: 'lg-grip', title: 'Agrandir / réduire' });
+  const bdF1 = h('div', { class: 'bd-frame hidden' }, h('b', {}, 'Bande 1 · artiste'), bdGrip1), bdF2 = h('div', { class: 'bd-frame hidden' }, h('b', {}, 'Bande 2 · titre'), bdGrip2);
+  airBox.append(bdF1, bdF2);
+  const unionRect = els => { const rs = els.filter(e => e && e.offsetParent !== null && !e.classList.contains('hidden')).map(e => e.getBoundingClientRect()).filter(r => r.width);
+    return rs.length ? { left: Math.min(...rs.map(r => r.left)), top: Math.min(...rs.map(r => r.top)), right: Math.max(...rs.map(r => r.right)), bottom: Math.max(...rs.map(r => r.bottom)) } : null; };
+  // Cadre sans les animations (transform) : position réelle de la bande.
+  const layoutRect = el => { const b = airBox.getBoundingClientRect(); let x = 0, y = 0, n = el; while (n && n !== airBox) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; } return { left: b.left + x, top: b.top + y, right: b.left + x + el.offsetWidth, bottom: b.top + y + el.offsetHeight }; };
+  function syncBandEdit() {
+    const on = !!R.bandEdit;
+    if (!bdF1.isConnected) airBox.append(bdF1, bdF2);
+    bdF1.classList.toggle('hidden', !on); bdF2.classList.toggle('hidden', !(on && R.brand.band.img && R.brand.band.img2));
+    if (!on) return;
+    const b = airBox.getBoundingClientRect(), pos1 = airBox.querySelector('.ov-bandpos'), pos2 = airBox.querySelector('.ov-bandpos2');
+    const place = (fr, els) => { const r = els.map(layoutRect).reduce((a, c) => a ? { left: Math.min(a.left, c.left), top: Math.min(a.top, c.top), right: Math.max(a.right, c.right), bottom: Math.max(a.bottom, c.bottom) } : c, null);
+      if (r) Object.assign(fr.style, { left: (r.left - b.left) + 'px', top: (r.top - b.top) + 'px', width: (r.right - r.left) + 'px', height: (r.bottom - r.top) + 'px' }); };
+    if (pos1) place(bdF1, [...pos1.children].filter(c => !c.classList.contains('hidden')));
+    if (pos2 && !bdF2.classList.contains('hidden')) place(bdF2, [pos2.firstChild]);
+  }
+  function bdStart(e, n, resize) {
+    if (!R.bandEdit) return;
+    e.preventDefault(); e.stopPropagation();
+    const B = R.brand.band, b = airBox.getBoundingClientRect(), fr = n === 1 ? bdF1 : bdF2, r = fr.getBoundingClientRect();
+    const band = n === 1 ? airBox.querySelector('.ov-bandpos .ov-band') : airBox.querySelector('.ov-bandpos2 .ov-band');
+    const sx = e.clientX, sy = e.clientY, x0 = (r.left - b.left) / b.width, y0 = (r.top - b.top) / b.height, bw0 = band ? band.offsetWidth : r.width;
+    B['x' + n] = x0; B['y' + n] = y0;
+    const mv = ev => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (resize) { const pct = Math.round(Math.max(15, Math.min(95, (bw0 + dx) / b.width * 100))); if (B.img) B['w' + n] = pct; else B.width = pct; }
+      else { B['x' + n] = Math.max(0, Math.min(0.98, x0 + dx / b.width)); B['y' + n] = Math.max(0, Math.min(0.98, y0 + dy / b.height)); }
+      drawOverlay(now(), R.air && R.air.T ? R.air.T : { kind: 'file' }); syncBandEdit();
+    };
+    const up = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      for (const k of ['x' + n, 'y' + n]) if (B[k] != null) B[k] = Math.round(B[k] * 1000) / 1000; saveBrand(); buildHab(); syncBandEdit(); };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  }
+  bdF1.addEventListener('pointerdown', e => bdStart(e, 1, e.target === bdGrip1));
+  bdF2.addEventListener('pointerdown', e => bdStart(e, 2, e.target === bdGrip2));
+  window.addEventListener('resize', () => syncBandEdit());
   window.addEventListener('resize', () => syncLogoEdit());
 
   // ── Barre du direct ──
@@ -2805,7 +2919,7 @@ async function showRegie() {
         can.program ? [p.is_priority ? '★ Prioritaire' : '☆ Prioritaire', () => setPriority(p, !p.is_priority), p.is_priority ? 'pri' : '', p.is_priority ? 'Retirer la priorité' : 'Rendre prioritaire : passe à son heure exacte même si un autre rendez-vous est prévu'] : null,
         can.program ? ['Modifier', () => openForm('tv', p)] : null,
         can.program ? ['Retirer', () => removeOne(p), 'x'] : null,
-      ], (p.repeat_daily ? 'chaque jour' : p.repeat_weekly ? 'chaque semaine' : 'une fois') + (p.is_priority ? ' · ★ prioritaire' : ''), it.at);
+      ], (p.chart_rank ? `🏆 n° ${p.chart_rank} · ` : '') + (p.repeat_daily ? 'chaque jour' : p.repeat_weekly ? 'chaque semaine' : 'une fois') + (p.is_priority ? ' · ★ prioritaire' : ''), it.at);
       W.rows.append(r);
     }
     drawGrid();
@@ -2964,6 +3078,91 @@ async function showRegie() {
       close(); reload();
     }
     document.body.append(m); drawList(); requestAnimationFrame(drawFrame);
+  }
+  // ── Classements (hits de la semaine) : Top 5, 10 ou 30, du dernier au premier, à l'heure choisie ──
+  function chartsBox() {
+    const songs = []; const seen = new Set();
+    for (const p of R.programs) if (p.kind !== 'pub' && p.kind !== 'habillage' && !p.chart_id && p.duration > 0 && !seen.has(p.video_url)) { seen.add(p.video_url); songs.push(p); }
+    songs.sort((a, b) => ((a.artist || a.title) + '').localeCompare((b.artist || b.title) + '', 'fr'));
+    const label = p => (p.artist ? p.artist + ' — ' : '') + (p.song || p.title) + ' · ' + fmtHms(p.duration);
+    let size = 10;
+    const pick = {};
+    const titleIn = h('input', { type: 'text', value: 'Hit de la semaine', maxlength: 60, 'aria-label': 'Nom du classement' });
+    const t0 = new Date(now() + 3600e3); t0.setMinutes(0, 0, 0);
+    const dateIn = h('input', { type: 'date', value: `${t0.getFullYear()}-${pad(t0.getMonth() + 1)}-${pad(t0.getDate())}`, 'aria-label': 'Date' });
+    const timeIn = h('input', { type: 'time', value: hm(t0.getTime()), 'aria-label': 'Heure de début' });
+    const weekly = h('input', { type: 'checkbox', checked: true }), pri = h('input', { type: 'checkbox', checked: true });
+    const sizes = h('div', { class: 'hb-pills' });
+    const rows = h('div', { class: 'ch-rows' }), info = h('div', { class: 'rg-small' }), list = h('div', { style: 'display:grid;gap:6px' });
+    const drawSizes = () => { sizes.textContent = ''; for (const n of [5, 10, 30]) sizes.append(h('button', { class: 'st-chip' + (size === n ? ' on' : ''), onclick: () => { size = n; drawSizes(); drawRows(); } }, `Top ${n} (de ${n} à 1)`)); };
+    const total = () => { let s2 = 0; for (let r = 1; r <= size; r++) { const p = songs.find(x => x.id === pick[r]); if (p) s2 += airDur(p); } return s2; };
+    const drawInfo = () => {
+      const filled = Array.from({ length: size }, (_, i) => pick[i + 1]).filter(Boolean).length;
+      info.textContent = `${filled}/${size} positions remplies · durée totale ${fmtHms(total()) || '0:00'}. Ordre de passage : n° ${size} d’abord, n° 1 en dernier.`;
+    };
+    function drawRows() {
+      rows.textContent = '';
+      for (let r = size; r >= 1; r--) {
+        const sel = h('select', { 'aria-label': 'Musique n° ' + r, onchange: e => { pick[r] = e.target.value || null; drawInfo(); } },
+          h('option', { value: '' }, '— choisir la musique —'), ...songs.map(p => h('option', { value: p.id, selected: pick[r] === p.id }, label(p))));
+        rows.append(h('div', { class: 'ch-row' }, h('b', {}, 'N° ' + r), sel));
+      }
+      drawInfo();
+    }
+    const m = h('div', { class: 'modal', onclick: e => e.target === m && m.remove() },
+      h('div', { class: 'ab-wrap' },
+        h('h2', {}, '🏆 Classements'),
+        h('div', { class: 'rg-small' }, 'Choisissez les musiques déjà sur la plateforme et leur numéro. Le classement passe du dernier au premier, à l’heure choisie, et chaque clip affiche son numéro à côté des bandes.'),
+        h('div', { class: 'tp-sec' }, h('b', {}, 'Nouveau classement'),
+          h('div', { class: 'row' }, titleIn),
+          sizes,
+          h('div', { class: 'row' }, dateIn, timeIn),
+          h('label', { class: 'row' }, weekly, h('span', {}, 'Repasser chaque semaine, même jour, même heure')),
+          h('label', { class: 'row' }, pri, h('span', {}, 'Prioritaire : passe à cette heure même si un autre rendez-vous est prévu')),
+          rows, info,
+          h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: save }, 'Programmer le classement'))),
+        h('div', { class: 'tp-sec' }, h('b', {}, 'Classements programmés'), list),
+        h('div', { class: 'row' }, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Fermer'))));
+    async function save() {
+      const title = titleIn.value.trim() || 'Hit de la semaine';
+      const ids = Array.from({ length: size }, (_, i) => pick[i + 1]);
+      if (ids.some(x => !x)) return toast(`Choisissez une musique pour chaque position (de ${size} à 1).`, true);
+      if (new Set(ids).size !== ids.length && !(await confirmBox('La même musique apparaît à deux positions. Programmer quand même ?', 'Programmer'))) return;
+      if (!dateIn.value || !/^\d\d:\d\d$/.test(timeIn.value)) return toast('Choisissez la date et l’heure.', true);
+      const [y, mo, dd] = dateIn.value.split('-').map(Number), [a, b] = timeIn.value.split(':').map(Number);
+      let t = new Date(y, mo - 1, dd, a, b).getTime();
+      if (t < now() - 60000 && !weekly.checked) return toast('Cette heure est déjà passée.', true);
+      const cid = crypto.randomUUID();
+      try {
+        for (let r = size; r >= 1; r--) {
+          const p = songs.find(x => x.id === pick[r]);
+          await insertProgram({ title: p.title, source: p.source, video_url: p.video_url, duration: p.duration, kind: p.kind || 'clip', artist: p.artist || null, song: p.song || null,
+            show_band: true, band_anim: p.band_anim || null, ad_breaks: [], air_extra: 0, position: 0, start_at: new Date(t).toISOString(),
+            repeat_daily: false, repeat_weekly: weekly.checked, is_priority: pri.checked, chart_id: cid, chart_rank: r, chart_size: size, chart_title: title });
+          t += p.duration * 1000;
+        }
+      } catch (e) { await sb.from('tv_programs').delete().eq('chart_id', cid); return toast(friendly(e), true); }
+      toast(`🏆 « ${title} » (Top ${size}) programmé : ${new Date(t - total() * 1000).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' })} → ${hm(t)}.`);
+      m.remove(); reload();
+    }
+    // Classements déjà programmés (regroupés par classement).
+    const groups = new Map();
+    for (const p of R.programs) if (p.chart_id) { if (!groups.has(p.chart_id)) groups.set(p.chart_id, []); groups.get(p.chart_id).push(p); }
+    if (!groups.size) list.append(h('div', { class: 'rg-small' }, 'Aucun classement programmé.'));
+    for (const [cid, ps] of groups) {
+      ps.sort((a, b) => Date.parse(a.start_at) - Date.parse(b.start_at));
+      const f = ps[0], st = Date.parse(f.start_at), top = ps.find(x => x.chart_rank === 1);
+      list.append(h('div', { class: 'tp-item' },
+        h('span', { class: 't' }, h('b', {}, `🏆 ${f.chart_title || 'Classement'} · Top ${f.chart_size || ps.length}`),
+          h('small', {}, `${f.repeat_weekly ? 'Chaque ' + new Date(st).toLocaleDateString('fr-FR', { weekday: 'long' }) : new Date(st).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${hm(st)} · n° 1 : ${top ? (top.artist || top.title) : '—'}`)),
+        h('button', { class: 'btn small ghost', 'aria-label': 'Supprimer ce classement', onclick: async () => {
+          if (!(await confirmBox(`Supprimer le classement « ${f.chart_title || 'Classement'} » (${ps.length} clips programmés) ?`, 'Supprimer', true))) return;
+          const { error } = await sb.from('tv_programs').delete().eq('chart_id', cid);
+          if (error) return toast(friendly(error), true);
+          toast('Classement supprimé.'); m.remove(); reload();
+        } }, '✕')));
+    }
+    document.body.append(m); drawSizes(); drawRows();
   }
   async function setPriority(p, on) {
     const { error } = await sb.from('tv_programs').update({ is_priority: on }).eq('id', p.id);
@@ -3355,6 +3554,7 @@ async function showRegie() {
     }
     drawOverlay(t, T);
     if (R.logoEdit) syncLogoEdit();
+    if (R.bandEdit) syncBandEdit();
     const st = R.live ? 'live' : R.channel.status;
     airScr.classList.toggle('paused', st === 'paused'); airScr.classList.toggle('stopped', st === 'stopped');
     const lbl = { live: 'DIRECT ' + (LIVE_SRC[(R.live && R.live.source) || 'obs'] || '').toUpperCase(), playing: 'À L’ANTENNE', paused: 'EN PAUSE', stopped: 'ARRÊTÉE' }[st];

@@ -112,13 +112,16 @@ class _TvOverlayState extends State<TvOverlay> {
 
     // Bande artiste : à X s du début du clip, puis (si réglé) X s avant la fin.
     final slot = widget.slot;
-    var bandOn = false;
+    var bandOn = false, rankOn = false;
+    final rank = slot?.program.chartRank;
     if (b.bandShow && slot != null && slot.program.hasBand) {
       final pos = now.difference(slot.start).inMilliseconds / 1000.0;
       final total = slot.program.duration.inSeconds.toDouble();
       bool inWindow(double a) => pos >= a && pos < a + b.bandDur;
-      bandOn = inWindow(b.bandAt.toDouble()) ||
-          (b.bandEnd > 0 && total > b.bandEnd + b.bandAt + b.bandDur && inWindow(total - b.bandEnd));
+      final twice = b.bandEnd > 0 && total > b.bandEnd + b.bandAt + b.bandDur;
+      bandOn = inWindow(b.bandAt.toDouble()) || (twice && inWindow(total - b.bandEnd));
+      // Classement : le numéro arrive avec la bande, reste quand elle part, et repart avec elle au 2ᵉ passage.
+      rankOn = rank != null && pos >= b.bandAt && pos < (twice ? total - b.bandEnd + b.bandDur : total);
     }
 
     // Texte d'annonce pendant une pub, ou « Suite de votre programme » à la reprise du film.
@@ -166,32 +169,86 @@ class _TvOverlayState extends State<TvOverlay> {
                     : LogoShine(width: w * 0.17 * b.logoSize / 100, radius: 3 * k),
               ),
             ),
-          if (slot != null && slot.program.hasBand)
-            Positioned(
-              left: margin,
-              right: margin,
-              top: bandTop ? margin + shift : null,
-              bottom: bandTop ? null : tickerH + 14 * k + shift,
-              child: Align(
-                alignment: hz == 'g'
-                    ? Alignment.centerLeft
-                    : hz == 'd'
-                        ? Alignment.centerRight
-                        : Alignment.center,
-                child: _Band(
-                  key: ValueKey('band-${slot.program.id}'),
-                  visible: bandOn,
-                  // Animation propre au clip (régie) : par le haut, par le bas, fondu ou déploiement.
-                  fromTop: slot.program.bandAnim == 'haut' ? true : slot.program.bandAnim == 'bas' ? false : bandTop,
-                  anim: switch (slot.program.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null },
-                  artist: (slot.program.artist ?? '').trim(),
-                  song: (slot.program.song ?? '').trim(),
-                  k: k,
-                  maxWidth: w * b.bandWidth / 100,
-                  branding: b,
+          if (slot != null && slot.program.hasBand) ...(() {
+            final prog = slot.program;
+            final two = b.twoBands;
+            final fromTop = prog.bandAnim == 'haut' ? true : prog.bandAnim == 'bas' ? false : bandTop;
+            final anim = switch (prog.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null };
+            final artist = (prog.artist ?? '').trim(), song = (prog.song ?? '').trim();
+            final bw1 = w * (b.bandW1 ?? b.bandWidth) / 100, bh1 = bw1 / b.bandImgAspect;
+            final bw2 = w * (b.bandW2 ?? b.bandWidth) / 100, bh2 = bw2 / b.bandImg2Aspect;
+            final kk = k * b.bandScale / 100;
+            // Hauteur de la bande 1 (pour le carré du numéro).
+            final band1H = b.bandImg != null ? bh1 : ((artist.isNotEmpty ? 26.1 : 0) + (song.isNotEmpty ? 18.1 : 0)) * kk;
+            final rw = rank != null ? band1H : 0.0;
+            final gap = 4 * k;
+            final band1 = _Band(
+              key: ValueKey('band-${prog.id}'),
+              visible: bandOn,
+              fromTop: fromTop,
+              anim: anim,
+              artist: artist,
+              song: two ? '' : song,
+              k: k,
+              maxWidth: b.bandImg != null ? bw1 : w * b.bandWidth / 100,
+              branding: b,
+            );
+            final rankBox = rank == null ? null : _RankBox(rank: rank, visible: rankOn, size: band1H, branding: b);
+            final group1 = Row(mainAxisSize: MainAxisSize.min, children: [
+              if (rankBox != null && b.rankSide != 'd') rankBox,
+              band1,
+              if (rankBox != null && b.rankSide == 'd') rankBox,
+            ]);
+            if (!two && b.bandX1 == null) {
+              return [
+                Positioned(
+                  left: margin,
+                  right: margin,
+                  top: bandTop ? margin + shift : null,
+                  bottom: bandTop ? null : tickerH + 14 * k + shift,
+                  child: Align(
+                    alignment: hz == 'g'
+                        ? Alignment.centerLeft
+                        : hz == 'd'
+                            ? Alignment.centerRight
+                            : Alignment.center,
+                    child: group1,
+                  ),
                 ),
-              ),
-            ),
+              ];
+            }
+            // Position exacte (deux bandes, ou bandes placées à la souris dans la régie) : même calcul que la régie.
+            final x1 = b.bandX1 != null ? b.bandX1! * w : hz == 'g' ? margin : hz == 'd' ? w - margin - (bw1 + rw) : (w - (bw1 + rw)) / 2;
+            final y1 = b.bandY1 != null
+                ? b.bandY1! * h
+                : bandTop
+                    ? margin + shift
+                    : h - tickerH - 14 * k - shift - (two ? bh1 + gap + bh2 : band1H);
+            final x2 = b.bandX2 != null ? b.bandX2! * w : x1 + (b.rankSide != 'd' ? rw : 0);
+            final y2 = b.bandY2 != null ? b.bandY2! * h : y1 + bh1 + gap;
+            return [
+              Positioned(left: x1, top: y1, child: group1),
+              if (two)
+                Positioned(
+                  left: x2,
+                  top: y2,
+                  child: _Band(
+                    key: ValueKey('band2-${prog.id}'),
+                    visible: bandOn,
+                    fromTop: fromTop,
+                    anim: anim,
+                    artist: '',
+                    song: song,
+                    k: k,
+                    maxWidth: bw2,
+                    branding: b,
+                    imgUrl: b.bandImg2,
+                    imgAspect: b.bandImg2Aspect,
+                    textColor: b.bandImgText2,
+                  ),
+                ),
+            ];
+          })(),
           if (screenText != null)
             Positioned(
               left: w * screenText.x,
@@ -237,7 +294,15 @@ class _Band extends StatefulWidget {
     required this.k,
     required this.maxWidth,
     required this.branding,
+    this.imgUrl,
+    this.imgAspect,
+    this.textColor,
   });
+
+  /// Image de cette bande (2ᵉ bande) ; sinon l'image de bande 1 de l'habillage.
+  final String? imgUrl;
+  final double? imgAspect;
+  final Color? textColor;
 
   final bool visible;
   final bool fromTop;
@@ -313,11 +378,13 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
     final b = widget.branding;
     final k = widget.k * b.bandScale / 100;
     final font = b.bandFont;
-    final img = b.bandImg;
+    final img = widget.imgUrl ?? b.bandImg;
     // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
     final Widget card = img != null
         ? Builder(builder: (context) {
-            final bw = widget.maxWidth, bh = widget.maxWidth / b.bandImgAspect, ts = b.bandTextSize / 100;
+            final bw = widget.maxWidth, bh = widget.maxWidth / (widget.imgAspect ?? b.bandImgAspect), ts = b.bandTextSize / 100;
+            final one = widget.artist.isEmpty || widget.song.isEmpty;
+            final tc = widget.textColor ?? b.bandImgText;
             final shadow = [Shadow(color: const Color(0x99000000), blurRadius: 3 * widget.k, offset: Offset(0, widget.k))];
             return SizedBox(
               width: bw,
@@ -333,7 +400,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                           fit: BoxFit.scaleDown,
                           child: Text(widget.artist,
                               maxLines: 1,
-                              style: brandStyle(b, font: font, size: bh * 0.34 * ts, weight: FontWeight.w800, color: b.bandImgText)
+                              style: brandStyle(b, font: font, size: bh * (one ? 0.42 : 0.34) * ts, weight: FontWeight.w800, color: tc)
                                   .copyWith(shadows: shadow)),
                         ),
                       ),
@@ -343,7 +410,7 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
                           fit: BoxFit.scaleDown,
                           child: Text(widget.song,
                               maxLines: 1,
-                              style: brandStyle(b, font: font, size: bh * 0.22 * ts, weight: FontWeight.w600, color: b.bandImgText)
+                              style: brandStyle(b, font: font, size: bh * (one ? 0.42 : 0.22) * ts, weight: one ? FontWeight.w800 : FontWeight.w600, color: tc)
                                   .copyWith(shadows: shadow)),
                         ),
                       ),
@@ -421,6 +488,37 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
           opacity: on ? 1 : 0,
           duration: Duration(milliseconds: style == 'fade' ? 700 : 400),
           child: card,
+        ),
+      ),
+    );
+  }
+}
+
+/// Numéro du classement (carré coloré à côté de la bande 1) : apparaît en douceur, reste quand la bande part.
+class _RankBox extends StatelessWidget {
+  const _RankBox({required this.rank, required this.visible, required this.size, required this.branding});
+
+  final int rank;
+  final bool visible;
+  final double size;
+  final Branding branding;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = branding;
+    return AnimatedOpacity(
+      opacity: visible ? 1 : 0,
+      duration: const Duration(milliseconds: 450),
+      child: AnimatedScale(
+        scale: visible ? 1 : 0.4,
+        duration: const Duration(milliseconds: 550),
+        curve: visible ? Curves.easeOutBack : Curves.easeIn,
+        child: Container(
+          width: size,
+          height: size,
+          color: b.rankBg,
+          alignment: Alignment.center,
+          child: Text('$rank', style: brandStyle(b, font: b.bandFont, size: size * (rank > 9 ? 0.56 : 0.66), weight: FontWeight.w900, color: b.rankFg)),
         ),
       ),
     );

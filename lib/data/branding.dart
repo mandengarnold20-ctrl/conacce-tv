@@ -108,6 +108,18 @@ class Branding {
     this.bandImgAspect = 6,
     this.bandTextSize = 100,
     this.bandImgText = const Color(0xFFFFFFFF),
+    this.bandImg2,
+    this.bandImg2Aspect = 6,
+    this.bandImgText2,
+    this.bandW1,
+    this.bandW2,
+    this.bandX1,
+    this.bandY1,
+    this.bandX2,
+    this.bandY2,
+    this.rankBg = const Color(0xFF0E9F4F),
+    this.rankFg = const Color(0xFFFFFFFF),
+    this.rankSide = 'g',
     this.font = const BrandFont('Poppins'),
     this.fontTicker,
     this.fontBand,
@@ -156,6 +168,21 @@ class Branding {
   final double bandImgAspect; // largeur / hauteur de l'image
   final int bandTextSize; // taille du texte sur l'image, en % (50–200)
   final Color bandImgText;
+
+  /// 2ᵉ image de bande (titre) : avec deux images, la bande 1 porte l'artiste et la bande 2 le titre.
+  final String? bandImg2;
+  final double bandImg2Aspect;
+  final Color? bandImgText2;
+
+  /// Largeur de chaque bande (% de l'écran) et position réglée à la souris (coin haut-gauche, fraction de l'écran).
+  final int? bandW1, bandW2;
+  final double? bandX1, bandY1, bandX2, bandY2;
+
+  /// Numéro du classement (hits de la semaine) collé à la bande 1.
+  final Color rankBg, rankFg;
+  final String rankSide; // g (à gauche) ou d (à droite)
+
+  bool get twoBands => bandImg != null && bandImg2 != null;
   final BrandFont font; // police générale
   final BrandFont? fontTicker; // police du bandeau (sinon la générale)
   final BrandFont? fontBand; // police de la bande artiste (sinon la générale)
@@ -243,6 +270,18 @@ class Branding {
       bandImgAspect: band['ia'] is num ? (band['ia'] as num).toDouble().clamp(1.0, 30.0).toDouble() : 6,
       bandTextSize: _int(band['tsz'], 100).clamp(50, 200).toInt(),
       bandImgText: _color(band['tc']) ?? d.bandImgText,
+      bandImg2: _str(band['img2']),
+      bandImg2Aspect: band['ia2'] is num ? (band['ia2'] as num).toDouble().clamp(1.0, 30.0).toDouble() : 6,
+      bandImgText2: _color(band['tc2']),
+      bandW1: band['w1'] is num ? (band['w1'] as num).toInt().clamp(10, 95).toInt() : null,
+      bandW2: band['w2'] is num ? (band['w2'] as num).toInt().clamp(10, 95).toInt() : null,
+      bandX1: _frac(band['x1']),
+      bandY1: _frac(band['y1']),
+      bandX2: _frac(band['x2']),
+      bandY2: _frac(band['y2']),
+      rankBg: _color(band['rankBg']) ?? d.rankBg,
+      rankFg: _color(band['rankFg']) ?? d.rankFg,
+      rankSide: _str(band['rankSide']) == 'd' ? 'd' : 'g',
       font: BrandFont.fromMap(c['font']) ?? const BrandFont('Poppins'),
       fontTicker: BrandFont.fromMap(c['fontTicker']),
       fontBand: BrandFont.fromMap(c['fontBand']),

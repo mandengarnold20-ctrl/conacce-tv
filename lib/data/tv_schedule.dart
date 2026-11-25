@@ -23,7 +23,19 @@ class TvProgram {
     this.airExtra = Duration.zero,
     this.breaksSig = '',
     this.bandAnim,
+    this.chartRank,
+    this.chartSize,
+    this.chartTitle,
+    this.voiceUrl,
   });
+
+  /// Classement (hits de la semaine) : numéro affiché à côté des bandes.
+  final int? chartRank;
+  final int? chartSize;
+  final String? chartTitle;
+
+  /// Annonce vocale du classement (fichier audio), lue au début du clip.
+  final String? voiceUrl;
 
   /// Animation de la bande propre à ce clip : haut, bas, fade, open (null = celle de l'habillage).
   final String? bandAnim;
@@ -98,6 +110,10 @@ class TvProgram {
         showBand: m['show_band'] as bool? ?? true,
         kind: m['kind'] as String? ?? 'clip',
         isPriority: m['is_priority'] as bool? ?? false,
+        chartRank: (m['chart_rank'] as num?)?.toInt(),
+        chartSize: (m['chart_size'] as num?)?.toInt(),
+        chartTitle: m['chart_title'] as String?,
+        voiceUrl: (m['voice_url'] as String?)?.trim().isEmpty ?? true ? null : (m['voice_url'] as String).trim(),
         bandAnim: (m['band_anim'] as String?)?.trim().isEmpty ?? true ? null : (m['band_anim'] as String).trim(),
         adBreaks: TvAdBreak.listFrom(m['ad_breaks']),
         breaksSig: m['ad_breaks'] is List && (m['ad_breaks'] as List).isNotEmpty ? jsonEncode(m['ad_breaks']) : '',
