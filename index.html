@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Conacce TV — télévision en direct, Radio Dunamis FM, cultes et Œuvres d’Or.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#080F43">
+
+  <!-- iPhone : « Ajouter à l'écran d'accueil » ouvre l'appli en plein écran -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Conacce TV">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Conacce TV</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #080F43; }
+  </style>
+</head>
+<body>
+  <!-- Écran de chargement : visible tout de suite, même sur une connexion lente, jusqu'à l'affichage de l'appli. -->
+  <div id="ctv-splash" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#080F43;z-index:9;transition:opacity .4s">
+    <img src="icons/Icon-192.png" alt="Conacce TV" width="96" height="96" style="border-radius:22px">
+    <div style="display:flex;gap:10px;align-items:center;color:#C9D2F5;font:14px system-ui,sans-serif">
+      <span style="width:18px;height:18px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvsp .8s linear infinite"></span>
+      <span id="ctv-splash-t">Chargement de Conacce TV…</span>
+    </div>
+    <style>@keyframes ctvsp{to{transform:rotate(360deg)}}</style>
+  </div>
+  <script>
+  (function () {
+    var sp = document.getElementById('ctv-splash');
+    function hide() { if (!sp) return; sp.style.opacity = '0'; setTimeout(function () { sp && sp.remove(); sp = null; }, 450); }
+    window.addEventListener('flutter-first-frame', hide);
+    setTimeout(function () { var t = document.getElementById('ctv-splash-t'); if (t && sp) t.textContent = 'Connexion lente · encore un instant…'; }, 8000);
+    setTimeout(hide, 60000);
+  })();
+  </script>
+  <!-- Lecture des directs et programmes (.m3u8) : hls.js (copié sur notre propre adresse, chargé sans bloquer
+       l'ouverture de l'appli) ; Safari sur les anciens iPhone lit ce format tout seul. -->
+  <script src="hls.min.js" async></script>
+  <script>
+  (function () {
+    var desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+    if (!desc) return;
+    var native = document.createElement('video').canPlayType('application/vnd.apple.mpegurl');
+    function ready() { return window.Hls && Hls.isSupported(); }
+    // Débit estimé au départ : on commence en basse qualité et on monte seulement si la connexion suit.
+    function startEstimate() {
+      var c = navigator.connection, d = c && c.downlink;
+      if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return 150000;
+      if (d && d > 0) return Math.max(150000, Math.min(d * 1e6 * 0.5, 2500000));
+      return 400000;
+    }
+    function attach(el, url) {
+      if (el.__hls) { el.__hls.destroy(); el.__hls = null; el.__hlsSrc = null; }
+      // iPhone (iOS 17.1+) compris : hls.js gère mieux les coupures réseau que le lecteur natif.
+      if (typeof url !== 'string' || !/\.m3u8(\?|$)/i.test(url)) return false;
+      // hls.js pas encore arrivé : Safari (iPhone) lit le format tout seul ; ailleurs on l'attend un instant.
+      if (!ready()) {
+        if (native) return false;
+        var n = 0, L = !!el.__light;
+        (function retry() {
+          if (el.__wantSrc !== url) return;
+          if (ready()) { el.__light = L; attach(el, url); el.__light = false; }
+          else if (n++ < 150) setTimeout(retry, 100);
+          else desc.set.call(el, url);
+        })();
+        return true;
+      }
+      var light = !!el.__light;
+      // Programme enregistré (Cloudflare videodelivery) : grosse réserve d'avance pour ne jamais saccader.
+      var vod = /videodelivery\.net|\/videos?\//i.test(url);
+      var hls = new Hls({
+        lowLatencyMode: false,          // un peu plus de retard, beaucoup moins de coupures
+        liveSyncDurationCount: 4,       // marge de 4 segments derrière le direct
+        liveMaxLatencyDurationCount: 12,
+        capLevelToPlayerSize: true,     // qualité adaptée à la taille de l'écran
+        // Connexions lentes : départ en basse qualité, montée prudente, descente rapide.
+        startLevel: -1,
+        abrEwmaDefaultEstimate: startEstimate(),
+        abrBandWidthFactor: 0.8,
+        abrBandWidthUpFactor: 0.6,
+        // Programme suivant préparé en coulisse : juste quelques secondes, pour ne pas prendre
+        // la connexion du programme en cours.
+        maxBufferLength: light ? 6 : (vod ? 120 : 30),
+        maxMaxBufferLength: light ? 10 : (vod ? 600 : 60),
+        backBufferLength: 30,
+        manifestLoadingMaxRetry: 20, manifestLoadingRetryDelay: 1000,
+        levelLoadingMaxRetry: 20, levelLoadingRetryDelay: 1000,
+        fragLoadingMaxRetry: 20, fragLoadingRetryDelay: 1000
+      });
+      hls.on(Hls.Events.ERROR, function (_, d) {
+        if (!d.fatal) return;
+        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) setTimeout(function () { hls.startLoad(); }, 1000);
+        else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+      });
+      el.__hls = hls; el.__hlsSrc = url;
+      hls.loadSource(url);
+      hls.attachMedia(el);
+      return true;
+    }
+    Object.defineProperty(HTMLMediaElement.prototype, 'src', {
+      configurable: true, enumerable: desc.enumerable,
+      get: function () { return this.__hlsSrc || desc.get.call(this); },
+      set: function (v) { this.__wantSrc = v; if (!attach(this, v)) desc.set.call(this, v); }
+    });
+    // Les petites erreurs que hls.js répare tout seul ne doivent pas arrêter le lecteur de l'appli.
+    window.addEventListener('error', function (e) {
+      var t = e.target;
+      if (t && t.__hls && t instanceof HTMLMediaElement) { e.stopImmediatePropagation(); }
+    }, true);
+    var setAttr = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (name, value) {
+      if (this instanceof HTMLMediaElement && String(name).toLowerCase() === 'src') { this.src = value; return; }
+      return setAttr.call(this, name, value);
+    };
+  })();
+  </script>
+  <!-- Plein écran de la vidéo avec le lecteur du téléphone (appelé par le bouton ⛶) -->
+  <script>
+  // ─── Chaîne programmée 24 h/24 (liens YouTube) ───
+  // Lecteur sans boutons, calé sur l'horaire du serveur. La vidéo suivante se prépare
+  // par-dessus, invisible, et n'apparaît que lorsqu'elle joue déjà : pas de chargement à l'écran.
+  (function () {
+    var api = null, host = null, queued = null, cur = null;
+    window.conacceTvMuted = false;
+    function loadApi() {
+      if (api) return api;
+      api = new Promise(function (res) {
+        if (window.YT && YT.Player) return res();
+        var prev = window.onYouTubeIframeAPIReady;
+        window.onYouTubeIframeAPIReady = function () { if (prev) prev(); res(); };
+        var s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+      });
+      return api;
+    }
+    function destroy(e) {
+      if (!e) return;
+      try { if (e.player && e.player.destroy) e.player.destroy(); } catch (x) {}
+      if (e.wrap && e.wrap.parentNode) e.wrap.parentNode.removeChild(e.wrap);
+    }
+    window.conacceTvHost = function (el) {
+      host = el;
+      if (queued) { var q = queued; queued = null; window.conacceTvPlay(q[0], q[1], q[2]); }
+    };
+    window.conacceTvPlay = function (id, start, key) {
+      if (!host) { queued = [id, start, key]; return; }
+      var h = host, t0 = performance.now();
+      loadApi().then(function () {
+        if (h !== host) return;
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;transition:opacity .35s;background:#000';
+        var el = document.createElement('div'); wrap.appendChild(el); h.appendChild(wrap);
+        var entry = { key: key, wrap: wrap, player: null, shown: false }, previous = cur;
+        cur = entry;
+        function expected() { return start + (performance.now() - t0) / 1000; }
+        function reveal() {
+          if (entry.shown || cur !== entry) return;
+          entry.shown = true; wrap.style.opacity = '1';
+          if (previous) { var old = previous; previous = null; setTimeout(function () { destroy(old); }, 400); }
+        }
+        entry.player = new YT.Player(el, {
+          width: '100%', height: '100%', videoId: id,
+          playerVars: { autoplay: 1, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, playsinline: 1, rel: 0, start: Math.floor(start), origin: location.origin },
+          events: {
+            onReady: function (e) { if (window.conacceTvMuted) e.target.mute(); e.target.playVideo(); },
+            onAutoplayBlocked: function (e) { window.conacceTvMuted = true; e.target.mute(); e.target.playVideo(); },
+            onStateChange: function (e) {
+              if (e.data === 1) {
+                // Même image partout : on rattrape un éventuel retard de chargement.
+                var gap = e.target.getCurrentTime() - expected();
+                if (Math.abs(gap) > 8) e.target.seekTo(expected(), true);
+                reveal();
+              } else if (e.data === 0) {
+                wrap.style.opacity = '0';  // fin de vidéo : écran noir propre jusqu'au programme suivant
+              }
+            }
+          }
+        });
+        setTimeout(reveal, 7000);
+      });
+    };
+    window.conacceTvStop = function (key) {
+      if (!cur || (key && cur.key !== key)) return;
+      destroy(cur); cur = null;
+    };
+    window.conacceTvUnmute = function () {
+      window.conacceTvMuted = false;
+      try { if (cur && cur.player) { cur.player.unMute(); cur.player.setVolume(100); cur.player.playVideo(); } } catch (x) {}
+    };
+    // Volume de la vidéo YouTube (0–100), pour l'annonce vocale des classements.
+    window.conacceTvSetVol = function (v) { try { if (cur && cur.player) cur.player.setVolume(v); } catch (x) {} };
+  })();
+  // ─── Annonce vocale des classements ───
+  // L'appli l'appelle 4 fois par seconde avec la position de l'annonce dans l'horloge de l'antenne :
+  // tout le monde l'entend au même moment ; si on arrive en cours, elle reprend au bon endroit.
+  // Pendant la voix, la musique baisse en douceur, puis remonte.
+  (function () {
+    var a = null, duck = 1, target = 1, timer = null;
+    function playingVideos() { return Array.prototype.filter.call(document.querySelectorAll('video'), function (v) { return !v.paused && v.style.opacity !== '0'; }); }
+    function duckTo(f) {
+      target = f; if (timer) return;
+      timer = setInterval(function () {
+        var step = target > duck ? 0.06 : -0.06;
+        duck = Math.abs(target - duck) <= 0.06 ? target : duck + step;
+        playingVideos().forEach(function (v) { try { v.volume = duck; } catch (e) {} });
+        try { if (window.conacceTvSetVol) window.conacceTvSetVol(Math.round(duck * 100)); } catch (e) {}
+        if (duck === target) { clearInterval(timer); timer = null; }
+      }, 50);
+    }
+    // Un seul lecteur audio pour toute la visite, « déverrouillé » au premier geste (iPhone, Safari, Chrome) :
+    // ensuite le navigateur le laisse parler tout seul au bon moment.
+    var el = new Audio(); el.preload = 'auto'; el.setAttribute('playsinline', ''); el.volume = 1;
+    var unlocked = false;
+    function unlock() {
+      if (unlocked) return; unlocked = true;
+      try { el.muted = true; var p = el.play(); if (p && p.then) p.then(function () { el.pause(); el.muted = false; }).catch(function () { el.muted = false; unlocked = false; }); else { el.pause(); el.muted = false; } } catch (e) { el.muted = false; }
+    }
+    ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (t) { window.addEventListener(t, unlock, { capture: true, passive: true }); });
+    function stop() { if (a) { try { a.pause(); } catch (e) {} a = null; } if (target !== 1) duckTo(1); }
+    window.conacceVoice = function (url, off, muted) {
+      if (!url) { stop(); return; }
+      if (!a || a.__u !== url) { stop(); a = el; a.__u = url; a.src = url; a.load(); }
+      var d = a.duration;
+      // Muet seulement si l'image qui passe est elle-même muette (pas d'ancien réglage YouTube resté coincé).
+      var silent = muted || (function () { var vs = playingVideos(); return vs.length ? vs.every(function (v) { return v.muted; }) : !!window.conacceTvMuted; })();
+      if (off < 0 || (isFinite(d) && d > 0 && off >= d - 0.05) || silent) { if (!a.paused) a.pause(); if (target !== 1) duckTo(1); return; }
+      if (a.paused) {
+        if (a.readyState < 1) return;  // pas encore chargée : on réessaie au prochain appel, au bon endroit
+        try { a.currentTime = off; } catch (e) {}
+        a.muted = false; a.volume = 1;
+        a.play().catch(function () {});
+        duckTo(0.15);
+      } else if (Math.abs(a.currentTime - off) > 0.35) {
+        try { a.currentTime = off; } catch (e) {}
+      }
+    };
+  })();
+  // ─── Chaîne programmée (vidéos envoyées) : UN lecteur pour toute la visite ───
+  // Les deux écrans vidéo sont créés une seule fois et ne sont jamais détruits :
+  // - changement de programme : la vidéo suivante est préparée à l'avance sur le 2e écran, puis on bascule ;
+  // - changement de page : la TV continue en coulisse (sans le son), on la retrouve sans rechargement ;
+  // - le son, autorisé une fois par un toucher, reste autorisé.
+  (function () {
+    var host = null, park = null, vids = [], cur = 0, want = false, muted = false, t0 = 0, start0 = 0;
+    // Appel téléphonique : le téléphone coupe le son de la page. La TV continue sans le son, puis le son revient seul.
+    var callMute = false, probe = false;
+    var spin = null, chip = null, stallT = null, lastSeek = 0, lastPos = -1, still = 0, awayT = null, waitT = null;
+    // Horloge murale : elle continue d'avancer quand le téléphone met l'appli en veille.
+    function now() { return Date.now(); }
+    function expected() { return start0 + (now() - t0) / 1000; }
+    function mk() {
+      var v = document.createElement('video');
+      v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.playsInline = true;
+      v.preload = 'auto'; v.autoplay = false; v.controls = false;
+      v.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;background:#000;opacity:0;transition:opacity .8s';
+      v.addEventListener('waiting', function () { if (v === vids[cur]) { clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && (v.paused || v.readyState < 3)) { spinText(); spin.style.display = 'flex'; } }, 1500); } });
+      v.addEventListener('playing', function () { if (v === vids[cur]) { clearTimeout(waitT); if (spin) spin.style.display = 'none'; v.style.opacity = '1'; if (v.__fresh) { v.__fresh = false; rampIn(v); } } });
+      // Un déplacement de l'écran (page qui se réorganise, téléphone tourné) peut mettre la vidéo en pause : elle repart aussitôt.
+      v.addEventListener('pause', function () {
+        if (v !== vids[cur] || !want || v.ended) return;
+        // Une vidéo avec le son mise en pause par le téléphone (appel, alarme…) : on continue en muet.
+        if (!v.muted) { callMute = true; probe = false; }
+        setTimeout(function () { if (want && v.paused) doPlay(v); }, 60);
+      });
+      return v;
+    }
+    // Sans internet et programme pas encore téléchargé : écran d'attente avec le logo.
+    function spinText() {
+      if (!spin) return;
+      var off = navigator.onLine === false;
+      spin.style.background = off ? '#0B1463' : 'transparent';
+      spin.lastChild && (spin.querySelector('.t').textContent = off ? 'Hors connexion · la chaîne reprend dès le retour du réseau' : 'Chargement…');
+      spin.querySelector('.lg').style.display = off ? 'block' : 'none';
+    }
+    window.addEventListener('offline', function () { spinText(); });
+    window.addEventListener('online', function () { spinText(); if (want && vids[cur] && vids[cur].paused) doPlay(vids[cur]); });
+    function ensure() {
+      if (vids.length) return;
+      park = document.createElement('div');
+      park.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none;z-index:-1';
+      document.body.appendChild(park);
+      vids = [mk(), mk()];
+      spin = document.createElement('div');
+      spin.style.cssText = 'position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none';
+      spin.style.flexDirection = 'column'; spin.style.gap = '12px';
+      spin.innerHTML = '<img class="lg" src="assets/assets/images/logo.png" alt="" style="display:none;width:40%;max-width:260px;border-radius:6px">' +
+        '<div style="padding:10px 14px;border-radius:12px;background:rgba(0,0,0,.6);color:#C9D2F5;font:12px Poppins,sans-serif;display:flex;gap:8px;align-items:center"><span style="width:16px;height:16px;border:2px solid #F9CA22;border-right-color:transparent;border-radius:50%;animation:ctvspin .8s linear infinite"></span><span class="t">Chargement…</span></div>';
+      chip = document.createElement('div');
+      chip.style.cssText = 'position:absolute;left:50%;top:8px;transform:translateX(-50%);display:none;padding:5px 10px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font:12px Poppins,sans-serif;pointer-events:none';
+      chip.textContent = '🔇 Touchez pour le son';
+      var st = document.createElement('style'); st.textContent = '@keyframes ctvspin{to{transform:rotate(360deg)}}'; document.head.appendChild(st);
+      [vids[0], vids[1], spin, chip].forEach(function (e) { park.appendChild(e); });
+    }
+    // Les écrans vont dans la TV quand elle est affichée, sinon dans une « coulisse » invisible (jamais retirés de la page).
+    function place() {
+      var target = host && host.isConnected ? host : park;
+      [vids[0], vids[1], spin, chip].forEach(function (e) { if (e.parentNode !== target) target.appendChild(e); });
+      if (target === host) { vids[cur].muted = muted || callMute; if (chip) chip.style.display = muted ? 'block' : 'none'; }
+      if (want && vids[cur].paused) doPlay(vids[cur]);
+    }
+    function waitConnected() {
+      var h = host, n = 0;
+      (function poll() { if (h !== host) return; if (h.isConnected) return place(); if (n++ < 100) setTimeout(poll, 30); })();
+    }
+    function doPlay(v) {
+      v.muted = muted || callMute || !host || !host.isConnected;
+      var p = v.play();
+      if (p && p.catch) p.catch(function (e) {
+        if (e && e.name === 'NotAllowedError') { muted = true; v.muted = true; v.play().catch(function () {}); }
+      });
+      if (chip) chip.style.display = muted && host && host.isConnected ? 'block' : 'none';
+    }
+    // Fondu du son : monte en douceur au début d'un morceau (reprise du film après une pub…).
+    function rampIn(v) {
+      clearInterval(v.__ramp); var k = 0;
+      try { v.volume = 0; } catch (e) {}
+      v.__ramp = setInterval(function () { k++; try { v.volume = Math.min(1, k / 10); } catch (e) {} if (k >= 10) clearInterval(v.__ramp); }, 100);
+    }
+    // … et baisse en douceur à la fin (coupure pub, fin du programme), avec l'image qui passe au noir.
+    window.conacceFileFade = function (sec) {
+      var v = vids[cur]; if (!v) return;
+      clearInterval(v.__ramp); var n = Math.max(2, Math.round(sec * 10)), k = 0, v0 = 1;
+      try { v0 = v.volume; } catch (e) {}
+      v.__ramp = setInterval(function () { k++; try { v.volume = Math.max(0, v0 * (1 - k / n)); } catch (e) {} if (k >= n) clearInterval(v.__ramp); }, 100);
+      v.style.transition = 'opacity ' + sec + 's'; v.style.opacity = '0';
+      setTimeout(function () { v.style.transition = 'opacity .8s'; }, sec * 1000 + 50);
+    };
+    function show(v) {
+      var other = vids[1 - cur];
+      rampIn(v);
+      v.style.opacity = '1';
+      if (other !== v) { other.style.opacity = '0'; setTimeout(function () { if (other !== vids[cur]) other.pause(); }, 400); }
+    }
+    // L'écran qui passe à l'antenne retrouve une grande réserve d'avance.
+    function full(v) { var h = v.__hls; if (h && h.config) { h.config.maxBufferLength = 120; h.config.maxMaxBufferLength = 600; } }
+    function ahead(v) { try { var b = v.buffered; return b.length ? b.end(b.length - 1) : 0; } catch (e) { return 0; } }
+    function inBuf(v, t) { try { var b = v.buffered; for (var i = 0; i < b.length; i++) if (t >= b.start(i) && t <= b.end(i)) return true; } catch (e) {} return false; }
+    var lastAhead = 0;
+    function seekTo(v, s) { try { if (isFinite(s) && s > 0.5 && (!v.duration || s < v.duration - 1)) v.currentTime = s; } catch (e) {} lastSeek = now(); }
+    function load(v, url) {
+      v.__u = url; v.__ready = false; v.__fresh = true;
+      v.addEventListener('loadedmetadata', function once() { v.removeEventListener('loadedmetadata', once); v.__ready = true; if (v === vids[cur]) { seekTo(v, expected()); doPlay(v); } }, { once: true });
+      v.src = url;
+      try { v.load && !v.__hls && v.load(); } catch (e) {}
+    }
+    // Premier toucher : le son est autorisé pour les deux écrans, une fois pour toutes.
+    function unlock() {
+      ensure();
+      muted = false;
+      vids.forEach(function (v) {
+        if (v === vids[cur] && want) { v.muted = !host || !host.isConnected; v.play().catch(function () {}); }
+        else if (v.__u) { var was = v.muted; v.muted = true; v.play().then(function () { if (v !== vids[cur]) v.pause(); v.muted = was; }).catch(function () {}); }
+      });
+      if (chip) chip.style.display = 'none';
+    }
+    document.addEventListener('pointerdown', unlock, true);
+    document.addEventListener('touchend', unlock, true);
+    window.conacceFileHost = function (el) {
+      ensure(); host = el; clearTimeout(awayT); waitConnected();
+    };
+    window.conacceFilePlay = function (url, startSec, key) {
+      ensure(); want = true; clearTimeout(awayT);
+      t0 = now(); start0 = startSec;
+      var v = vids[cur];
+      if (v.__u === url) {
+        if (Math.abs(v.currentTime - expected()) > 12 && v.__ready) seekTo(v, expected());
+        if (v.paused) doPlay(v);
+        show(v); place(); return;
+      }
+      var o = vids[1 - cur];
+      if (o.__u === url) {            // déjà préparée : bascule immédiate
+        cur = 1 - cur;
+        full(o);
+        if (o.__ready) { seekTo(o, expected()); doPlay(o); }
+        show(o); v.style.opacity = '0'; setTimeout(function () { v.pause(); }, 400);
+        place(); return;
+      }
+      v.style.opacity = '0';
+      clearTimeout(waitT); waitT = setTimeout(function () { if (spin && v === vids[cur] && v.paused) { spinText(); spin.style.display = 'flex'; } }, 1500);
+      load(v, url); place();
+    };
+    // Prépare le programme suivant sur l'écran libre (quelques dizaines de secondes avant).
+    window.conacceFilePreload = function (url) {
+      ensure();
+      var o = vids[1 - cur];
+      if (o.__u === url) return;
+      o.pause(); o.muted = true; o.style.opacity = '0';
+      o.__light = true; load(o, url); o.__light = false;
+    };
+    // La TV quitte l'écran (autre page) : elle continue sans le son quelques minutes, puis se met en pause.
+    window.conacceFileAway = function () {
+      host = null; if (!vids.length) return;
+      place();
+      vids[cur].muted = true;
+      clearTimeout(awayT);
+      awayT = setTimeout(function () { want = false; vids.forEach(function (v) { v.pause(); }); }, 5 * 60 * 1000);
+    };
+    window.conacceFileUnmute = function () { unlock(); };
+    // Fin de l'appel : on essaie de remettre le son ; si le téléphone le refuse encore, on reste en muet.
+    function tryUnmute() {
+      if (!callMute || probe || !want || !vids.length || document.hidden || muted) return;
+      var v = vids[cur];
+      if (!host || !host.isConnected || v.paused) return;
+      probe = true;
+      v.muted = false;
+      setTimeout(function () { if (probe && !v.paused) { callMute = false; } probe = false; }, 1500);
+    }
+    setInterval(tryUnmute, 8000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(tryUnmute, 1500); });
+    // Retour dans l'appli (après être allé ailleurs) : le téléphone a souvent suspendu la vidéo.
+    // On reprend tout de suite au bon moment de la grille, sans avoir à actualiser.
+    var hiddenAt = 0;
+    function reload(v) { if (!v.__u) return; var u = v.__u; v.__u = null; still = 0; spinText(); if (spin) spin.style.display = 'flex'; load(v, u); }
+    function revive() {
+      if (!vids.length || !want) return;
+      var v = vids[cur], away = hiddenAt ? now() - hiddenAt : 0;
+      hiddenAt = 0; still = 0;
+      var fine = v.__ready && !v.paused && v.readyState >= 3 && Math.abs(v.currentTime - expected()) < 8;
+      if (fine) return;
+      if (away > 15000 || !v.__ready || v.readyState < 2) reload(v);
+      else { seekTo(v, expected()); doPlay(v); }
+      // Toujours bloquée quelques secondes plus tard : on recharge.
+      setTimeout(function () {
+        var w = vids[cur];
+        if (want && w === v && (w.paused || w.readyState < 3 || Math.abs(w.currentTime - expected()) > 15)) reload(w);
+      }, 6000);
+    }
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) hiddenAt = now(); else setTimeout(revive, 300);
+    });
+    window.addEventListener('pageshow', function (e) { if (e.persisted) setTimeout(revive, 300); });
+    window.addEventListener('focus', function () { setTimeout(revive, 300); });
+    // Surveillance douce : recalage sur l'horaire et relance après un long blocage.
+    setInterval(function () {
+      if (!vids.length || !want) return;
+      var v = vids[cur];
+      if (!v.__ready) return;
+      if (v.paused && !v.ended) doPlay(v);
+      var pos = v.currentTime;
+      if (Math.abs(pos - lastPos) < 0.05) still++; else still = 0;
+      lastPos = pos;
+      // Recalage sur l'horaire : seulement si l'image visée est déjà téléchargée, ou si l'écart devient grand
+      // (sur une connexion lente, sauter en avant jetterait ce qui est déjà chargé).
+      var gap = Math.abs(pos - expected());
+      if (!v.paused && gap > 20 && now() - lastSeek > 60000 && (inBuf(v, expected()) || gap > 120)) seekTo(v, expected());
+      // Image figée : on ne recharge pas tant que la vidéo continue de se télécharger.
+      var a = ahead(v), growing = a > lastAhead + 0.5; lastAhead = a;
+      if (growing && still) still = Math.min(still, 3);
+      if (still >= 6 && v.__u && !document.hidden) reload(v);  // ≈ 30 s sans image ni téléchargement : on recharge
+    }, 5000);
+  })();
+  // Mini-écran (image dans l'image) : la TV continue dans une petite fenêtre
+  // pendant qu'on utilise d'autres applis.
+  function conacceVideo() {
+    var vs = document.querySelectorAll('video'), best = null;
+    for (var i = 0; i < vs.length; i++) { var v = vs[i]; if (!best || (!v.paused && best.paused) || v.clientWidth > best.clientWidth) best = v; }
+    return best;
+  }
+  window.conaccePipSupported = function () {
+    return !!(document.pictureInPictureEnabled || (window.HTMLVideoElement && HTMLVideoElement.prototype.webkitSetPresentationMode));
+  };
+  window.conaccePip = function () {
+    try {
+      if (document.pictureInPictureElement) { document.exitPictureInPicture(); return; }
+      var v = conacceVideo(); if (!v) return;
+      if (v.webkitSupportsPresentationMode && typeof v.webkitSetPresentationMode === 'function') {
+        v.webkitSetPresentationMode(v.webkitPresentationMode === 'picture-in-picture' ? 'inline' : 'picture-in-picture');
+        return;
+      }
+      if (v.requestPictureInPicture) v.requestPictureInPicture().catch(function () {});
+    } catch (e) {}
+  };
+  // Quand on quitte l'appli pendant la TV, le navigateur peut passer seul en mini-écran.
+  new MutationObserver(function () {
+    var vs = document.querySelectorAll('video:not([autopictureinpicture])');
+    for (var i = 0; i < vs.length; i++) { vs[i].setAttribute('autopictureinpicture', ''); try { vs[i].autoPictureInPicture = true; } catch (e) {} }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  // iPhone : les vidéos restent dans l'appli (jamais le lecteur plein écran d'Apple),
+  // pour que le logo et le bandeau restent toujours collés à l'image.
+  new MutationObserver(function (ms) {
+    ms.forEach(function (m) { m.addedNodes.forEach(function (n) {
+      var vs = n.tagName === 'VIDEO' ? [n] : (n.querySelectorAll ? n.querySelectorAll('video') : []);
+      for (var i = 0; i < vs.length; i++) { vs[i].setAttribute('playsinline', ''); vs[i].setAttribute('webkit-playsinline', ''); vs[i].playsInline = true; }
+    }); });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  // TV en grand (téléphone tourné) : toute la page passe en plein écran au premier toucher
+  // (Android). Le logo et le bandeau restent collés à l'image. L'iPhone ne le permet pas dans Safari :
+  // il faut ajouter l'appli à l'écran d'accueil pour ne plus voir les barres.
+  (function () {
+    var on = false, de = document.documentElement;
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement; }
+    function enter() {
+      if (!on || isIOS || fsEl()) return;
+      var f = de.requestFullscreen || de.webkitRequestFullscreen;
+      if (!f) return;
+      try { var p = f.call(de, { navigationUI: 'hide' }); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    document.addEventListener('pointerup', enter, true);
+    window.conacceImmersive = function (v) {
+      on = !!v;
+      if (!on && fsEl()) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
+    };
+  })();
+  window.conacceFullscreen = function () {
+    var v = document.querySelector('video');
+    if (!v) return;
+    if (v.webkitEnterFullscreen) { v.webkitEnterFullscreen(); return; }
+    if (v.requestFullscreen) { v.requestFullscreen(); return; }
+    if (v.webkitRequestFullscreen) v.webkitRequestFullscreen();
+  };
+  </script>
+  <!-- Ancienne version gardée par le navigateur : on la retire (mise à jour immédiate).
+       Réserve hors connexion (ctv-sw.js) : les programmes de la chaîne sont téléchargés à l'avance. -->
+  <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (rs) {
+      // Réserve hors connexion en pause : on retire tous les anciens modules du navigateur.
+      var old = rs;
+      if (!old.length) return;
+      Promise.all(old.map(function (r) { return r.unregister(); }))
+        .then(function () { return window.caches ? caches.keys().then(function (k) { return Promise.all(k.filter(function (n) { return /^(flutter|ctv-)/.test(n); }).map(function (n) { return caches.delete(n); })); }) : null; })
+        .then(function () { try { if (!sessionStorage.getItem('maj')) { sessionStorage.setItem('maj', '1'); location.reload(); } } catch (e) {} });
+    });
+    navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.type === 'ctv-offline') window.conacceOfflineStatus = e.data.status; });
+  }
+  window.conacceOfflineStatus = null;
+  // L'appli envoie la liste des programmes prévus ; le téléchargement se fait en coulisse.
+  // Données mobiles signalées par le téléphone (Android) ou mode « économie de données » : on n'en télécharge pas.
+  window.conacceOfflinePlan = function (json) {
+    try {
+      return; // réserve hors connexion en pause
+      var c = navigator.connection;
+      if (c && (c.saveData || c.type === 'cellular')) return;
+      var items = JSON.parse(json);
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+      navigator.serviceWorker.ready.then(function (r) { if (r.active) r.active.postMessage({ type: 'ctv-plan', items: items }); });
+    } catch (e) {}
+  };
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
