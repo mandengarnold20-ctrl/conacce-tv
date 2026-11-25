@@ -550,6 +550,7 @@
   .lg-tip { margin-top: 6px; }
   .lg-tip.bad { color: #FF8A8A; font-weight: 600; }
   .ov-bandpos { position: absolute; display: flex; pointer-events: none; }
+  .ov-lbl { position: absolute; top: 0; bottom: 0; right: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; line-height: 1; }
   .ov-band { --bk: var(--k); border-radius: calc(5px * var(--bk)); overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.35); text-align: center; opacity: 0; transform: translateY(170%); transition: transform .65s cubic-bezier(.5,0,.75,0), opacity .4s; }
   .ov-band.from-top { transform: translateY(-170%); }
   .ov-band.on { opacity: 1; transform: none; transition: transform .65s cubic-bezier(.2,.8,.2,1), opacity .4s; }
@@ -1991,12 +1992,12 @@ async function showRegie() {
     logo: { show: true, corner: 'hd', size: 100, opacity: 90, url: null },
     ticker: { show: true, text: '', fallback: '', speed: 3, theme: 'nuit', bg: null, fg: null, on: 0, every: 0, messages: [] },
     band: { show: true, anim: 'slide', out: null, at: 15, dur: 8, end: 30, pos: 'bc', y: 0, scale: 100, width: 52, ...BAND_COLORS },
-    font: { name: 'Poppins', url: null }, fontTicker: null, fontBand: null, fontBand2: null, fonts: [],
+    font: { name: 'Poppins', url: null }, fontTicker: null, fontBand: null, fontBand2: null, fontLbl: null, fonts: [],
   };
   const normBrand = c => {
     const o = JSON.parse(JSON.stringify(BR_DEF));
     for (const k of ['logo', 'ticker', 'band', 'font']) Object.assign(o[k], (c && c[k]) || {});
-    for (const k of ['fontTicker', 'fontBand', 'fontBand2']) o[k] = c && c[k] && c[k].name ? c[k] : null;
+    for (const k of ['fontTicker', 'fontBand', 'fontBand2', 'fontLbl']) o[k] = c && c[k] && c[k].name ? c[k] : null;
     o.fonts = c && Array.isArray(c.fonts) ? c.fonts.filter(f => f && f.name && f.url) : [];
     // Ancienne police importée : on la garde dans la liste des polices importées.
     if (o.font.url && !o.fonts.some(f => f.url === o.font.url)) o.fonts.push({ name: o.font.name, url: o.font.url });
@@ -2038,6 +2039,11 @@ async function showRegie() {
   const brandFamily = () => famOf(R.brand.font);
   function buildHab() {
     const B = R.brand, ro = !can.program;
+    // Image de bande déjà importée : on repère une fois sa partie blanche (pour « Conacce Music »).
+    if (B.band.img && B.band.lz === undefined && !ro && R.lzFor !== B.band.img) {
+      R.lzFor = B.band.img;
+      whiteZone(B.band.img).then(z => { if (B.band.lz === undefined) { B.band.lz = z; saveBrand(); buildHab(); } });
+    }
     habPane.textContent = '';
     const sw = (on, label, set) => h('label', { class: 'hb-sw' }, h('input', { type: 'checkbox', checked: on, disabled: ro, onchange: e => { set(e.target.checked); saveBrand(); } }), label);
     const pills = (opts, val, set) => h('div', { class: 'hb-pills' }, opts.map(([k, l]) => h('button', { class: 'st-chip' + (val === k ? ' on' : ''), 'aria-pressed': String(val === k), disabled: ro, onclick: () => { set(k); saveBrand(); buildHab(); } }, l)));
@@ -2157,7 +2163,8 @@ async function showRegie() {
             toast('Envoi de l’image de bande…');
             try {
               const ia = await new Promise(res => { const im = new Image(); im.onload = () => res(im.naturalWidth / im.naturalHeight || 6); im.onerror = () => res(6); im.src = URL.createObjectURL(f); });
-              B.band.img = await upload('images', f, () => {}); B.band.ia = Math.round(Math.min(30, Math.max(1, ia)) * 1000) / 1000;
+              B.band.img = await upload('images', f, () => {});
+              B.band.lz = await whiteZone(URL.createObjectURL(f)); B.band.ia = Math.round(Math.min(30, Math.max(1, ia)) * 1000) / 1000;
               saveBrand(); buildHab(); toast('Image de bande en place : l’artiste et le titre s’y adaptent automatiquement.');
             } catch (e) { toast(e.message || String(e), true); }
           }) }, B.band.img ? 'Changer l’image' : 'Importer mon image de bande'),
@@ -2202,9 +2209,16 @@ async function showRegie() {
           ro ? null : h('button', { class: 'btn small ghost', onclick: () => { Object.assign(B.band, BAND_COLORS); saveBrand(); buildHab(); } }, 'Couleurs du logo')),
         fontPick('Police du haut (artiste, en gras)', B.fontBand, v => { B.fontBand = v; }, true),
         fontPick('Police du bas (titre de la chanson)', B.fontBand2, v => { B.fontBand2 = v; }, true),
+        sub('Texte fixe sur la partie blanche de la bande'),
+        h('div', { class: 'hb-row' },
+          h('input', { type: 'text', value: B.band.lbl == null ? 'Conacce Music' : B.band.lbl, maxlength: 30, placeholder: 'Conacce Music (vide = rien)', 'aria-label': 'Texte fixe', onchange: e => { B.band.lbl = e.target.value.trim(); saveBrand(); } }),
+          color('Couleur', B.band.lc || '#0B1463', v => { B.band.lc = v; }),
+          pills([['it', 'Italique'], ['dr', 'Droit']], B.band.lit === false ? 'dr' : 'it', v => { B.band.lit = v === 'it'; })),
+        fontPick('Police du texte fixe (ex. Gilroy-Medium)', B.fontLbl, v => { B.fontLbl = v; }, true),
+        h('div', { class: 'rg-small' }, B.band.img ? (B.band.lz > 0 ? `Partie blanche détectée sur votre image (à partir de ${Math.round(B.band.lz * 100)} % de la largeur) : le texte s’y place tout seul, les noms restent sur la partie colorée.` : 'Aucune partie blanche détectée sur l’image de bande : le texte fixe ne s’affiche pas.') : 'S’affiche quand l’image de bande importée a une partie blanche.'),
         h('div', { class: 'hb-row' }, h('span', { class: 'rg-small' }, 'Titre :'),
           pills([['it', 'Gras italique'], ['dr', 'Gras droit']], (B.band.it2 != null ? B.band.it2 : !B.fontBand2) ? 'it' : 'dr', v => { B.band.it2 = v === 'it'; })),
-        h('div', { class: 'rg-small' }, 'Pour Gilroy : importez vos fichiers « Gilroy-Bold » et « Gilroy-BoldItalic » avec « Importer une police » (plus bas), puis choisissez Gilroy-Bold en haut et Gilroy-BoldItalic en bas, avec « Gras droit » (le fichier est déjà en italique). Les noms s’affichent avec une majuscule à chaque mot ; sans titre, le bas affiche « Conacce Tv ».'),
+        h('div', { class: 'rg-small' }, 'Pour Gilroy : importez vos fichiers « Gilroy-Bold » et « Gilroy-BoldItalic » avec « Importer une police » (plus bas), puis choisissez Gilroy-Bold en haut et Gilroy-BoldItalic en bas, avec « Gras droit » (le fichier est déjà en italique). Les noms s’affichent avec une majuscule à chaque mot.'),
         h('div', { class: 'rg-small' }, 'Dans « Modifier » de chaque programme : artiste et titre pour un clip, nom de l’émission et invité pour une émission. 2ᵉ passage à 0 : un seul passage.')),
       h('fieldset', { class: 'hb' }, h('legend', {}, 'Police générale'),
         fontPick('Police de l’habillage (bandeau, bande, titres)', B.font, v => { B.font = v || { name: 'Poppins', url: null }; }, false),
@@ -2218,7 +2232,8 @@ async function showRegie() {
     const ovLogoImg = h('img', { alt: '' });
     const ovLogo = h('span', { class: 'ov-logo logo-shine hidden' }, ovLogoImg);
     const ovArtist = h('div', { class: 'ov-artist' }), ovSong = h('div', { class: 'ov-song' });
-    const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong);
+    const ovLbl = h('span', { class: 'ov-lbl hidden' });
+    const ovBand = h('div', { class: 'ov-band' }, ovArtist, ovSong, ovLbl);
     const ovRank = h('div', { class: 'ov-rank hidden' });
     const ovBandPos = h('div', { class: 'ov-bandpos' }, ovBand);
     // 2ᵉ bande (titre) quand deux images de bande sont importées.
@@ -2278,7 +2293,7 @@ async function showRegie() {
       const editing = box === airBox && R.bandEdit;
       const p = editing ? { artist: (T.sl && T.sl.p.artist) || 'Nom de l’artiste', song: (T.sl && T.sl.p.song) || 'Titre de la chanson', duration: 200, chart_rank: (T.sl && T.sl.p.chart_rank) || 10, band_anim: null } : T.sl && T.sl.p;
       const [artistRaw, songRaw] = p ? bandNames(p) : ['', ''];
-      const artistT = titleCase(artistRaw), songT = songRaw ? titleCase(songRaw) : (artistRaw ? 'Conacce Tv' : '');
+      const artistT = titleCase(artistRaw), songT = songRaw ? titleCase(songRaw) : (artistRaw && !B.band.img ? 'Conacce Music' : '');
       const has = !!(editing || (B.band.show && p && p.kind !== 'habillage' && p.kind !== 'pub' && p.show_band !== false && (artistT || songT)));
       const two = !!(B.band.img && B.band.img2);
       let on = false, rankOn = false;
@@ -2336,7 +2351,18 @@ async function showRegie() {
         // Image de bande importée : le texte se place sur sa surface et rétrécit seul s'il est trop long.
         const bw = bw1, bh = bh1, ts = (B.band.tsz || 100) / 100, one = two || !songT || !artistT;
         ovBand.classList.add('img');
-        Object.assign(ovBand.style, { width: bw + 'px', height: bh + 'px', minWidth: '', maxWidth: '', backgroundImage: `url("${B.band.img}")`, padding: `${bh * 0.1}px ${bw * 0.06}px` });
+        // Partie blanche de l'image (détectée à l'import) : texte fixe « Conacce Music » ; les noms restent sur la partie colorée.
+        const lz = B.band.lz > 0 && B.band.lz < 0.95 ? B.band.lz : 0, lbl = B.band.lbl == null ? 'Conacce Music' : B.band.lbl;
+        Object.assign(ovBand.style, { position: 'relative', width: bw + 'px', height: bh + 'px', minWidth: '', maxWidth: '', backgroundImage: `url("${B.band.img}")`,
+          padding: `${bh * 0.1}px ${lz ? bw * (1 - lz) + bw * 0.03 : bw * 0.06}px ${bh * 0.1}px ${bw * 0.05}px` });
+        ovLbl.classList.toggle('hidden', !(lz && lbl));
+        if (lz && lbl) {
+          if (ovLbl.textContent !== lbl) ovLbl.textContent = lbl;
+          const it = B.band.lit !== false;
+          Object.assign(ovLbl.style, { left: (bw * lz + bw * 0.02) + 'px', fontFamily: famOf(B.fontLbl || B.fontBand2 || B.fontBand || B.font), fontWeight: '500', fontStyle: it ? 'italic' : 'normal',
+            color: B.band.lc || '#0B1463', fontSize: (bh * 0.34 * ts) + 'px' });
+          if (ovLbl.scrollWidth > ovLbl.clientWidth + 1 && ovLbl.clientWidth > 0) ovLbl.style.fontSize = (parseFloat(ovLbl.style.fontSize) * ovLbl.clientWidth / ovLbl.scrollWidth * 0.92) + 'px';
+        }
         Object.assign(ovArtist.style, { backgroundImage: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * (one ? 0.46 : 0.38) * ts) + 'px' });
         Object.assign(ovSong.style, { background: '', color: B.band.tc || '#FFFFFF', fontSize: (bh * (one ? 0.46 : 0.26) * ts) + 'px' });
         if (two) {
@@ -2346,6 +2372,7 @@ async function showRegie() {
         }
         for (const el of [ovArtist, ovSong, ovSong2]) if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) el.style.fontSize = (parseFloat(el.style.fontSize) * el.clientWidth / el.scrollWidth) + 'px';
       } else {
+        ovLbl.classList.add('hidden'); ovBand.style.position = '';
         ovBand.classList.remove('img'); ovBand.style.width = ''; ovBand.style.height = ''; ovBand.style.backgroundImage = ''; ovBand.style.padding = '';
         Object.assign(ovArtist.style, { backgroundImage: `linear-gradient(110deg, ${B.band.topA} 0%, ${B.band.topB} 40%, ${B.band.topA} 70%, ${B.band.topB} 100%)`, color: B.band.topText, fontSize: '' });
         Object.assign(ovSong.style, { background: B.band.bottomBg, color: B.band.bottomText, fontSize: '' });
@@ -2918,7 +2945,18 @@ async function showRegie() {
 
   // ── Affichage des listes ──
   const match = p => (R.kind === 'all' || (p.kind || 'clip') === R.kind) && (!R.q.trim() || norm(p.title + ' ' + (p.artist || '') + ' ' + (p.song || '')).includes(norm(R.q.trim())));
+  // Redessiner sans faire sauter les listes : chaque zone qui défile garde sa position (envois, modifications…).
   function draw() {
+    const keep = [...document.querySelectorAll('#main *')].filter(e => e.scrollTop > 0 || e.scrollLeft > 0)
+      .map(e => [e.className + '#' + [...document.getElementsByClassName(e.className.split(' ')[0] || '_')].indexOf(e), e.scrollTop, e.scrollLeft]);
+    const y = window.scrollY;
+    drawTv();
+    if (keep.length || y) requestAnimationFrame(() => {
+      for (const [k, t, l] of keep) { const [cls, i] = k.split('#'); const el = document.getElementsByClassName(cls.split(' ')[0])[+i]; if (el) { el.scrollTop = t; el.scrollLeft = l; } }
+      if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y);
+    });
+  }
+  function drawTv() {
     R.sched = tvSchedule(R.programs, Date.parse(R.channel.anchor), R.specials, R.channel.loop_repeat !== false);
     const LU = R.loopUI;
     if (LU.repeatCb) { const on = R.channel.loop_repeat !== false; LU.repeatCb.checked = on; LU.repeatLbl.classList.toggle('off', !on);
@@ -3139,6 +3177,23 @@ async function showRegie() {
     return m ? [t.slice(0, m.index).trim(), clean(t.slice(m.index + m[0].length))] : ['', clean(t)];
   }
   // Noms affichés (bandes, voix) : ceux remplis, sinon tirés du nom du fichier pour un clip de classement.
+  // Partie blanche à droite d'une image de bande : renvoie où elle commence (0 à 1), ou 0 s'il n'y en a pas.
+  function whiteZone(url) {
+    return new Promise(res => {
+      const im = new Image(); im.crossOrigin = 'anonymous';
+      im.onload = () => {
+        try {
+          const w = Math.min(800, im.naturalWidth), hh = Math.max(4, Math.round(im.naturalHeight * w / im.naturalWidth));
+          const c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d'); x.drawImage(im, 0, 0, w, hh);
+          const edge = row => { const d = x.getImageData(0, Math.round(hh * row), w, 1).data, white = i => d[i * 4 + 3] > 200 && d[i * 4] > 230 && d[i * 4 + 1] > 230 && d[i * 4 + 2] > 230;
+            if (!white(w - 2)) return w; let i = w - 2; while (i > 0 && white(i)) i--; return i + 1; };
+          const e = Math.max(edge(0.2), edge(0.5), edge(0.8)) / w;
+          res(1 - e >= 0.08 ? Math.round(e * 1000) / 1000 : 0);
+        } catch (_) { res(0); }
+      };
+      im.onerror = () => res(0); im.src = url;
+    });
+  }
   // « ADA EHI - JESUS you are able » → « Ada Ehi - Jesus You Are Able » (ft./feat. restent en minuscules).
   function titleCase(t) {
     return String(t || '').toLocaleLowerCase('fr').replace(/(^|[\s\-–(\/"«])(\p{L})/gu, (m, a, c) => a + c.toLocaleUpperCase('fr')).replace(/\b(Ft|Feat)\./g, x => x.toLowerCase());

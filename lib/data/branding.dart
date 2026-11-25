@@ -128,6 +128,11 @@ class Branding {
     this.fontBand,
     this.fontBand2,
     this.bandItalic2,
+    this.fontLbl,
+    this.bandLabel = 'Conacce Music',
+    this.bandLabelZone = 0,
+    this.bandLabelColor = const Color(0xFF0B1463),
+    this.labelItalic = true,
   });
 
   final bool logoShow;
@@ -212,6 +217,14 @@ class Branding {
   /// Titre en italique (par défaut oui, sauf si une police du bas est importée — elle est souvent déjà italique).
   final bool? bandItalic2;
   bool get titleItalic => bandItalic2 ?? (fontBand2 == null);
+
+  /// Texte fixe (« Conacce Music ») sur la partie blanche de l'image de bande, qui commence à [bandLabelZone] (0 = aucune).
+  final BrandFont? fontLbl;
+  final String bandLabel;
+  final double bandLabelZone;
+  final Color bandLabelColor;
+  final bool labelItalic;
+  BrandFont get labelFont => fontLbl ?? fontBand2 ?? bandFont;
 
   static int _beninMinute(DateTime utc) {
     final local = utc.toUtc().add(const Duration(hours: 1)); // heure du Bénin
@@ -309,6 +322,11 @@ class Branding {
       fontBand: BrandFont.fromMap(c['fontBand']),
       fontBand2: BrandFont.fromMap(c['fontBand2']),
       bandItalic2: band['it2'] is bool ? band['it2'] as bool : null,
+      fontLbl: BrandFont.fromMap(c['fontLbl']),
+      bandLabel: band['lbl'] is String ? (band['lbl'] as String).trim() : 'Conacce Music',
+      bandLabelZone: band['lz'] is num && (band['lz'] as num) > 0 && (band['lz'] as num) < 0.95 ? (band['lz'] as num).toDouble() : 0,
+      bandLabelColor: _color(band['lc']) ?? const Color(0xFF0B1463),
+      labelItalic: band['lit'] != false,
     );
   }
 }

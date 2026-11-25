@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/analytics.dart';
 import '../core/device.dart';
 import '../core/theme/app_colors.dart';
-import '../core/theme/app_theme.dart';
 import '../core/widgets/brand.dart';
 import '../core/widgets/responsive.dart';
 import '../data/providers.dart';
@@ -61,10 +60,6 @@ class SplashScreen extends StatelessWidget {
                   children: [
                     const Spacer(flex: 5),
                     const LogoShine(width: 300, radius: 8),
-                    const SizedBox(height: 20),
-                    Text('TÉLÉVISION · RADIO · CULTES · ŒUVRES D’OR',
-                        textAlign: TextAlign.center,
-                        style: AppTheme.title(size: 11, weight: FontWeight.w500, color: AppColors.mist).copyWith(letterSpacing: 2.5)),
                     const Spacer(flex: 4),
                     const _TapHint(),
                     const SizedBox(height: 40),

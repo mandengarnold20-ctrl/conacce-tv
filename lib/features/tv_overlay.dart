@@ -100,7 +100,7 @@ class _TvOverlayState extends State<TvOverlay> {
   }
 
   void _ensureFonts(Branding b) {
-    for (final f in {b.font.key: b.font, b.tickerFont.key: b.tickerFont, b.bandFont.key: b.bandFont, b.bandFont2.key: b.bandFont2}.values) {
+    for (final f in {b.font.key: b.font, b.tickerFont.key: b.tickerFont, b.bandFont.key: b.bandFont, b.bandFont2.key: b.bandFont2, b.labelFont.key: b.labelFont}.values) {
       if (!_fontsLoaded.contains(f.key)) {
         _loadFont(f, () {
           if (mounted) setState(() {});
@@ -182,9 +182,9 @@ class _TvOverlayState extends State<TvOverlay> {
             final two = b.twoBands;
             final fromTop = prog.bandAnim == 'haut' ? true : prog.bandAnim == 'bas' ? false : bandTop;
             final anim = switch (prog.bandAnim) { 'haut' || 'bas' => 'slide', 'fade' => 'fade', 'open' => 'open', _ => null };
-            // Majuscule à chaque mot ; sans titre, le bas affiche « Conacce Tv ».
+            // Majuscule à chaque mot ; sans titre, la partie blanche de la bande classique affiche « Conacce Music ».
             final artist = titleCase(prog.bandArtist);
-            final song = prog.bandSong.isEmpty ? (artist.isNotEmpty ? 'Conacce Tv' : '') : titleCase(prog.bandSong);
+            final song = prog.bandSong.isEmpty ? (artist.isNotEmpty && b.bandImg == null ? 'Conacce Music' : '') : titleCase(prog.bandSong);
             final bw1 = w * (b.bandW1 ?? b.bandWidth) / 100, bh1 = bw1 / b.bandImgAspect;
             final bw2 = w * (b.bandW2 ?? b.bandWidth) / 100, bh2 = bw2 / b.bandImg2Aspect;
             final kk = k * b.bandScale / 100;
@@ -424,13 +424,34 @@ class _BandState extends State<_Band> with SingleTickerProviderStateMixin {
             final bw = widget.maxWidth, bh = widget.maxWidth / (widget.imgAspect ?? b.bandImgAspect), ts = b.bandTextSize / 100;
             final one = widget.artist.isEmpty || widget.song.isEmpty;
             final tc = widget.textColor ?? b.bandImgText;
+            // Bande 1 : partie blanche de l'image → texte fixe « Conacce Music » ; les noms restent sur la partie colorée.
+            final lz = widget.imgUrl == null && b.bandLabel.isNotEmpty ? b.bandLabelZone : 0.0;
             return SizedBox(
               width: bw,
               height: bh,
               child: Stack(fit: StackFit.expand, children: [
                 Image.network(img, fit: BoxFit.fill, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                if (lz > 0)
+                  Positioned(
+                    left: bw * lz + bw * 0.02,
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: bw * 0.015),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(b.bandLabel,
+                              maxLines: 1,
+                              style: brandStyle(b, font: b.labelFont, size: bh * 0.34 * ts, weight: FontWeight.w500, color: b.bandLabelColor)
+                                  .copyWith(fontStyle: b.labelItalic ? FontStyle.italic : FontStyle.normal)),
+                        ),
+                      ),
+                    ),
+                  ),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: bw * 0.06, vertical: bh * 0.1),
+                  padding: EdgeInsets.fromLTRB(bw * 0.05, bh * 0.1, lz > 0 ? bw * (1 - lz) + bw * 0.03 : bw * 0.06, bh * 0.1),
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     if (widget.artist.isNotEmpty)
                       Flexible(
